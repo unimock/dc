@@ -1,0 +1,15 @@
+#!/bin/bash
+#shopt -s expand_aliases ; . /etc/profile.d/m_machines_docker.sh
+
+NODE="$1"
+shift
+
+eval "$(docker-machine env ${NODE})"
+
+CNA=`( docker ps | grep "rdc-${NODE}." | cut -f1 -d" ") `
+
+if [ "$1" = "" ] ; then
+  docker exec -it $CNA bash
+else
+  docker exec -t $CNA rdc . $*
+fi

@@ -1,0 +1,70 @@
+#!/bin/bash
+
+HOST=`hostname`
+SERVICE=`basename $PWD`
+
+
+_help()
+{
+  echo " usage:"
+  echo ""
+  echo "        ls|rm|up "
+  echo ""
+  echo "        sync      <node> [real]   ..................... sync Service/Data directories to node"
+  echo "        pull|push <node> peristent|service [real]   ... pull service or persistentn data from node"
+  echo ""           
+  exit 0
+}
+
+CMD=$1
+
+if [ "$CMD" = "" ] ; then
+  _help
+fi
+
+if [ "$CMD" = "sync" ] ; then
+  NODE=$2
+  REAL=$3
+  if [ "$2" = "" ] ; then
+    _help
+  fi
+  s-rdc $HOST rdc . sync /Docker/Services/${SERVICE} rdc-${NODE}:/Docker/Services/${SERVICE} ${REAL}
+  s-rdc $HOST rdc . sync /Docker/Data/${SERVICE}     rdc-${NODE}:/Docker/Data/${SERVICE}     ${REAL}
+  exit 0
+fi
+
+if [ "$CMD" = "pull" -o "$CMD" = "push" ] ; then
+  NODE=$2
+  DIR=$3
+  REAL=$4
+  if [ "$DIR" != "persistent" -a "$DIR" != "service" ] ; then
+    _help
+  fi
+  if [ "$CMD" = "pull" ] ; then
+    s-rdc $HOST rdc . sync rdc-${NODE}:/Docker/Services/${SERVICE}/${DIR}   /Docker/Data/root/g7swarm/${SERVICE}/${DIR}    ${REAL}
+  elif [ "$CMD" = "push" ] ; then
+    s-rdc $HOST rdc . sync /Docker/Data/root/g7swarm/${SERVICE}/${DIR}      rdc-${NODE}:/Docker/Services/${SERVICE}/${DIR} ${REAL}
+  fi
+  exit 0
+fi
+
+
+if [ -e ./swarm.control ] ; then
+  ./swarm.control $*
+  exit 0
+fi
+
+if [ "$CMD" = "up" ] ; then
+  docker stack deploy -c ./swarm-docker-compose.yml ${SERVICE}
+  exit 0
+fi
+
+if [ "$CMD" = "rm" ] ; then
+  docker stack rm ${SERVICE}
+  exit 0
+fi
+
+if [ "$CMD" = "ls" ] ; then
+  docker stack services ${SERVICE} | grep -v "^ID"
+  exit 0
+fi

@@ -1,0 +1,276 @@
+#!/bin/bash
+
+. /etc/mde/dc/default
+
+####################################################################################################################################
+parse_yaml() {
+    local prefix=$2
+    local s
+    local w
+    local fs
+    s='[[:space:]]*'
+    w='[a-zA-Z0-9_]*'
+    fs="$(echo @|tr @ '\034')"
+    sed -ne "s|^\($s\)\($w\)$s:$s\"\(.*\)\"$s\$|\1$fs\2$fs\3|p" \
+        -e "s|^\($s\)\($w\)$s[:-]$s\(.*\)$s\$|\1$fs\2$fs\3|p" "$1" |
+    awk -F"$fs" '{
+      indent = length($1)/2;
+      if (length($2) == 0) { conj[indent]="+";} else {conj[indent]="";}
+      vname[indent] = $2;
+      for (i in vname) {if (i > indent) {delete vname[i]}}
+      if (length($3) > 0) {
+              vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+              printf("%s%s%s%s=(\"%s\")\n", "'"$prefix"'",vn, $2, conj[indent-1],$3);
+      }
+    }' | sed 's/_=/+=/g'
+}
+####################################################################################################################################
+show_help() {
+  echo ""
+  echo " usage: `basename $0` [<options>] [<command>]"
+  echo ""
+  echo "   options:"
+  echo ""
+  echo "     -c <path>/dc-service.yml ... work with service of the according service"
+  echo "     -h <host> .................. work with this host, instead of the one which is defined in the service dc-service.yml file. "
+  echo "     -v ......................... verbose"
+  echo ""
+  echo "   commands:"
+  echo ""
+  echo "     docker|compose|swarm|machine <commands>"
+  echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
+  echo "     up|rm|ps|logs [-f]|stop|start"
+  echo "     pull|push service|persistent [real]"
+  echo "     [-h <host>] services ls|check|current"
+  echo "     [-i <host-index] 0|1|2"
+  echo "     encrypt|decrypt"
+  echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
+  echo "     login [command] ..... login or run a command within <$DCN>."
+  echo "     syslog .............. show last lines from syslog"
+  echo "     maillog ............. show last lines from mail.log"
+  echo "     config .............. configure ispconfig (set server_name, passwords ...)"
+  echo "     migrate ............. migration tool (import and export data)"
+  echo "     ovw push ............ push the content of </service/ovw> to </> within the container."
+  echo "     ovw fetch ........... copy a file or directory from </> to </service/ovw/> within the container."
+  echo "     ovw diff <file> ..... compare a overwrite file"
+  echo "     track init .......... initialize file tracking for /etc and /usr/local/ispconfig."
+  echo "     track show .......... show file tracking results"
+  echo "     track git <...> ..... git commands"
+  echo ""
+  exit 0
+}
+####################################################################################################################################
+search_conf() {
+  host="$1" ; service="$2"
+
+  find $MDE_DC_SERV_DIR/ -name dc-service.yml | while read i ; do
+    unset service_hosts
+    eval "$(parse_yaml $i)"
+    for h in ${service_hosts[@]}; do
+      if [ "$host" = "$h" -a "$service_name" = "$service" ] ; then
+          echo "${i}"
+          return 0
+      fi
+    done
+  done
+  return 1
+}
+####################################################################################################################################
+#
+# magic main
+#
+####################################################################################################################################
+HOST=""
+SERVICE=""
+CONF=""
+VERB=""
+HIDX="0"
+
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -v) VERB="1"  ;    shift 1 ;; 
+    -h) HOST="$2" ;    shift 2 ;; 
+    -s) SERVICE="$2" ; shift 2 ;; 
+    -i) HIDX="$2" ; shift 2 ;; 
+    -c) CONF="$2" ;    shift 2 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done  
+eval set -- $CURROPT
+
+
+if [ "$CONF" != "" ] ; then
+   if [ ! -f $CONF ] ; then
+     echo "error: <$CONF> missing."
+     exit 1
+   fi
+else
+  if [ -f ./dc-service.yml ] ; then CONF="./dc-service.yml" ; fi
+fi
+
+if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then
+  CONF=$(search_conf $HOST $SERVICE)
+  if [ "$CONF" = "" ] ; then
+    echo "error: service=<$SERVICE> not defined for host=<$HOST>"
+    exit 1
+  fi
+fi
+
+if [ "$CONF" != "" ] ; then
+  eval "$(parse_yaml $CONF)"
+  HNAME=${service_hosts[${HIDX}]}
+fi
+
+if [ "$HOST" != "" ] ; then
+  HNAME=$HOST
+fi
+CMD=${1}
+######################################################################################################################################
+if [ "$CMD" = "" ] ; then
+  show_help
+fi  
+if [ "$HNAME" != "" ] ; then
+  eval "$(docker-machine env ${HNAME})"
+  eval "$(parse_yaml ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
+  #parse_yaml $CONF
+  SSH_KEY_FILE=${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}
+
+  if [ "$CONF" != "" ] ; then
+    cd `dirname $CONF`
+  fi
+fi
+case "$CMD" in
+  ssh)     shift ; docker-machine $CMD ${HNAME} $* ;;
+  up)      docker-compose up -d ;;
+  rm)      docker-compose stop ; docker-compose rm -f  ;;
+  create)  docker-machine create --driver        ${host_driver} \
+                          --generic-engine-port  ${host_port} \
+                          --generic-ip-address   ${host_ip} \
+                          --generic-ssh-key      ${SSH_KEY_FILE} \
+                          --generic-ssh-port     ${host_ssh_port} \
+                          --generic-ssh-user     ${host_ssh_user}  \
+                          $HNAME ;;
+  remove)  docker-machine rm $HNAME ;;
+  test)    docker run -d -p 11223:80 --name test-machine nginx:alpine
+           sleep 1
+           echo "############ check ##############" ; netcat -vz ${host_ip} 11223 ; echo "############ done  ##############"
+           docker stop test-machine
+           docker rm   test-machine
+           docker rmi nginx:alpine ;;
+  disable) docker-machine ssh $HNAME "systemctl stop docker ; systemctl disable docker" ;;
+  enable)  docker-machine ssh $HNAME "systemctl enable docker ; systemctl start docker" ;;
+  info)    docker-machine ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
+  
+  push)
+    TYPE=${2%/}
+    LDIR=`dirname $CONF`/$TYPE
+    DRY=" --dry-run " ; if [ "$3" = "real" ] ; then DRY="" ; fi
+    if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
+      echo "error nither persistent nor service given."
+      exit 0
+    fi
+    ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} mkdir -p /Docker/Services/${service_name}
+    rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} "  ${LDIR}/ root@${host_ip}:/Docker/Services/${service_name}/$TYPE
+    echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>)"
+    ;;
+  pull)
+    TYPE=$2
+    LDIR=`dirname $CONF`/$TYPE
+    DRY=" --dry-run " ; if [ "$3" = "real" ] ; then DRY="" ; fi
+    if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
+      echo "error neither persistent nor service given."
+      exit 0
+    fi
+    ssh -i $SSH_KEY_FILE -p ${host_ssh_port} root@${host_ip} ls -d /Docker/Services/${service_name}/$TYPE >/dev/null 2>&1
+    if [ "$?" = "0" ] ; then
+      mkdir -p ${LDIR}
+      rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} " root@${host_ip}:/Docker/Services/${service_name}/$TYPE/ ${LDIR}
+      echo "pull $DRY folder FROM <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
+    else
+      if [ -d ./${TYPE} ] ; then
+        echo "WARNING ./${TYPE} only exists locally!"  
+        exit 1
+      fi
+    fi
+    ;;
+  #############
+  services)   if [ "$2" = "current" ] ; then
+                  unset service_hosts
+                  eval "$(parse_yaml $CONF)"
+                  echo "${service_name}"
+              else
+                find $MDE_DC_SERV_DIR/ -name dc-service.yml | while read i ; do 
+                  unset service_hosts
+                  eval "$(parse_yaml $i)"
+                  for k in ${service_hosts[@]}; do
+                    if [ "$HOST" = "" -o "$k" = "$HOST" ] ; then  
+                      if [ "$2" = "ls" ] ; then
+                        if [ "$3" = "long" ] ; then
+                          echo "${service_name} $k ${service_state} $i" 
+                        else
+                          echo "${service_name} $k"
+                        fi
+                      elif [ "$2" = "check" ] ; then
+                        echo "###########################################################"
+                        echo "## ${service_name} ($i)"
+                        (cd `dirname $i` ; docker-compose ps  -q | xargs docker inspect --format '{{.State.Status}} : {{.Name}}')
+                      fi
+                    fi
+                  done 
+                done
+              fi
+              exit 0
+              ;;
+  encrypt)    mkdir -p ./utils ; tar -cjv ./private | openssl aes-256-cbc -salt -out ./utils/.private.enc ; rm -Rvf ./private ;;
+  decrypt)    openssl aes-256-cbc -d -salt -in ./utils/.private.enc | tar xjv ;;
+  ############
+  supervisor) docker-compose exec ${service_name} supervisorctl ;;
+  syslog)     docker-compose exec ${service_name} tail -n 200 /var/log/syslog ;;
+  maillog)    docker-compose exec ${service_name} tail -n 200 /var/log/mail.log ;;
+  login)      shift
+              if [ "$1" = "" ] ; then
+                cmd="bash"
+                docker-compose exec ${service_name}  $cmd
+              else
+                cmd=$*
+                docker-compose exec  ${service_name} $cmd
+              fi
+              ;;
+  config|migrate|track)
+              FI=$1
+              shift
+              docker-compose  exec ${service_name} /usr/local/bin/${FI} $*
+              ;;
+  ovw)        if [ "$2" = "push" ] ; then
+                docker-compose  exec ${service_name} rsync -av /service/ovw/ /
+                exit 0
+              fi
+              if [ "$2" = "fetch" ] ; then
+                if [ "$3" = "" ] ; then
+                  echo "parameter error: no dir/file given (see usage)"
+                  exit 0
+                fi
+                echo "rsync -avR ${3} /service/ovw/"
+                docker-compose  exec ${service_name} rsync -avR ${3} /service/ovw/
+                exit 0
+              fi
+              if [ "$2" = "fetch" ] ; then
+                docker-compose exec ${service_name} diff /service/ovw/${3} ${3}
+                exit 0
+              fi
+              ;;
+  #############
+  docker)     shift ; docker $* ;;
+  compose)    shift ; docker-compose $*  ;;
+  swarm)      echo "swarm command (have to be done)" ;;
+  machine)    shift ; docker-machine $* ;;
+  *)          if [ "$CONF" != "" ] ; then
+                docker-compose $* 
+              else
+                docker-machine $*
+              fi
+              ;;
+  
+   
+esac

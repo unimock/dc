@@ -1,0 +1,74 @@
+#!/bin/bash
+
+. /etc/mde/dc/default
+
+if [ "$MDE_DC_HOST_DIR" = "" ] ; then
+  echo "error: <MDE_DC_HOST_DIR> not set"
+  exit 1
+fi
+
+
+
+
+if [ "$1" = "" ] ; then
+  echo " usage: `basename $0` hosts|services"
+  exit 0
+fi
+
+
+hosts() {
+   rm -Rf ${MDE_DC_HOST_DIR}
+   mkdir -p ${MDE_DC_HOST_DIR}
+   cd /root
+   list=`find . -name .m_machine`
+   for i in $list ; do
+     DIR=${i%/.m_machine}
+     DIR=${DIR#./}
+     cp -ar /root/$DIR/.m_machine ${MDE_DC_HOST_DIR}/${DIR}
+     . ${MDE_DC_HOST_DIR}/${DIR}/create.cfg
+     FI=${MDE_DC_HOST_DIR}/${DIR}/dc-host.yml
+     echo "version: \"1\""                         >  ${FI}
+     echo "host:"                                  >> ${FI}
+     echo "  state: active"                        >> ${FI}
+     echo "  driver: generic"                      >> ${FI}
+     echo "  ip: $IP_ADDR"                         >> ${FI}
+     echo "  port: $ENGINE_PORT"                   >> ${FI}
+     echo "  ssh:"                                 >> ${FI}
+     echo "    port: $SSH_PORT"                    >> ${FI}
+     echo "    user: $SSH_USER"                    >> ${FI}
+     echo "    key: id_rsa"                        >> ${FI}
+     echo "creating of <${MDE_DC_HOST_DIR}/${DIR}> done."
+   done
+   exit 0
+}
+
+services() {
+  cd /root
+     list=`find . -name .m_machine`
+   for i in $list ; do
+     DIR=${i%/.m_machine}
+     DIR=${DIR#./}
+     #echo "i=$i DIR=$DIR"
+     cd /root/$DIR
+     list_dir=$(ls -d */ 2>/dev/null)
+     for ld in $list_dir ; do
+       SDIR=${ld%/}
+       SERV=${SDIR%.*}
+       echo " <$DIR> - <$SDIR> - <$SERV>"
+       FI=/root/$DIR/$SDIR/dc-service.yml
+       echo "version: \"1\""                 >  ${FI}
+       echo "service:"                       >> ${FI}
+       echo "  state: active"                >> ${FI}
+       echo "  name: ${SERV}"                >> ${FI}
+       echo "  control:"                     >> ${FI}
+       echo "    type: compose"              >> ${FI}
+       echo "    file: docker-compose.yml"   >> ${FI}
+       echo "  hosts:"                       >> ${FI}
+       echo "    - ${DIR}"                   >> ${FI}
+     done  
+   done
+   exit 0
+}
+
+$*
+
