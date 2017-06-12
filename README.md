@@ -14,17 +14,17 @@ echo 'export PATH=$PATH:/opt/dc/bin' /etc/profile.d/dc-profile.sh
 
 ### dc
 
-### dc-convert
+### dc-rdc
 
 ### dc-manage
 
-converts configuration from d environment.
-
-### dc-rdc
+converts configuration from d environment to dc environment.
 
 ### dc-swarm
+ls, rm, up, test
 
 ### dc-yml
 
+### dc-convert
 
 
