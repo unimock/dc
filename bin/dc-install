@@ -1,0 +1,30 @@
+#!/bin/bash
+
+##############################################################
+DCD=/opt/dc
+if [ -d $DCD ] ; then
+  cd $DCD ; git pull
+else
+  git clone https://github.com/unimock/dc.git $DCD
+fi
+##############################################################
+FI=/etc/profile.d/dc-profile.sh
+if [ ! -f $FI ] ; then
+  echo -e "\ncreating dc profile <$FI> with following content:"
+  mkdir -p `dirname $FI`
+  echo 'export PATH=$PATH:/opt/dc/bin'                                       >> $FI
+  echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"  >> $FI
+  cat $FI
+fi
+##############################################################
+FI=/etc/mde/dc/default
+
+if [ ! -f $FI ] ; then
+  echo -e "\ncreating dc default configuration file <$FI> with following defines:"
+  mkdir -p `dirname $FI`
+  echo 'export MDE_DC_HOST_DIR=/root/.docker/hosts' >> $FI
+  echo 'export MDE_DC_SERV_DIR=/root/Services'      >> $FI
+  cat $FI
+fi
+
+

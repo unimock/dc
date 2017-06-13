@@ -60,6 +60,7 @@ services() {
        echo "service:"                       >> ${FI}
        echo "  state: active"                >> ${FI}
        echo "  name: ${SERV}"                >> ${FI}
+       echo "  group:                        >> ${FI}
        echo "  control:"                     >> ${FI}
        echo "    type: compose"              >> ${FI}
        echo "    file: docker-compose.yml"   >> ${FI}
