@@ -2,6 +2,8 @@
 
 ## Description
 
+Manage generic docker hosts from a central host directory. 
+
 ## Installation
 
 ```
@@ -13,6 +15,7 @@ echo 'export PATH=$PATH:/opt/dc/bin' /etc/profile.d/dc-profile.sh
 ## Usage
 
 ### dc
+rm|up|login
 
 ### dc-rdc
 
@@ -21,10 +24,11 @@ echo 'export PATH=$PATH:/opt/dc/bin' /etc/profile.d/dc-profile.sh
 converts configuration from d environment to dc environment.
 
 ### dc-swarm
-ls, rm, up, test
+ls|rm|up|test
 
 ### dc-yml
 
 ### dc-convert
+services|hosts
 
 
