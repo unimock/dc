@@ -1,9 +1,9 @@
-# dc  ... docker controller
+# dc  ... docker controller - manage generic docker machines from a central host and directory 
 
 ## Description
 
-dc environment contains a couple of bash scripts to manage generic docker hosts (slaves) 
-from a central host directory (master).
+dc environment contains a couple of bash scripts to manage generic docker machines (slaves) 
+from a central host and directory (master).
 
 It only works as a wrapper for the docker-machine, docker and docker-compose commands for convenient usage.
 
@@ -24,20 +24,22 @@ git clone https://github.com/unimock/dc.git /opt/dc
 ## Usage
 
 
-### Register a slave host and install docker-engine on the slave host
+### Create a slave machine and install docker-engine on it
 
 Preparation:
- * Install a generic host (minimal ubuntu-server 16.04) with openssh-server
+ * Install a generic host (minimal ubuntu-server 16.04) with openssh-server as a slave machine
  * Generate ssh-keys
- * Copy id_rsa.pub to <slave>:/root/.ssh/authorized_keys
- * Test your slave: ssh root@<slave>
+ * Copy id_rsa.pub to slave-machine:/root/.ssh/authorized_keys
+ * Test your slave machine: ssh root@slave-machine
 
 ```
   dc-init help
-  dc-init host slave1 host.domain.com 2376 22 root    # create a host configuration file for slave1 
-  dc -h slave1 create                                 # register slave
-  dc -h slave1 ssh                                    # test
-  dh -h slave1 upgrade                                # install/upgrade docker engine  
+  ABBREV="slave1"
+  dc-init host ${ABBREV} host.domain.com 2376 22 root    # create a host configuration file for slave machine 
+  dc -h ${ABBREV} create                                 # call docker-machine create for this slave
+  dc -h ${ABBREV} ssh                                    # test ssh login for the slave
+  dc -h ${ABBREV} upgrade                                # install/upgrade docker engine on the slave
+  dc ls                                                  # list slave machines (docker-compose ls)
 ```
 
 
