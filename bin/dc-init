@@ -7,16 +7,20 @@ if [ "$MDE_DC_HOST_DIR" = "" ] ; then
   exit 1
 fi
 
+_help() {
+  echo " usage: `basename $0` help|host|service|convert"
+  echo ""   
+  echo "          host ............... create a host configuration"
+  echo "          service ............ create a service configuration"
+  echo "          convert_hosts ...... convert directory based hosts configurations"
+  echo "          convert_services ... convert directory based hosts configurations"
+  echo ""
+  echo "   "
+  echo " command: host <host-abbrev>  <host-name> <dockerd-port> <sshd-port> <sshd-user>"
+  echo " example: host  host1         xyz.dom.com    2376            22        root "   
+}
 
-
-
-if [ "$1" = "" ] ; then
-  echo " usage: `basename $0` hosts|services"
-  exit 0
-fi
-
-
-hosts() {
+convert_hosts() {
    rm -Rf ${MDE_DC_HOST_DIR}
    mkdir -p ${MDE_DC_HOST_DIR}
    cd /root
@@ -42,7 +46,7 @@ hosts() {
    exit 0
 }
 
-services() {
+convert_services() {
   cd /root
      list=`find . -name .m_machine`
    for i in $list ; do
@@ -70,6 +74,42 @@ services() {
    done
    exit 0
 }
+
+host() {
+  if [ "$#" != "5" ] ; then
+    echo "error: missing parameter <$*> "
+    exit 1
+  fi 
+  IP_ADDR=$2
+  ENGINE_PORT=$3
+  SSH_PORT=$4
+  SSH_USER=$5
+  FI=${MDE_DC_HOST_DIR}/${1}/dc-host.yml
+  mkdir -p `dirname $FI`
+  if [ -e $FI ] ; then
+    echo "error: config file <$FI> exists!"
+    exit 1
+  fi
+  echo "version: \"1\""                         >  ${FI}
+  echo "host:"                                  >> ${FI}
+  echo "  state: active"                        >> ${FI}
+  echo "  driver: generic"                      >> ${FI}
+  echo "  ip: $IP_ADDR"                         >> ${FI}
+  echo "  port: $ENGINE_PORT"                   >> ${FI}
+  echo "  ssh:"                                 >> ${FI}
+  echo "    port: $SSH_PORT"                    >> ${FI}
+  echo "    user: $SSH_USER"                    >> ${FI}
+  echo "    key: id_rsa"                        >> ${FI}
+  echo "Created config file   : ${FI}"
+  echo "Place your ssh key in : `dirname ${FI}`/id_rsa" 
+  exit 0
+}
+
+if [ "$1" = "" -o "$1" = "help" ] ; then
+  _help
+  exit 0
+fi
+
 
 $*
 
