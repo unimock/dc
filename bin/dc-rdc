@@ -16,6 +16,11 @@ CNA=`( docker ps | grep "rdc-${NODE}." | cut -f1 -d" ") `
 if [ "$CMD" = "" ] ; then
   docker exec -it $CNA bash
 else
-  echo docker exec -t $CNA rdc . $*
-  docker exec -t $CNA $CMD . $*
+  if [ "$CMD" = "rdc" ] ; then
+    echo docker exec -t $CNA $CMD . $*
+    docker      exec -t $CNA $CMD . $*
+  else
+    echo docker exec -t $CNA $CMD  $*
+    docker      exec -t $CNA $CMD  $*
+  fi
 fi
