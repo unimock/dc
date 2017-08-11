@@ -5,11 +5,11 @@ copy_data()
 {
   service=$1 ; s_host=$2 ; t_host=$3 ; real=$4
 
-  dc-rdc $s_host exec ls /Docker/Data/$service/* >/dev/null 2>&1 
+  dc-rdc   $s_host rdc exec ls /Docker/Data/$service/* >/dev/null 2>&1 
   if [ "$?" = "0" ] ; then
-    dc-rdc $s_host sync /Docker/Data/$service      rdc-${t_host}:/Docker/Data/$service     $real >/dev/null 2>&1
+    dc-rdc $s_host rdc sync /Docker/Data/$service      rdc-${t_host}:/Docker/Data/$service     $real >/dev/null 2>&1
   fi
-  dc-rdc   $s_host sync /Docker/Services/$service  rdc-${t_host}:/Docker/Services/$service $real
+  dc-rdc   $s_host rdc sync /Docker/Services/$service  rdc-${t_host}:/Docker/Services/$service $real
   echo "ret=$? copy "
 }
 
