@@ -1,0 +1,19 @@
+#!/bin/bash
+
+NODE="$1"
+shift
+NAME="$1"
+shift
+CMD="$1"
+shift
+
+eval "$(docker-machine env ${NODE})"
+CNA=`( docker ps | grep "${NAME}." | cut -f1 -d" ") `
+
+if [ "$CMD" = "sh" -o "$CMD" = "bash" ] ; then
+  echo docker exec -it $CNA $CMD $*
+  docker exec -it $CNA $CMD $*
+else
+  echo docker      exec -t $CNA $CMD  $*
+  docker      exec -t $CNA $CMD  $*
+fi

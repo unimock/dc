@@ -56,6 +56,9 @@ SERVICE=$(dc-yml -c $YML service_name)
 S_HOST=$(dc-yml  -c $YML service_hosts[0])
 T_HOST=$(dc-yml  -c $YML service_hosts[1])
 
+S_STATE=$(dc-yml  -c $YML service_state[0])   # state of source service: active|standby
+T_STATE=$(dc-yml  -c $YML service_state[1])   # state of target service: active|standby
+
 if [ "$T_HOST" = "" ] ; then
   echo "error: second host missing in <$YML>"
   exit 1
@@ -74,13 +77,18 @@ if [ "$CMD" = "sync" ] ; then
     echo "#"
     echo "# Sync: <$SERVICE@$S_HOST>  to <$SERVICE@$T_HOST>"
     echo "#"
-    echo "##############################################################"
-    echo "#"
-    echo "# stop target service <${SERVICE}@${T_HOST}>:"
-    echo "#"
   fi
-  dc -c $YML -h $T_HOST stop  $DEVNULL
-echo "ret=$? stop $T_HOST"
+
+  if [ "$T_STATE" = "active" ] ; then     # stop target service oly if it is in state=active
+    if [ "$VERBOSE" = "1" ] ; then
+      echo "##############################################################"
+      echo "#"
+      echo "# stop target service <${SERVICE}@${T_HOST}>:"
+      echo "#"
+    fi
+    dc -c $YML -h $T_HOST stop  $DEVNULL
+    echo "ret=$? stop $T_HOST"
+  fi
   if [ "$VERBOSE" = "1" ] ; then
     echo "##############################################################"
     echo "#"
@@ -88,7 +96,7 @@ echo "ret=$? stop $T_HOST"
     echo "#"
   fi
   dc -c $YML -h $S_HOST pause 
-echo "ret=$? pause $S_HOST"
+  echo "ret=$? pause $S_HOST"
   if [ "$VERBOSE" = "1" ] ; then
     echo "#"
     echo "##############################################################"
@@ -97,7 +105,7 @@ echo "ret=$? pause $S_HOST"
     echo "#"
   fi
   copy_data $SERVICE $S_HOST $T_HOST $REAL
-echo "ret=$? copy"
+  echo "ret=$? copy"
   if [ "$VERBOSE" = "1" ] ; then
     echo "#"
     echo "##############################################################"
@@ -106,29 +114,33 @@ echo "ret=$? copy"
     echo "#"
   fi
   dc -c $YML -h $S_HOST unpause
-echo "ret=$? unpause $S_HOST"
-  if [ "$VERBOSE" = "1" ] ; then
-    echo "#"
-    echo "##############################################################"
-    echo "#"
-    echo "# start target service <$SERVICE@$T_HOST> :"
-    echo "#"
-  fi
+  echo "ret=$? unpause $S_HOST"
 
+  if [ "$T_STATE" = "active" ] ; then     # start target service oly if it is in state=active
 
-# so in funktion auslagern
-  scmd="dc -c $YML -h $T_HOST start"
-  if [ "$VERBOSE" = "1" ] ; then
-    $scmd 
-  else
-    $scmd 2>/dev/null
-  fi 
-  ret=$?
-  if [ "$ret" != "0" ] ; then 
-    echo "error ret=$? $SERVICE@$T_HOST start"
-    exit 1
+    if [ "$VERBOSE" = "1" ] ; then
+      echo "#"
+      echo "##############################################################"
+      echo "#"
+      echo "# start target service <$SERVICE@$T_HOST> :"
+      echo "#"
+    fi
+    # so in funktion auslagern
+    scmd="dc -c $YML -h $T_HOST start"
+    if [ "$VERBOSE" = "1" ] ; then
+      $scmd 
+    else
+      $scmd 2>/dev/null
+      echo "ret=$? start $T_HOST"
+    fi 
+    ret=$?
+    if [ "$ret" != "0" ] ; then 
+      echo "error ret=$? $SERVICE@$T_HOST start"
+      exit 1
+    fi
+    # bis hier
+
   fi
-# bis hier
 
   if [ "$VERBOSE" = "1" ] ; then
     echo "#"
