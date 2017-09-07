@@ -43,6 +43,7 @@ show_help() {
   echo "     pull|push service|persistent [real]"
   echo "     [-h <host>] services ls|check|current"
   echo "     [-i <host-index] 0|1|2"
+  echo "     -h <host> -s <service> stat ...... print service state (Up, Error, disabled,..."
   echo "     encrypt|decrypt"
   echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
   echo "     login [command] ..... login or run a command within <$DCN>."
@@ -60,21 +61,21 @@ show_help() {
   exit 0
 }
 ####################################################################################################################################
-search_conf() {
-  host="$1" ; service="$2"
-
-  find $MDE_DC_SERV_DIR/ -name dc-service.yml | while read i ; do
-    unset service_hosts
-    eval "$(parse_yaml $i)"
-    for h in ${service_hosts[@]}; do
-      if [ "$host" = "$h" -a "$service_name" = "$service" ] ; then
-          echo "${i}"
-          return 0
-      fi
-    done
-  done
-  return 1
-}
+#search_conf() {
+#  host="$1" ; service="$2"
+#
+#  find $MDE_DC_SERV_DIR/ -name dc-service.yml | while read i ; do
+#    unset service_hosts
+#    eval "$(parse_yaml $i)"
+#    for h in ${service_hosts[@]}; do
+#      if [ "$host" = "$h" -a "$service_name" = "$service" ] ; then
+#          echo "${i}"
+#          return 0
+#      fi
+#    done
+#  done
+#  return 1
+#}
 ####################################################################################################################################
 #
 # magic main
@@ -92,7 +93,7 @@ while [ "$#" -gt 0 ]; do
     -v) VERB="1"  ;    shift 1 ;; 
     -h) HOST="$2" ;    shift 2 ;; 
     -s) SERVICE="$2" ; shift 2 ;; 
-    -i) HIDX="$2" ; shift 2 ;; 
+    -i) HIDX="$2" ;    shift 2 ;; 
     -c) CONF="$2" ;    shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -110,7 +111,8 @@ else
 fi
 
 if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then
-  CONF=$(search_conf $HOST $SERVICE)
+  #CONF=$(search_conf $HOST $SERVICE)
+  CONF=$(dc-list -y services -h $HOST -s $SERVICE)
   if [ "$CONF" = "" ] ; then
     echo "error: service=<$SERVICE> not defined for host=<$HOST>"
     exit 1
@@ -161,7 +163,24 @@ case "$CMD" in
   disable) docker-machine ssh $HNAME "systemctl stop docker ; systemctl disable docker" ;;
   enable)  docker-machine ssh $HNAME "systemctl enable docker ; systemctl start docker" ;;
   info)    docker-machine ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
-  
+  check)   for i in "${!service_hosts[@]}"; do
+             if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
+             #echo "$i ${service_hosts[${i}]} ${service_state[${i}]} "
+             if [ "${service_state[${i}]}" != "active" ] ; then
+               echo "${service_state[${i}]}"
+               exit 0
+             fi
+             stat_list=$( dc -c $CONF compose ps -q | xargs dc -c $CONF docker inspect --format '{{.State.Status}}')
+             for stat in $stat_list ; do
+               if [ "$stat" != "running" ] ; then
+                 echo "Error"
+                 exit 1
+               fi
+             done
+             echo "Up"
+             exit 0
+           done
+           ;; 
   push)
     TYPE=${2%/}
     LDIR=`dirname $CONF`/$TYPE
@@ -202,6 +221,7 @@ case "$CMD" in
               else
                 find $MDE_DC_SERV_DIR/ -name dc-service.yml | while read i ; do 
                   unset service_hosts
+                  unset service_state
                   eval "$(parse_yaml $i)"
                   for k in ${service_hosts[@]}; do
                     if [ "$HOST" = "" -o "$k" = "$HOST" ] ; then  
@@ -217,6 +237,7 @@ case "$CMD" in
                         (cd `dirname $i` ; docker-compose ps  -q | xargs docker inspect --format '{{.State.Status}} : {{.Name}}')
                       fi
                     fi
+                    k_idx=$(( k_idx + 1))
                   done 
                 done
               fi

@@ -1,0 +1,94 @@
+#!/bin/bash
+. /etc/mde/dc/default
+
+print_yml="0"
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -y) print_yml="1" ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
+
+CMD="$1"
+
+if [ "$CMD" = "" ] ; then
+  echo ""
+  echo " usage: `basename $0` [-y] <command>"
+  echo "       -y ..........................print yml-config-file instaed of name"
+  echo "    commands:"
+  echo ""
+  echo "       used_hosts ................. list all hosts, which are used in services"
+  echo "       services [-h <on_host>] .... list services defined for host <on_host> or all services"
+  exit 0
+fi
+
+if [ "$CMD" = "used_hosts" ] ; then
+  result=()
+  flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
+  for s in $flist ; do
+    i=0 
+    while true ; do
+      h=$(dc-yml  -c $s service_hosts[$i])
+      [[ "$h" = "" ]] && break
+      i=$((i + 1))
+      # check if host exists in result array
+      found=0 
+      for item in "${result[@]}"; do
+        if [ "$h" = "$item" ] ; then
+          found=1
+          break
+        fi
+      done
+      [[ $found = 0 ]] && result+=("$h")
+    done
+  done
+  echo  ${result[*]}  |tr " " "\n"|sort|tr "\n" " "
+  echo ""
+fi
+
+if [ "$CMD" = "services" ] ; then
+  shift
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -s) service="$2" ; shift 2 ;;
+      -h) on_host="$2" ; shift 2 ;;
+    esac
+  done
+  result=()
+  flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
+  for s in $flist ; do
+    name=$(dc-yml -c $s service_name)
+    if [ "$service" != "" -a "$service" != "$name" ] ; then
+      continue
+    fi
+    if [ "$on_host" != "" ] ; then
+      i=0 
+      while true ; do
+        h=$(dc-yml  -c $s service_hosts[$i])
+        [[ "$h" = "" ]] && break
+        if [ "$h" = "$on_host" ] ; then
+          if [ "$print_yml" = "1" ] ; then
+             result+=("$s")
+          else
+             result+=("$name")
+          fi
+          break
+        fi
+        i=$((i + 1))
+      done
+    else
+      if [ "$print_yml" = "1" ] ; then
+        result+=("$s")
+      else
+        result+=("$name")
+      fi
+    fi
+  done 
+  echo ${result[*]} | sort
+fi
+
+exit 0
+
