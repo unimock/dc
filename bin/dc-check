@@ -1,0 +1,51 @@
+#!/bin/bash
+error_marker=0
+
+if [ "$1" = "" ] ; then
+  echo ""
+  echo " usage: `basename $0`  hosts [<hostname>]"
+  echo ""
+  exit 0
+fi
+ 
+if [ "$2" != "" ] ; then
+  hosts="$2"
+else
+  hosts=$( dc-list used_hosts )
+fi
+
+for host in $hosts ; do
+  echo "# checking host $host ..."
+  state=$( dc machine status $host)
+  echo "$host.state=$state"
+  if [ "$state" = "Running" ] ; then
+    os=$( dc -h $host ssh "lsb_release -s -r" )
+    echo "$host.os=$os"
+    proc=$( dc -h $host ssh df /Docker | grep "^/" | awk -F" " '{ print $5 }' )
+    echo "$host.disk=$proc"
+    version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
+    echo "$host.version=$version"
+    host_err=0
+  else
+    host_err=1
+    error_marker=1
+  fi
+  services=$( dc-list services -h $host )
+  for service in $services ; do
+    if [ $host_err = 0 ] ; then
+      service_stat=$( dc -h $host -s $service check )
+      echo "$host.service.$service=$service_stat"
+    else
+      echo "$host.service.$service=?"
+    fi
+  done
+done
+
+if [ $error_marker = 1 ] ; then
+   echo "# ERROR/WARNINGS"
+   exit 1
+else
+   echo "# OK"
+   exit 0
+fi
+
