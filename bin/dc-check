@@ -1,5 +1,11 @@
 #!/bin/bash
-error_marker=0
+
+. /etc/mde/dc/default
+
+global_error_marker=0
+
+# MDE_DC_HOST_DIR=/root/.docker/hosts
+
 
 if [ "$1" = "" ] ; then
   echo ""
@@ -16,32 +22,59 @@ fi
 
 for host in $hosts ; do
   echo "# checking host $host ..."
-  state=$( dc machine status $host)
+  host_error_marker=0
+  H_STATE=$( dc-yml -c $MDE_DC_HOST_DIR/$host/dc-host.yml host_state )
+  if [ "$H_STATE" = "active" ] ; then
+    state=$( dc machine status $host)
+    if [ "$state" = "Running" ] ; then
+      host_up=1
+    else
+      host_up=0
+      host_error_marker=1
+      global_error_marker=1
+    fi
+  else
+    state=$H_STATE
+    host_up=0
+  fi
+
   echo "$host.state=$state"
-  if [ "$state" = "Running" ] ; then
+
+  if [ $host_up = 1 ] ; then
     os=$( dc -h $host ssh "lsb_release -s -r" )
     echo "$host.os=$os"
     proc=$( dc -h $host ssh df /Docker | grep "^/" | awk -F" " '{ print $5 }' )
     echo "$host.disk=$proc"
     version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
     echo "$host.version=$version"
-    host_err=0
-  else
-    host_err=1
-    error_marker=1
   fi
+
+
+
+
   services=$( dc-list services -h $host )
   for service in $services ; do
-    if [ $host_err = 0 ] ; then
+    if [ $host_up = 1 ] ; then
       service_stat=$( dc -h $host -s $service check )
+      if [ "$?" != "0" ] ; then
+        host_error_marker=1
+        global_error_marker=1
+      fi
       echo "$host.service.$service=$service_stat"
     else
       echo "$host.service.$service=?"
     fi
   done
+
+  if [ $host_error_marker = 0 ] ; then
+    echo "$host.checkresult=OK"
+  else
+    echo "$host.checkresult=ERR/WARN"
+  fi
+
 done
 
-if [ $error_marker = 1 ] ; then
+if [ $global_error_marker = 1 ] ; then
    echo "# ERROR/WARNINGS"
    exit 1
 else
