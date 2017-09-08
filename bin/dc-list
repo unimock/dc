@@ -2,6 +2,7 @@
 . /etc/mde/dc/default
 
 print_yml="0"
+
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -19,8 +20,9 @@ if [ "$CMD" = "" ] ; then
   echo "       -y ..........................print yml-config-file instaed of name"
   echo "    commands:"
   echo ""
-  echo "       used_hosts ................. list all hosts, which are used in services"
-  echo "       services [-h <on_host>] .... list services defined for host <on_host> or all services"
+  echo "       used_hosts ....................... list all hosts, which are used in services"
+  echo "       services [-h <on_host>] .......... list services defined for host <on_host> or all services"
+  echo "       services [-g <service-group>] .... list services from group"
   exit 0
 fi
 
@@ -51,10 +53,12 @@ fi
 if [ "$CMD" = "services" ] ; then
   shift
 
+  group=""
   while [ "$#" -gt 0 ]; do
     case "$1" in
       -s) service="$2" ; shift 2 ;;
       -h) on_host="$2" ; shift 2 ;;
+      -g) group="$2" ; shift 2 ;;
     esac
   done
   result=()
@@ -64,6 +68,12 @@ if [ "$CMD" = "services" ] ; then
     if [ "$service" != "" -a "$service" != "$name" ] ; then
       continue
     fi
+    if [ "$group" != "" ] ; then
+      g=$(dc-yml -c $s service_group) 
+      if [ "$g" != "$group" ] ; then
+        continue
+      fi
+    fi  
     if [ "$on_host" != "" ] ; then
       i=0 
       while true ; do
