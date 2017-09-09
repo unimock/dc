@@ -4,9 +4,6 @@
 
 global_error_marker=0
 
-# MDE_DC_HOST_DIR=/root/.docker/hosts
-
-
 if [ "$1" = "" ] ; then
   echo ""
   echo " usage: `basename $0`  hosts [<hostname>]"
@@ -52,20 +49,31 @@ for host in $hosts ; do
 
 
 
-  services=$( dc-list services -h $host )
-  for service in $services ; do
+  yml_list=$( dc-list -y services -h $host )
+  #for service in $services ; do
+  for yml in $yml_list ; do
+    service=$(dc-yml -c $yml service_name)
     if [ $host_up = 1 ] ; then
       service_stat=$( dc -h $host -s $service check )
       if [ "$?" != "0" ] ; then
         host_error_marker=1
         global_error_marker=1
       fi
-      echo "$host.service.$service=$service_stat"
+      echo "$host.service.$service.state=$service_stat"
     else
-      echo "$host.service.$service=?"
+      echo "$host.service.$service.state=?"
     fi
+    echo "$host.service.$service.config=$yml"
+    compose_file="$( dirname $yml )/docker-compose.yml"
+    img_list=$( dc-yml -c $compose_file | grep "_image=" )
+    for i in $img_list ; do
+      img=${i#*\"}
+      img=${img%\")}
+      echo "$host.service.$service.image=$img"
+    done
+ 
   done
-
+  # print result for this host  
   if [ $host_error_marker = 0 ] ; then
     echo "$host.checkresult=OK"
   else
