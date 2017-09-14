@@ -17,10 +17,10 @@ if [ "$CMD" = "" ] ; then
   docker exec -it $CNA bash
 else
   if [ "$CMD" = "rdc" ] ; then
-    echo docker exec -t $CNA $CMD . $*
+    #echo docker exec -t $CNA $CMD . $*
     docker      exec -t $CNA $CMD . $*
   else
-    echo docker exec -t $CNA $CMD  $*
+    #echo docker exec -t $CNA $CMD  $*
     docker      exec -t $CNA $CMD  $*
   fi
 fi
