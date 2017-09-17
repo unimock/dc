@@ -8,7 +8,7 @@ _help()
 {
   echo " usage:"
   echo ""
-  echo "        ls|rm|up "
+  echo "        ls|rm|up|logs"
   echo ""
   echo "        sync      <node> [real]   ..................... sync Service/Data directories to node"
   echo "        pull|push <node> peristent|service [real]   ... pull service or persistentn data from node"
@@ -28,8 +28,8 @@ if [ "$CMD" = "sync" ] ; then
   if [ "$2" = "" ] ; then
     _help
   fi
-  s-rdc $HOST rdc . sync /Docker/Services/${SERVICE} rdc-${NODE}:/Docker/Services/${SERVICE} ${REAL}
-  s-rdc $HOST rdc . sync /Docker/Data/${SERVICE}     rdc-${NODE}:/Docker/Data/${SERVICE}     ${REAL}
+  dc-rdc $HOST rdc sync /Docker/Services/${SERVICE} rdc-${NODE}:/Docker/Services/${SERVICE} ${REAL}
+  dc-rdc $HOST rdc sync /Docker/Data/${SERVICE}     rdc-${NODE}:/Docker/Data/${SERVICE}     ${REAL}
   exit 0
 fi
 
@@ -41,9 +41,9 @@ if [ "$CMD" = "pull" -o "$CMD" = "push" ] ; then
     _help
   fi
   if [ "$CMD" = "pull" ] ; then
-    s-rdc $HOST rdc . sync rdc-${NODE}:/Docker/Services/${SERVICE}/${DIR}   /Docker/Data/root/g7swarm/${SERVICE}/${DIR}    ${REAL}
+    dc-rdc $HOST rdc sync rdc-${NODE}:/Docker/Services/${SERVICE}/${DIR}   /Docker/Data/root/Swarm/${SERVICE}/${DIR}    ${REAL}
   elif [ "$CMD" = "push" ] ; then
-    s-rdc $HOST rdc . sync /Docker/Data/root/g7swarm/${SERVICE}/${DIR}      rdc-${NODE}:/Docker/Services/${SERVICE}/${DIR} ${REAL}
+    dc-rdc $HOST rdc sync /Docker/Data/root/Swarm/${SERVICE}/${DIR}      rdc-${NODE}:/Docker/Services/${SERVICE}/${DIR} ${REAL}
   fi
   exit 0
 fi
@@ -67,4 +67,7 @@ fi
 if [ "$CMD" = "ls" ] ; then
   docker stack services ${SERVICE} | grep -v "^ID"
   exit 0
+fi
+if [ "$CMD" = "logs" ] ; then
+  docker service ${SERVICE} logs
 fi

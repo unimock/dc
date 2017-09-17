@@ -20,7 +20,7 @@ show_help() {
   echo "     docker|compose|swarm|machine <commands>"
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
   echo "     up|rm|ps|logs [-f]|stop|start"
-  echo "     -h <host> -s <service> stat ...... print service state (Up, Error, disabled,..."
+  echo "     -h <host> -s <service> check ...... print service state (Up, Error, disabled,..."
   echo "     pull|push service|persistent [real]"
   echo "     encrypt|decrypt"
   echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"

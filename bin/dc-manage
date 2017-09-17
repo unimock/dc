@@ -1,154 +1,122 @@
 #!/bin/bash
 . /etc/mde/dc/default
 
+error_detect=0
+
+_help()
+{
+  echo ""
+  echo " usage: `basename $0` [ -c <yml-file>] <command>"
+  echo ""
+  echo "    commands:"
+  echo ""
+  echo "       sync .................. copy data and restart service"
+  echo "       sync_group <group> .... copy data and restart services"
+  echo "       copy .................. only copy data (persistent/service)"
+  echo ""
+  exit 0
+}
+
 copy_data()
 {
-  service=$1 ; s_host=$2 ; t_host=$3 ; real=$4
+  service=$1 ; s_host=$2 ; t_host=$3 
 
   dc-rdc   $s_host rdc exec ls /Docker/Data/$service/* >/dev/null 2>&1 
   if [ "$?" = "0" ] ; then
-    dc-rdc $s_host rdc sync /Docker/Data/$service      rdc-${t_host}:/Docker/Data/$service     $real >/dev/null 2>&1
+    dc-rdc $s_host rdc sync /Docker/Data/$service      rdc-${t_host}:/Docker/Data/$service     real >/dev/null 2>&1
   fi
-  dc-rdc   $s_host rdc sync /Docker/Services/$service  rdc-${t_host}:/Docker/Services/$service $real
-  echo "ret=$? copy "
+  dc-rdc   $s_host rdc sync /Docker/Services/$service  rdc-${t_host}:/Docker/Services/$service real 
+  ret=$?
+  echo -e "#\n# copy_data from $s_host to $t_host for $service (ret=$ret)\n#"
+  if [ "$ret" != "0" ] ; then
+    echo "error: copy_data from $s_host to $t_host for $service (ret=$ret)"
+    error_detect=1
+  fi
+  return $ret
 }
 
+dc_command()
+{
+  yml=$1 ; cmd=$2 ; service=$3 ; host=$4  
+  dc -c $yml -h $host $cmd
+  ret=$?
+  echo -e "#\n# $cmd $service at $host (ret=$ret)\n#"
+  if [ "$ret" != "0" ] ; then
+    echo "error: $cmd $service at $host (ret=$ret)"
+    error_detect=1
+  fi
+  return $ret
+}
 
-REAL="real"
+#
+# magic main
+#
 
-VERBOSE="0"
-YML=""
+YML="./dc-service.yml"
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -v) VERBOSE="1" ; shift 1 ;;
     -c) YML="$2" ;    shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done
 eval set -- $CURROPT
 
-if [ "$YML" != "" ] ; then
-   if [ ! -f $YML ] ; then
-     echo "error: <$YML> missing."
-     exit 1
-   fi
-else
-  if [ -f ./dc-service.yml ] ; then YML="./dc-service.yml" ; fi
-fi
-
 CMD="$1"
 
-if [ "$CMD" = "" ] ; then
-  echo ""
-  echo " usage: `basename $0` [ -c <yml-file>] <command>"
-  echo ""
-  echo "    commands:"
-  echo ""
-  echo "       sync .... copy data and restart service"
-  echo "       copy .... only copy data (persistent/service)"
-  echo ""
-  exit 0
+if [ "$CMD" = "" ] ; then _help ; fi
+
+if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
+  yml_list=$YML
+
+elif [ "$CMD" = "sync_group" ] ; then
+  yml_list=$( dc-list -y services -g $2 )
 fi
 
-SERVICE=$(dc-yml -c $YML service_name)
+for yml in $yml_list ; do
+  if [ ! -f $yml ] ; then
+     error_detect=1
+     echo "error: <$yml> missing."
+     continue
+  fi
+  SERVICE=$(dc-yml -c $yml service_name)
+  S_HOST=$( dc-yml -c $yml service_hosts[0])
+  T_HOST=$( dc-yml -c $yml service_hosts[1])
+  S_STATE=$(dc-yml -c $yml service_state[0])   # state of source service: active|standby
+  T_STATE=$(dc-yml -c $yml service_state[1])   # state of target service: active|standby
 
-S_HOST=$(dc-yml  -c $YML service_hosts[0])
-T_HOST=$(dc-yml  -c $YML service_hosts[1])
-
-S_STATE=$(dc-yml  -c $YML service_state[0])   # state of source service: active|standby
-T_STATE=$(dc-yml  -c $YML service_state[1])   # state of target service: active|standby
-
-if [ "$T_HOST" = "" ] ; then
-  echo "error: second host missing in <$YML>"
-  exit 1
-fi
-
-if [ "$CMD" = "copy" ] ; then
-  echo "# copy data : from <$S_HOST> to <${T_HOST}> :"
-  copy_data $SERVICE $S_HOST $T_HOST $REAL
-  exit 0
-fi
-
-if [ "$CMD" = "sync" ] ; then
-  START=`date +%s`
-  if [ "$VERBOSE" = "1" ] ; then
-    echo "###################################################################################################"
-    echo "#"
-    echo "# Sync: <$SERVICE@$S_HOST>  to <$SERVICE@$T_HOST>"
-    echo "#"
+  if [ "$T_HOST" = "" ] ; then
+    echo "error: second host missing in <$yml>"
+    exit 1
   fi
 
-  if [ "$T_STATE" = "active" ] ; then     # stop target service oly if it is in state=active
-    if [ "$VERBOSE" = "1" ] ; then
-      echo "##############################################################"
-      echo "#"
-      echo "# stop target service <${SERVICE}@${T_HOST}>:"
-      echo "#"
+  if [ "$CMD" = "copy" ] ; then
+    copy_data $SERVICE $S_HOST $T_HOST
+  fi
+
+  if [ "$CMD" = "sync" -o "$CMD" = "sync_group" ] ; then
+    echo "########################################################"
+    echo "#"
+    echo "# sync <$SERVICE> from <$S_HOST> to <$T_HOST> ..."
+    echo "#"
+    echo "########################################################"
+    if [ "$T_STATE" = "active" ] ; then
+      dc_command $yml stop    $SERVICE $T_HOST  
     fi
-    dc -c $YML -h $T_HOST stop  $DEVNULL
-    echo "ret=$? stop $T_HOST"
-  fi
-  if [ "$VERBOSE" = "1" ] ; then
-    echo "##############################################################"
-    echo "#"
-    echo "# pause source service <${SERVICE}@${S_HOST}> :"
-    echo "#"
-  fi
-  dc -c $YML -h $S_HOST pause 
-  echo "ret=$? pause $S_HOST"
-  if [ "$VERBOSE" = "1" ] ; then
-    echo "#"
-    echo "##############################################################"
-    echo "#"
-    echo "# copy data : from <$S_HOST> to <${T_HOST}> :"
-    echo "#"
-  fi
-  copy_data $SERVICE $S_HOST $T_HOST $REAL
-  echo "ret=$? copy"
-  if [ "$VERBOSE" = "1" ] ; then
-    echo "#"
-    echo "##############################################################"
-    echo "#"
-    echo "# unpause source service <$SERVICE@$S_HOST> :"
-    echo "#"
-  fi
-  dc -c $YML -h $S_HOST unpause
-  echo "ret=$? unpause $S_HOST"
-
-  if [ "$T_STATE" = "active" ] ; then     # start target service oly if it is in state=active
-
-    if [ "$VERBOSE" = "1" ] ; then
-      echo "#"
-      echo "##############################################################"
-      echo "#"
-      echo "# start target service <$SERVICE@$T_HOST> :"
-      echo "#"
+    dc_command   $yml pause   $SERVICE $S_HOST
+    copy_data                 $SERVICE $S_HOST $T_HOST
+    dc_command   $yml unpause $SERVICE $S_HOST
+    if [ "$T_STATE" = "active" ] ; then
+      dc_command $yml start   $SERVICE $T_HOST
     fi
-    # so in funktion auslagern
-    scmd="dc -c $YML -h $T_HOST start"
-    if [ "$VERBOSE" = "1" ] ; then
-      $scmd 
-    else
-      $scmd 2>/dev/null
-      echo "ret=$? start $T_HOST"
-    fi 
-    ret=$?
-    if [ "$ret" != "0" ] ; then 
-      echo "error ret=$? $SERVICE@$T_HOST start"
-      exit 1
-    fi
-    # bis hier
-
   fi
 
-  if [ "$VERBOSE" = "1" ] ; then
-    echo "#"
-    END=`date +%s`
-    echo "###################################################################################################"
-    echo "# <`basename $0` $*> done in <$((END-START))> seconds."
-    echo "###################################################################################################"
-  fi
-fi
-exit 0
+done
+
+if [ "$error_detect" != "0" ] ; then
+  echo "#result=ERROR"
+else
+  echo "#result=OK"
+fi 
+exit $error_detect
 

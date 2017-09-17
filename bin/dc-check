@@ -46,11 +46,7 @@ for host in $hosts ; do
     echo "$host.version=$version"
   fi
 
-
-
-
   yml_list=$( dc-list -y services -h $host )
-  #for service in $services ; do
   for yml in $yml_list ; do
     service=$(dc-yml -c $yml service_name)
     if [ $host_up = 1 ] ; then
@@ -83,10 +79,10 @@ for host in $hosts ; do
 done
 
 if [ $global_error_marker = 1 ] ; then
-   echo "# ERROR/WARNINGS"
+   echo "#result=ERROR/WARNINGS"
    exit 1
 else
-   echo "# OK"
+   echo "#result=OK"
    exit 0
 fi
 
