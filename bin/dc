@@ -104,7 +104,10 @@ if [ "$HNAME" != "" ] ; then
   fi
 fi
 case "$CMD" in
-  ssh)     shift ; docker-machine $CMD ${HNAME} $* ;;
+  ssh)     shift
+           docker-machine $CMD ${HNAME} $*
+           exit $?
+           ;;
   up)      docker-compose up -d ;;
   rm)      docker-compose stop ; docker-compose rm -f  ;;
   create)  docker-machine create --driver        ${host_driver} \
