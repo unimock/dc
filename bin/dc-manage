@@ -112,34 +112,43 @@ for yml in $yml_list ; do
     dc_command   $yml unpause $SERVICE $S_HOST
 
 
-first=0
-if [ "$with_images" = "1" ] ; then
-  list=$( dc -c $yml -h $S_HOST compose ps -q  )
-  for C in $list ; do
-    N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
-    [[ $N != *:* ]] && N=$N:latest
-    S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
-    T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
-    if [ "$S_ID" != "$T_ID" ] ; then
-      echo "##################"
-      echo "# image to sync:"
-      echo "#  Name=<$N>"
-      echo "#  Source-ID=<$S_ID>"
-      echo "#  Target-ID=<$T_ID>"
-      if [ "$first" = "0" ] ; then
-        dc_command $yml rm      $SERVICE $T_HOST
-        first=1
+    first=0
+    list=$( dc -c $yml -h $S_HOST compose ps -q  )
+    for C in $list ; do
+      N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+      [[ $N != *:* ]] && N=$N:latest
+      S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
+      T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
+      if [ "$S_ID" != "$T_ID" ] ; then
+        echo "##################"
+        echo "# image to sync:"
+        echo "#  Name=<$N>"
+        echo "#  Source-ID=<$S_ID>"
+        echo "#  Target-ID=<$T_ID>"
+        if [ "$first" = "0" ] ; then
+          first=1   #found first different image
+        fi
+        if [ "$with_images" = "1" ] ; then
+          if [ "$first" = "1" ] ; then
+            first=2   # different image with image syncing
+            dc_command $yml rm      $SERVICE $T_HOST
+          fi
+          if [ "$T_ID" != "" ] ; then
+            dc -c $yml -h $T_HOST docker image rm $N
+          fi
+          dc -c $yml -h $S_HOST docker save $N | pv | dc -c $yml -h $T_HOST docker load
+        fi
       fi
-      if [ "$T_ID" != "" ] ; then
-        dc -c $yml -h $T_HOST docker image rm $N
-      fi
-      dc -c $yml -h $S_HOST docker save $N | pv | dc -c $yml -h $T_HOST docker load
+    done
+
+    if [ "$first" = "1" ] ; then
+      echo "ERROR: found different images for <$SERVICE>. Use paramter --images to fix it."
+      error_detect=1
     fi
-  done
-fi
+
 
     if [ "$T_STATE" = "active" ] ; then
-      if [ "$first" = "1" ] ; then
+      if [ "$first" = "2" ] ; then
         dc_command $yml up      $SERVICE $T_HOST
       else
         dc_command $yml start   $SERVICE $T_HOST
