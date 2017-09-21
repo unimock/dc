@@ -64,8 +64,11 @@ for host in $hosts ; do
     img_list=$( dc-yml -c $compose_file | grep "_image=" )
     for i in $img_list ; do
       img=${i#*\"}
-      img=${img%\")}
-      echo "$host.service.$service.image=$img"
+      img=${img%\")*}
+      img=${img%)}
+      if [ "$img" != "" ] ; then
+        echo "$host.service.$service.image=$img"
+      fi
     done
  
   done

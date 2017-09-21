@@ -8,19 +8,31 @@ shift
 CMD=$1
 shift
 
+ret=0
 
 eval "$(docker-machine env ${NODE})"
 
 CNA=`( docker ps | grep "rdc-${NODE}." | cut -f1 -d" ") `
 
+if [ "$CNA" = "" ] ; then
+  echo "error detect rdc-${NODE}"
+  exit 1
+fi
+
 if [ "$CMD" = "" ] ; then
+  #echo docker exec -it $CNA bash
   docker exec -it $CNA bash
+  ret=$?
 else
   if [ "$CMD" = "rdc" ] ; then
     #echo docker exec -t $CNA $CMD . $*
     docker      exec -t $CNA $CMD . $*
+    ret=$?
   else
     #echo docker exec -t $CNA $CMD  $*
     docker      exec -t $CNA $CMD  $*
+    ret=$?
   fi
 fi
+exit $ret
+

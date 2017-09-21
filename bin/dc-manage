@@ -2,7 +2,7 @@
 . /etc/mde/dc/default
 
 error_detect=0
-with_image=0
+with_images=0
 
 _help()
 {
@@ -104,6 +104,29 @@ for yml in $yml_list ; do
     echo "# sync <$SERVICE> from <$S_HOST> to <$T_HOST> ..."
     echo "#"
     echo "########################################################"
+
+# check images
+    image_mismatch=0
+    images=$( dc -c $yml -h $S_HOST compose ps -q  )
+    for C in $images ; do
+      N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+      [[ $N != *:* ]] && N=$N:latest
+      S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
+      T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
+      if [ "$S_ID" != "$T_ID" ] ; then
+        image_mismatch=1
+        echo "detect image mismatch for service: <$SERVICE> !!!!!"
+        break
+      fi
+    done
+    if [ "$image_mismatch" = "1" -a "$with_images" = "0" ] ; then
+      echo "#ERROR: found different images for <$SERVICE>."
+      echo "#       Sync service with images manually with:"
+      echo "#       dc-manage --images -c $yml sync"
+      error_detect=1
+      continue
+    fi  
+
     if [ "$T_STATE" = "active" ] ; then
       dc_command $yml stop    $SERVICE $T_HOST  
     fi
@@ -112,47 +135,41 @@ for yml in $yml_list ; do
     dc_command   $yml unpause $SERVICE $S_HOST
 
 
-    first=0
-    list=$( dc -c $yml -h $S_HOST compose ps -q  )
-    for C in $list ; do
-      N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
-      [[ $N != *:* ]] && N=$N:latest
-      S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
-      T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
-      if [ "$S_ID" != "$T_ID" ] ; then
-        echo "##################"
-        echo "# image to sync:"
-        echo "#  Name=<$N>"
-        echo "#  Source-ID=<$S_ID>"
-        echo "#  Target-ID=<$T_ID>"
-        if [ "$first" = "0" ] ; then
-          first=1   #found first different image
-        fi
-        if [ "$with_images" = "1" ] ; then
-          if [ "$first" = "1" ] ; then
-            first=2   # different image with image syncing
-            dc_command $yml rm      $SERVICE $T_HOST
-          fi
+    # copy remove taget containers
+    # copy images
+    # create target containers
+    if [ "$image_mismatch" = "1" -a "$with_images" = "1" ] ; then
+      dc_command $yml rm      $SERVICE $T_HOST
+      images=$( dc -c $yml -h $S_HOST compose ps -q  )
+      for C in $list ; do
+        N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+        [[ $N != *:* ]] && N=$N:latest
+        S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
+        T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
+        if [ "$S_ID" != "$T_ID" ] ; then
+          echo "##################"
+          echo "# image to sync:"
+          echo "#  Name=<$N>"
+          echo "#  Source-ID=<$S_ID>"
+          echo "#  Target-ID=<$T_ID>"
           if [ "$T_ID" != "" ] ; then
             dc -c $yml -h $T_HOST docker image rm $N
           fi
           dc -c $yml -h $S_HOST docker save $N | pv | dc -c $yml -h $T_HOST docker load
         fi
-      fi
-    done
-
-    if [ "$first" = "1" ] ; then
-      echo "ERROR: found different images for <$SERVICE>. Use paramter --images to fix it."
-      error_detect=1
-    fi
-
-
-    if [ "$T_STATE" = "active" ] ; then
-      if [ "$first" = "2" ] ; then
+      done
+      if [ "$T_STATE" = "active" ] ; then
         dc_command $yml up      $SERVICE $T_HOST
       else
-        dc_command $yml start   $SERVICE $T_HOST
+        echo "#ERROR: Service: <$SERVICE> is not acitivated on <$T_HOST>."
+        echo "#       Please create the containers manually with:"
+        echo "#       dc -s $SERVICE -h $T_HOST up"
+        error_detect=1
       fi
+    fi
+
+    if [ "$T_STATE" = "active" ] ; then
+      dc_command $yml start   $SERVICE $T_HOST
     fi
   fi
 
