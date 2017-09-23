@@ -105,6 +105,10 @@ for yml in $yml_list ; do
     echo "#"
     echo "########################################################"
 
+    if [ "$S_STATE" != "active" ] ; then
+      echo " $SERVICE not active. Skipping!"
+      continue ;
+    fi
 # check images
     image_mismatch=0
     images=$( dc -c $yml -h $S_HOST compose ps -q  )

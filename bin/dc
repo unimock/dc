@@ -104,6 +104,7 @@ if [ "$HNAME" != "" ] ; then
   fi
 fi
 case "$CMD" in
+  ls)      docker-machine ls ;;
   ssh)     shift
            docker-machine $CMD ${HNAME} $*
            exit $?
@@ -257,6 +258,7 @@ case "$CMD" in
   compose)    shift ; docker-compose $*  ;;
   swarm)      echo "swarm command (have to be done)" ;;
   machine)    shift ; docker-machine $* ;;
+  ls)         docker-machine ls ;;
   *)          if [ "$CONF" != "" ] ; then
                 docker-compose $* 
               else
