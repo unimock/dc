@@ -9,15 +9,14 @@ else
 fi
 ##############################################################
 FI=/etc/profile.d/dc-profile.sh
-if [ ! -f $FI ] ; then
-  echo -e "\ncreating dc profile <$FI> with following content:"
-  mkdir -p `dirname $FI`
-  echo 'export PATH=$PATH:/opt/dc/bin'                                       >> $FI
-  echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"  >> $FI
-  cat $FI
-fi
+echo -e "\ncreating dc profile <$FI> with following content:"
+rm -f $FI
+mkdir -p `dirname $FI`
+echo 'export PATH=$PATH:/opt/dc/bin'                                       >> $FI
+echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"  >> $FI
+cat $FI
 ##############################################################
-FI=/etc/mde/dc/default
+FI=/opt/dc/etc/config
 
 if [ ! -f $FI ] ; then
   echo -e "\ncreating dc default configuration file <$FI> with following defines:"

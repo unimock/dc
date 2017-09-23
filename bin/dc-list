@@ -1,5 +1,5 @@
 #!/bin/bash
-. /etc/mde/dc/default
+. /opt/dc/etc/config
 
 print_yml="0"
 

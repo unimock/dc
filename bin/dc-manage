@@ -1,5 +1,5 @@
 #!/bin/bash
-. /etc/mde/dc/default
+. /opt/dc/etc/config
 
 error_detect=0
 with_images=0
@@ -117,6 +117,7 @@ for yml in $yml_list ; do
       [[ $N != *:* ]] && N=$N:latest
       S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
       T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
+#echo "C=$C  N=$N S_ID=$S_ID T_ID=$T_ID"
       if [ "$S_ID" != "$T_ID" ] ; then
         image_mismatch=1
         echo "detect image mismatch for service: <$SERVICE> !!!!!"
@@ -145,7 +146,7 @@ for yml in $yml_list ; do
     if [ "$image_mismatch" = "1" -a "$with_images" = "1" ] ; then
       dc_command $yml rm      $SERVICE $T_HOST
       images=$( dc -c $yml -h $S_HOST compose ps -q  )
-      for C in $list ; do
+      for C in $images ; do
         N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
         [[ $N != *:* ]] && N=$N:latest
         S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )

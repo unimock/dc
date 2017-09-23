@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. /etc/mde/dc/default
+. /opt/dc/etc/config
 
 if [ "$MDE_DC_HOST_DIR" = "" ] ; then
   echo "error: <MDE_DC_HOST_DIR> not set"
