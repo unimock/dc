@@ -1,29 +1,76 @@
 #!/bin/bash
 
-##############################################################
-DCD=/opt/dc
-if [ -d $DCD ] ; then
-  cd $DCD ; git pull
-else
-  git clone https://github.com/unimock/dc.git $DCD
-fi
-##############################################################
-FI=/etc/profile.d/dc-profile.sh
-echo -e "\ncreating dc profile <$FI> with following content:"
-rm -f $FI
-mkdir -p `dirname $FI`
-echo 'export PATH=$PATH:/opt/dc/bin'                                       >> $FI
-echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"  >> $FI
-cat $FI
-##############################################################
-FI=/opt/dc/etc/config
 
-if [ ! -f $FI ] ; then
-  echo -e "\ncreating dc default configuration file <$FI> with following defines:"
+MACHINE="0.12.2"
+COMPOSE="1.16.1"
+RESTIC="0.7.3"
+
+
+if [ "$1" = "" ] ; then
+  echo ""
+  echo " usage `basename $0` dc|tools"
+  echo ""
+  echo "       dc ...... initialize dc environment"
+  echo "       tools ... install additional tools. (pv, tree, ...)"
+  echo ""
+fi
+CMD="$1"
+if [ "$CMD" = "dc" ] ; then
+  ##############################################################
+  DCD=/opt/dc
+  if [ -d $DCD ] ; then
+    cd $DCD ; git pull
+  else
+    git clone https://github.com/unimock/dc.git $DCD
+  fi
+  ##############################################################
+  FI=/etc/profile.d/dc-profile.sh
+  echo -e "\ncreating dc profile <$FI> with following content:"
+  rm -f $FI
   mkdir -p `dirname $FI`
-  echo 'export MDE_DC_HOST_DIR=/root/.docker/hosts' >> $FI
-  echo 'export MDE_DC_SERV_DIR=/root/Services'      >> $FI
+  echo 'export PATH=$PATH:/opt/dc/bin'                                       >> $FI
+  echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"  >> $FI
   cat $FI
+  . /etc/profile
+  ##############################################################
+  FI=/opt/dc/etc/config
+
+  if [ ! -f $FI ] ; then
+    echo -e "\ncreating dc default configuration file <$FI> with following defines:"
+    mkdir -p `dirname $FI`
+    echo 'export MDE_DC_HOST_DIR=/root/.docker/hosts' >> $FI
+    echo 'export MDE_DC_SERV_DIR=/root/Services'      >> $FI
+    cat $FI
+  fi
+  exit 0
 fi
 
+if [ "$CMD" = "tools" ] ; then
+  . /etc/profile
+  apt-get update
+  apt-get install -y pv tree
+  
+  VER=$( docker-compose --version | awk '{ print $3 }' )
+  VER=${VER%,}
+  if [ "$VER" != "$COMPOSE" ] ; then
+    curl -L https://github.com/docker/compose/releases/download/${COMPOSE}/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
+    chmod +x /usr/local/bin/docker-compose
+    docker-compose --version
+  fi
 
+  VER=$( docker-machine  --version | awk '{ print $3 }' )
+  VER=${VER%,}
+  if [ "$VER" != "$MACHINE" ] ; then
+    curl -L https://github.com/docker/machine/releases/download/v${MACHINE}/docker-machine-`uname -s`-`uname -m` >/usr/local/bin/docker-machine
+    chmod +x /usr/local/bin/docker-machine
+    docker-machine --version
+  fi
+ 
+  VER=$( /usr/local/bin/restic version | grep ^rest | awk '{ print $2 }' )
+  if [ "$VER" != "$RESTIC" ] ; then 
+    curl -L https://github.com/restic/restic/releases/download/v${RESTIC}/restic_${RESTIC}_linux_amd64.bz2 | bunzip2 > /usr/local/bin/restic
+    chmod +x /usr/local/bin/restic
+    restic version | grep ^restic
+  fi
+  exit 0
+fi

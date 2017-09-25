@@ -160,7 +160,11 @@ for yml in $yml_list ; do
           if [ "$T_ID" != "" ] ; then
             dc -c $yml -h $T_HOST docker image rm $N
           fi
-          dc -c $yml -h $S_HOST docker save $N | pv | dc -c $yml -h $T_HOST docker load
+          if [ `which pv` != "" ] ; then # show progress if pv exists
+            dc -c $yml -h $S_HOST docker save $N | pv | dc -c $yml -h $T_HOST docker load
+          else
+            dc -c $yml -h $S_HOST docker save $N | dc -c $yml -h $T_HOST docker load
+          fi
         fi
       done
       if [ "$T_STATE" = "active" ] ; then
