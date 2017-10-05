@@ -14,6 +14,7 @@ _help()
   echo "       sync .................. copy data and restart service"
   echo "       sync_group <group> .... copy data and restart services"
   echo "       copy .................. only copy data (persistent/service)"
+  echo "       image_update .......... update an image (tbd)"
   echo ""
   exit 0
 }
@@ -68,7 +69,17 @@ eval set -- $CURROPT
 CMD="$1"
 
 if [ "$CMD" = "" ] ; then _help ; fi
-
+if [ "$CMD" = "image_update" ] ; then
+  echo "Todo:"
+  echo "  dc docker pull sameersbn/gitlab:10.0.2   #check if image is available"
+  echo "  dc rm"
+  echo "  dc ssh tar -C /Docker -cjvf /tmp/snapshot.tar.bz2 ./Services/mgl"
+  echo "  vi docker-compose.yml"
+  echo "  dc up"
+  echo "  # test"
+  echo "  dc --images sync"
+  exit 0
+fi
 if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
   yml_list=$YML
 

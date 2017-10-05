@@ -19,7 +19,7 @@ show_help() {
   echo ""
   echo "     docker|compose|swarm|machine <commands>"
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
-  echo "     up|rm|ps|logs [-f]|stop|start"
+  echo "     rmup|up|rm|ps|logs [-f]|stop|start"
   echo "     -h <host> -s <service> check ...... print service state (Up, Error, disabled,..."
   echo "     pull|push service|persistent [real]"
   echo "     encrypt|decrypt"
@@ -56,6 +56,8 @@ while [ "$#" -gt 0 ]; do
     -h) HOST="$2" ;    shift 2 ;; 
     -s) SERVICE="$2" ; shift 2 ;; 
     -i) HIDX="$2" ;    shift 2 ;; 
+    -i) HIDX="$2" ;    shift 2 ;; 
+    -i[0-9]) HIDX="${1#-i}" ;    shift 1 ;; 
     -c) CONF="$2" ;    shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -111,6 +113,7 @@ case "$CMD" in
            ;;
   up)      docker-compose up -d ;;
   rm)      docker-compose stop ; docker-compose rm -f  ;;
+  rmup)    docker-compose stop ; docker-compose rm -f ; docker-compose up -d ;;
   create)  docker-machine create --driver        ${host_driver} \
                           --generic-engine-port  ${host_port} \
                           --generic-ip-address   ${host_ip} \
