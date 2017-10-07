@@ -194,12 +194,12 @@ case "$CMD" in
     scmd=$2
     type=${3%/}
     DRY=" --dry-run " ; if [ "$4" = "real" -o "$4" = "r" ] ; then DRY="" ; fi
-    LDIR=`dirname $CONF`/$type
     if   [ "$type" = "sp" ] ; then list="service persistent"
     elif [ "$type" = "s"  ] ; then list="service"
     elif [ "$type" = "p"  ] ; then list="persistent"
     else   list="$type" ; fi
     for TYPE in $list ; do
+      LDIR=`dirname $CONF`/$TYPE
       if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
         echo "error neither persistent nor service given."
         exit 0
@@ -272,9 +272,9 @@ case "$CMD" in
               ;;
   #############
   docker)     shift ; docker $* ;;
-  compose)    shift ; docker-compose $*  ;;
+  compose|docker-compose)    shift ; docker-compose $*  ;;
   swarm)      echo "swarm command (have to be done)" ;;
-  machine)    shift ; docker-machine $* ;;
+  machine|docker-machine)    shift ; docker-machine $* ;;
   ls)         docker-machine ls ;;
   *)          if [ "$CONF" != "" ] ; then
                 docker-compose $* 
