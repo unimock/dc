@@ -21,7 +21,7 @@ show_help() {
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
   echo "     rmup|up|rm|ps|logs [-f]|stop|start"
   echo "     -h <host> -s <service> check ...... print service state (Up, Error, disabled,..."
-  echo "     pull|push service|persistent [real]"
+  echo "     pull|push service|s|persistent|p|sp [real|r]"
   echo "     encrypt|decrypt"
   echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
   echo "     login [command] ..... login or run a command within <$DCN>."
@@ -188,35 +188,49 @@ case "$CMD" in
     ;;
   push)
     TYPE=${2%/}
-    LDIR=`dirname $CONF`/$TYPE
-    DRY=" --dry-run " ; if [ "$3" = "real" ] ; then DRY="" ; fi
-    if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
-      echo "error neither persistent nor service given."
-      exit 0
-    fi
-    ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} mkdir -p /Docker/Services/${service_name}
-    rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} "  ${LDIR}/ root@${host_ip}:/Docker/Services/${service_name}/$TYPE
-    echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>)"
+    if   [ "$TYPE" = "sp" ] ; then list="service persistent"
+    elif [ "$TYPE" = "s"  ] ; then list="service"
+    elif [ "$TYPE" = "p"  ] ; then list="persistent"
+    else   list="$TYPE" ; fi
+    for TYPE in $list ; do
+      if [ "$TYPE" = "s" ] ; then TYPE="service"    ; fi
+      if [ "$TYPE" = "p" ] ; then TYPE="persistent" ; fi
+      LDIR=`dirname $CONF`/$TYPE
+      DRY=" --dry-run " ; if [ "$3" = "real" -o "$3" = "r" ] ; then DRY="" ; fi
+      if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
+        echo "error neither persistent nor service given."
+        exit 0
+      fi
+      ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} mkdir -p /Docker/Services/${service_name}
+      rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} "  ${LDIR}/ root@${host_ip}:/Docker/Services/${service_name}/$TYPE
+      echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>)"
+    done
     ;;
   pull)
     TYPE=$2
-    LDIR=`dirname $CONF`/$TYPE
-    DRY=" --dry-run " ; if [ "$3" = "real" ] ; then DRY="" ; fi
-    if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
-      echo "error neither persistent nor service given."
-      exit 0
-    fi
-    ssh -i $SSH_KEY_FILE -p ${host_ssh_port} root@${host_ip} ls -d /Docker/Services/${service_name}/$TYPE >/dev/null 2>&1
-    if [ "$?" = "0" ] ; then
-      mkdir -p ${LDIR}
-      rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} " root@${host_ip}:/Docker/Services/${service_name}/$TYPE/ ${LDIR}
-      echo "pull $DRY folder FROM <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
-    else
-      if [ -d ./${TYPE} ] ; then
-        echo "WARNING ./${TYPE} only exists locally!"  
-        exit 1
+    if   [ "$TYPE" = "sp" ] ; then list="service persistent"
+    elif [ "$TYPE" = "s"  ] ; then list="service"
+    elif [ "$TYPE" = "p"  ] ; then list="persistent"
+    else   list="$TYPE" ; fi
+    for TYPE in $list ; do
+      LDIR=`dirname $CONF`/$TYPE
+      DRY=" --dry-run " ; if [ "$3" = "real" -o "$3" = "r" ] ; then DRY="" ; fi
+      if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
+        echo "error neither persistent nor service given."
+        exit 0
       fi
-    fi
+      ssh -i $SSH_KEY_FILE -p ${host_ssh_port} root@${host_ip} ls -d /Docker/Services/${service_name}/$TYPE >/dev/null 2>&1
+      if [ "$?" = "0" ] ; then
+        mkdir -p ${LDIR}
+        rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} " root@${host_ip}:/Docker/Services/${service_name}/$TYPE/ ${LDIR}
+        echo "pull $DRY folder FROM <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
+      else
+        if [ -d ./${TYPE} ] ; then
+          echo "WARNING ./${TYPE} only exists locally!"  
+          exit 1
+        fi
+      fi
+    done
     ;;
   #############
   encrypt)    mkdir -p ./utils ; tar -cjv ./private | openssl aes-256-cbc -salt -out ./utils/.private.enc ; rm -Rvf ./private ;;
