@@ -15,7 +15,8 @@ _help()
   echo "       sync_group <group> .... copy data and restart services"
   echo "       copy .................. only copy data (persistent/service)"
   echo "       image_update .......... update an image (tbd)"
-  echo ""
+  echo "       backup <source> <target> <mask> ... swarm backup"
+  echo "       backup h1:/Docker/Data h2:/Docker/Backup/xyz 0,7,14"
   exit 0
 }
 
@@ -69,6 +70,19 @@ eval set -- $CURROPT
 CMD="$1"
 
 if [ "$CMD" = "" ] ; then _help ; fi
+
+if [ "$CMD" = "backup" ] ; then
+  SOURCE=$2
+  TARGET=$3
+  MASK=$4
+
+  T_HOST=${TARGET%:*}
+  T_DIR=${TARGET#*:}
+  dc-rdc ${T_HOST} mbup $MASK rdc-${SOURCE} ${T_DIR}
+  exit $?
+fi
+
+
 if [ "$CMD" = "image_update" ] ; then
   echo "Todo:"
   echo "  dc docker pull sameersbn/gitlab:10.0.2   #check if image is available"

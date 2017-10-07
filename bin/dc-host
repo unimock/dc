@@ -1,0 +1,54 @@
+#!/bin/bash
+
+_ask()
+{
+  text="$1"
+  echo "##################################################################"
+  echo "#"
+  echo "# ${text}. Type ENTER to start."
+  echo "#"
+  read ans
+  return
+}
+
+if [ "$2" = "" ] ; then
+  echo " usage: `basename $0` update <host>"
+  exit 0
+fi
+
+CMD=$1
+HOST=$2
+
+if [ "$CMD" = "update" ] ; then
+
+
+  BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
+  echo "#"
+  echo "# Active containers on <$HOST> = $BCOUNT"
+  echo "#"
+
+  dc-check hosts $HOST
+
+  _ask "Start autoremove?"
+  dc -h $HOST ssh apt-get -y autoremove
+
+  _ask "Start apt-get update?"
+  dc -h $HOST ssh apt-get update
+
+  _ask "Start dist-uprade?"
+  dc -h $HOST ssh apt-get -y dist-upgrade
+  
+  _ask "Check, if all containers are started!"
+  NCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
+  echo "#"
+  echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
+  echo "#"
+
+  _ask "Show running containers!"
+  dc-check hosts $HOST
+
+  _ask "reboot?"
+  dc -h $HOST ssh init 6
+  exit 0
+fi
+

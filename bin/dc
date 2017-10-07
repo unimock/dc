@@ -52,14 +52,15 @@ HIDX="0"
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -v) VERB="1"  ;    shift 1 ;; 
-    -h) HOST="$2" ;    shift 2 ;; 
-    -s) SERVICE="$2" ; shift 2 ;; 
-    -i) HIDX="$2" ;    shift 2 ;; 
-    -i) HIDX="$2" ;    shift 2 ;; 
-    -i[0-9]) HIDX="${1#-i}" ;    shift 1 ;; 
-    -c) CONF="$2" ;    shift 2 ;;
-    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+    -v)  VERB="1"           ; shift 1 ;; 
+    -h)  HOST="$2"          ; shift 2 ;;
+    -h*) HOST="${1#-h}"     ; shift 1 ;;
+    -s)  SERVICE="$2"       ; shift 2 ;; 
+    -s*) SERVICE="${1#-s}"  ; shift 1 ;;
+    -i)  HIDX="$2"          ; shift 2 ;; 
+    -i[0-9]) HIDX="${1#-i}" ; shift 1 ;; 
+    -c)  CONF="$2"          ; shift 2 ;;
+    *)   CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done  
 eval set -- $CURROPT
