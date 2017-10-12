@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+NGROK="2.2.8"
 MACHINE="0.12.2"
 COMPOSE="1.16.1"
 RESTIC="0.7.3"
@@ -47,9 +47,16 @@ fi
 
 if [ "$CMD" = "tools" ] ; then
   . /etc/profile
-  apt-get update
-  apt-get install -y pv tree
-  
+
+  alist="pv tree"
+  for i in $alist ; do
+    if [ "$( which $i )" = "" ] ; then
+      apt-get update
+      apt-get install -y $alist
+      break
+    fi 
+  done
+ 
   VER=$( docker-compose --version | awk '{ print $3 }' )
   VER=${VER%,}
   if [ "$VER" != "$COMPOSE" ] ; then
@@ -72,5 +79,16 @@ if [ "$CMD" = "tools" ] ; then
     chmod +x /usr/local/bin/restic
     restic version | grep ^restic
   fi
+
+  VER=$( /usr/local/bin/ngrok --version | cut -d" " -f3 )
+  if [ "$VER" != "$NGROK" ] ; then
+    cd /usr/local/bin
+    rm -f ngrok.zip
+    curl -L https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip > /usr/local/bin/ngrok.zip
+    gunzip -S .zip ngrok.zip
+    chmod a+x ngrok
+  fi
+
   exit 0
+
 fi
