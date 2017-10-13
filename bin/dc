@@ -21,7 +21,8 @@ show_help() {
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
   echo "     rmup|up|rm|ps|logs [-f]|stop|start"
   echo "     -h <host> -s <service> check ...... print service state (Up, Error, disabled,..."
-  echo "     data pull|push service|s|persistent|p|sp [real|r]"
+  echo "     data pull|push service|s|persistent|p|sp [real|r] .... sync service and persistent data"
+  echo "     data mount|umount .....................................mount service and persistent data to ./data"
   echo "     encrypt|decrypt"
   echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
   echo "     login [command] ..... login or run a command within <$DCN>."
@@ -192,6 +193,14 @@ case "$CMD" in
     ;;
   data)
     scmd=$2
+    if [ "$scmd" = "mount" ] ; then
+      mkdir -p ./data
+      docker-machine mount $HNAME:/Docker/Services/${service_name} ./data
+      exit $?
+    fi
+    if [ "$scmd" = "umount" ] ; then
+      docker-machine mount -u $HNAME:/Docker/Services/${service_name} ./data
+    fi
     type=${3%/}
     DRY=" --dry-run " ; if [ "$4" = "real" -o "$4" = "r" ] ; then DRY="" ; fi
     if   [ "$type" = "sp" ] ; then list="service persistent"

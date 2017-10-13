@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NGROK="2.2.8"
-MACHINE="0.12.2"
+MACHINE="0.13.0-rc1"
 COMPOSE="1.16.1"
 RESTIC="0.7.3"
 
@@ -48,7 +48,7 @@ fi
 if [ "$CMD" = "tools" ] ; then
   . /etc/profile
 
-  alist="pv tree"
+  alist="pv tree sshfs"
   for i in $alist ; do
     if [ "$( which $i )" = "" ] ; then
       apt-get update
