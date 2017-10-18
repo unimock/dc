@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NGROK="2.2.8"
-MACHINE="0.13.0-rc1"
+MACHINE="0.13.0"
 COMPOSE="1.16.1"
 RESTIC="0.7.3"
 
