@@ -19,7 +19,7 @@ show_help() {
   echo ""
   echo "     docker|compose|swarm|machine <commands>"
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
-  echo "     rmup|up|rm|ps|logs [-f]|stop|start"
+  echo "     rmup|up|rm|down|ps|logs [-f]|stop|start"
   echo "     -h <host> -s <service> check ...... print service state (Up, Error, disabled,..."
   echo "     data pull|push service|s|persistent|p|sp [real|r] .... sync service and persistent data"
   echo "     data mount|umount .....................................mount service and persistent data to ./data"
@@ -115,6 +115,7 @@ case "$CMD" in
            ;;
   up)      docker-compose up -d ;;
   rm)      docker-compose stop ; docker-compose rm -f  ;;
+  down)    docker-compose down  ;;
   rmup)    docker-compose stop ; docker-compose rm -f ; docker-compose up -d ;;
   create)  docker-machine create --driver        ${host_driver} \
                           --generic-engine-port  ${host_port} \
@@ -200,6 +201,7 @@ case "$CMD" in
     fi
     if [ "$scmd" = "umount" ] ; then
       docker-machine mount -u $HNAME:/Docker/Services/${service_name} ./data
+      rmdir ./data
     fi
     type=${3%/}
     DRY=" --dry-run " ; if [ "$4" = "real" -o "$4" = "r" ] ; then DRY="" ; fi

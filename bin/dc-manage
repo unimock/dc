@@ -89,7 +89,7 @@ if [ "$CMD" = "image_update" ] ; then
   echo '  . ${DIR}/.env'
   echo '  echo $DC_ENV_IMAGE'
   echo "  NEW=sameersbn/gitlab:10.0.3"
-  echo '  dc docker pull $NEW   #check if image is available'
+  echo '  dc -i 0 docker pull $NEW   # download image'
   echo '  sed -i "s|DC_ENV_IMAGE=.*|DC_ENV_IMAGE=${NEW}|" ${DIR}/.env'  
   echo '  dc -c ${DIR}/dc-service.yml rm'
   echo '  dc -c ${DIR}/dc-service.yml up'
