@@ -2,7 +2,8 @@
 
 NGROK="2.2.8"
 MACHINE="0.13.0"
-COMPOSE="1.17.0"
+COMPOSE="1.17.1"
+#COMPOSE="1.17.0"
 RESTIC="0.7.3"
 
 
@@ -48,7 +49,7 @@ fi
 if [ "$CMD" = "tools" ] ; then
   . /etc/profile
 
-  alist="pv tree sshfs"
+  alist="pv tree sshfs sendemail"
   for i in $alist ; do
     if [ "$( which $i )" = "" ] ; then
       apt-get update
