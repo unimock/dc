@@ -13,6 +13,7 @@ if [ "$1" = "" ] ; then
   echo ""
   echo "       dc ...... initialize dc environment"
   echo "       tools ... install additional tools. (pv, tree, ...)"
+  echo "       docker .. install docker-ce"
   echo ""
 fi
 CMD="$1"
@@ -43,6 +44,15 @@ if [ "$CMD" = "dc" ] ; then
     echo 'export MDE_DC_SERV_DIR=/root/Services'      >> $FI
     cat $FI
   fi
+  exit 0
+fi
+
+if [ "$CMD" = "docker" ] ; then
+  apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) edge"
+  apt-get update
+  apt-get install -y docker-ce
   exit 0
 fi
 
