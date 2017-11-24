@@ -16,8 +16,9 @@ It only works as a wrapper for the docker-machine, docker and docker-compose com
 
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
-/opt/dc/bin/dc-install dc    # initialize dc environment
-/opt/dc/bin/dc-install tools # istall additional tools (pv, tree, compose, machine, ..)
+/opt/dc/bin/dc-install dc      # initialize dc environment
+/opt/dc/bin/dc-install docker  # install docker-de (edge)
+/opt/dc/bin/dc-install tools   # istall additional tools (pv, tree, compose, machine, ..)
 . /etc/profile
 
 ```
