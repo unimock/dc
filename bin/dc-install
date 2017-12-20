@@ -2,22 +2,21 @@
 
 NGROK="2.2.8"
 MACHINE="0.13.0"
-COMPOSE="1.17.1"
-#COMPOSE="1.17.0"
-RESTIC="0.7.3"
+COMPOSE="1.18.0"
+RESTIC="0.8.0"
 
 
 if [ "$1" = "" ] ; then
   echo ""
   echo " usage `basename $0` dc|tools"
   echo ""
-  echo "       dc ...... initialize dc environment"
+  echo "       init ...... initialize dc environment"
   echo "       tools ... install additional tools. (pv, tree, ...)"
   echo "       docker .. install docker-ce"
   echo ""
 fi
 CMD="$1"
-if [ "$CMD" = "dc" ] ; then
+if [ "$CMD" = "init" ] ; then
   ##############################################################
   DCD=/opt/dc
   if [ -d $DCD ] ; then
