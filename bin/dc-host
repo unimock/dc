@@ -12,43 +12,61 @@ _ask()
 }
 
 if [ "$2" = "" ] ; then
-  echo " usage: `basename $0` update <host>"
+  echo " usage: `basename $0` <host> update|check|down|up|ps"
   exit 0
 fi
 
-CMD=$1
-HOST=$2
+CMD=$2
+HOST=$1
 
 if [ "$CMD" = "update" ] ; then
-
-
   BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
   echo "#"
   echo "# Active containers on <$HOST> = $BCOUNT"
   echo "#"
-
   dc-check hosts $HOST
-
   _ask "Start autoremove?"
   dc -h $HOST ssh apt-get -y autoremove
-
   _ask "Start apt-get update?"
   dc -h $HOST ssh apt-get update
-
   _ask "Start dist-uprade?"
   dc -h $HOST ssh apt-get -y dist-upgrade
-  
   _ask "Check, if all containers are started!"
   NCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
   echo "#"
   echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
   echo "#"
-
   _ask "Show running containers!"
   dc-check hosts $HOST
-
   _ask "reboot?"
   dc -h $HOST ssh init 6
   exit 0
 fi
+if [ "$CMD" = "check" ] ; then
+    #while true ; do
+    #  sleep 1
+    #  netcat -vz $HOST 22 >/dev/null 2>&1
+    #  ret=$?
+    #  echo "waiting until $HOST is up (ret=$ret)"
+    #  if [ "$ret" = "0" ] ; then
+    #    echo "$HOST is up!"
+    #    sleep 2
+    #    break
+    #  fi
+    #done
+  BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
+  echo "#"
+  echo "# Active containers on <$HOST> = $BCOUNT"
+  echo "#"
+  dc-check hosts $HOST
+  exit 0
+fi
+if [ "$CMD" = "down" -o "$CMD" = "up" -o "$CMD" = "ps"   ] ; then
+  list=$( dc-list -y services -h $HOST )
+  for i in $list ; do
+    dc -c $i $CMD
+  done
+  exit 0
+fi
+
 
