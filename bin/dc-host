@@ -12,7 +12,7 @@ _ask()
 }
 
 if [ "$2" = "" ] ; then
-  echo " usage: `basename $0` <host> update|check|down|up|ps"
+  echo " usage: `basename $0` <host> upgrade|update|check|down|up|ps|reboot"
   exit 0
 fi
 
@@ -20,6 +20,20 @@ CMD=$2
 HOST=$1
 
 if [ "$CMD" = "update" ] ; then
+  BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
+  echo "#"
+  echo "# Active containers on <$HOST> = $BCOUNT"
+  echo "#"
+  dc -h $HOST ssh apt-get update
+  dc -h $HOST ssh apt-get -y install docker-ce
+  NCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
+  echo "#"
+  echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
+  echo "#"
+  exit 0
+fi
+
+if [ "$CMD" = "upgrade" ] ; then
   BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
   echo "#"
   echo "# Active containers on <$HOST> = $BCOUNT"
@@ -70,3 +84,7 @@ if [ "$CMD" = "down" -o "$CMD" = "up" -o "$CMD" = "ps"   ] ; then
 fi
 
 
+if [ "$CMD" = "reboot"   ] ; then
+  dc -h $HOST ssh "reboot ; exit"
+  exit 0
+fi
