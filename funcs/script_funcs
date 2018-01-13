@@ -1,0 +1,29 @@
+
+_sf_error=0
+_sf_start=0
+
+sf_start()
+{
+ _sf_error=0
+ _sf_start=$(date +%s)
+}
+
+
+sf_set_error()
+{
+  _sf_error=1
+}
+
+sf_end()
+{
+  _sf_end=$(date +%s)
+  tim="${_sf_start} ${_sf_end}"
+  if [ "${_sf_error}" = "0" ] ; then
+    echo "#result=OK"
+  else
+    echo "#result=ERROR"
+  fi
+  exit ${_sf_error}
+}
+
+
