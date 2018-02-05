@@ -58,7 +58,7 @@ fi
 if [ "$CMD" = "tools" ] ; then
   . /etc/profile
 
-  alist="pv tree sshfs sendemail"
+  alist="pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl"
   for i in $alist ; do
     if [ "$( which $i )" = "" ] ; then
       apt-get update
