@@ -12,7 +12,7 @@ _ask()
 }
 
 if [ "$2" = "" ] ; then
-  echo " usage: `basename $0` <host> upgrade|update|check|down|up|ps|stop|start|reboot"
+  echo " usage: `basename $0` <host> upgrade|update|check|rm|up|ps|stop|start|reboot"
   exit 0
 fi
 
@@ -75,7 +75,7 @@ if [ "$CMD" = "check" ] ; then
   dc-check hosts $HOST
   exit 0
 fi
-if [ "$CMD" = "down" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
+if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
   list=$( dc-list -y services -h $HOST )
   for i in $list ; do
     dc -c $i $CMD
