@@ -78,7 +78,7 @@ fi
 if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
   list=$( dc-list -y services -h $HOST )
   for i in $list ; do
-    dc -c $i $CMD
+    dc -h $HOST -c $i $CMD
   done
   exit 0
 fi
