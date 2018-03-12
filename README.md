@@ -1,4 +1,4 @@
-# dc  ... docker controller - manage generic docker machines from a central host and directory 
+# dc  ... docker controller
 
 ## Description
 
@@ -7,41 +7,36 @@ from a central host and directory (master).
 
 It only works as a wrapper for the docker-machine, docker and docker-compose commands for convenient usage.
 
-## Requirements
+## Requirements for master and slaves
+ * ubuntu-server-16.04
+ * openssh-server (pubkey mode)
 
- * generic (slave) hosts with sshd (pubkey mode)
- * docker, docker-machine and docker-compose installed on master host
-
-## Installation
-
+## Installation (master)
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
 /opt/dc/bin/dc-install init    # initialize dc environment
 /opt/dc/bin/dc-install docker  # install docker-de (edge)
 /opt/dc/bin/dc-install tools   # istall additional tools (pv, tree, compose, machine, ..)
 . /etc/profile
-
 ```
 
 ## Usage
 
-
 ### Create a slave machine and install docker-engine on it
-
 ```
-cd ~
 ABBREV="xyz"
 HNAME="host.domain.de"
+mkdir ~/.docker/hosts/${ABBREV}
 #
 # copy or create ssh keys
 #
 OTHER="zyx"
-mkdir .docker/hosts/${ABBREV}
-cp -v .docker/hosts/$OTHER/id_rsa*     .docker/hosts/${ABBREV}/
+cp -v ~/.docker/hosts/$OTHER/id_rsa*     ~/.docker/hosts/${ABBREV}/
+# ssh-keygen --t rsa -b 4096 ~/.docker/hosts/${ABBREV}/id_rsa
 #
 # dc-host.yml
 #
-cat <<EOF > .docker/hosts/${ABBREV}/dc-host.yml
+cat <<EOF > ~/.docker/hosts/${ABBREV}/dc-host.yml
 version: "1"
 host:
   state: active
@@ -53,7 +48,7 @@ host:
     user: root
     key: id_rsa
 EOF
-cat .docker/hosts/${ABBREV}/dc-host.yml
+cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 #
 # create and test
 #
@@ -63,8 +58,7 @@ dc -h ${ABBREV} docker info
 dc -h ${ABBREV} ssh mkdir /Docker
 dc -h ${ABBREV} ssh chmod a+rwx /Docker
 ```
-
-### create swarm node with rdc support
+### join slave machine to swarm with rdc support
 ```
 ABBREV="xyz"
 cd ~/Swarm
@@ -75,11 +69,9 @@ vi swarm.control
 ./swarm.control  rm
 ./swarm.control  test
 ```
-
 ### copy data between nodes
 ```
 dc-rdc <source>
 rdc . sync /Docker rdc-<target>:/Docker real
-
 ```
 
