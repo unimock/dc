@@ -28,37 +28,58 @@ git clone https://github.com/unimock/dc.git /opt/dc
 
 ### Create a slave machine and install docker-engine on it
 
-Preparation:
- * Install a generic host (minimal ubuntu-server 16.04) with openssh-server as a slave machine
- * Generate ssh-keys
- * Copy id_rsa.pub to slave-machine:/root/.ssh/authorized_keys
- * Test your slave machine: ssh root@slave-machine
+```
+cd ~
+ABBREV="xyz"
+HNAME="host.domain.de"
+#
+# copy or create ssh keys
+#
+OTHER="zyx"
+mkdir .docker/hosts/${ABBREV}
+cp -v .docker/hosts/$OTHER/id_rsa*     .docker/hosts/${ABBREV}/
+#
+# dc-host.yml
+#
+cat <<EOF > .docker/hosts/${ABBREV}/dc-host.yml
+version: "1"
+host:
+  state: active
+  driver: generic
+  ip: ${HNAME}
+  port: 2376
+  ssh:
+    port: 22
+    user: root
+    key: id_rsa
+EOF
+cat .docker/hosts/${ABBREV}/dc-host.yml
+#
+# create and test
+#
+dc -h ${ABBREV} create
+dc ls
+dc -h ${ABBREV} docker info
+dc -h ${ABBREV} ssh mkdir /Docker
+dc -h ${ABBREV} ssh chmod a+rwx /Docker
+```
+
+### create swarm node with rdc support
+```
+ABBREV="xyz"
+cd ~/Swarm
+/swarm.sh join   ${ABBREV}
+cd ~/Swarm/rdc
+./swarm.control  rm
+vi swarm.control
+./swarm.control  rm
+./swarm.control  test
+```
+
+### copy data between nodes
+```
+dc-rdc <source>
+rdc . sync /Docker rdc-<target>:/Docker real
 
 ```
-  dc-init help
-  ABBREV="slave1"
-  dc-init host ${ABBREV} host.domain.com 2376 22 root    # create a host configuration file for slave machine 
-  dc -h ${ABBREV} create                                 # call docker-machine create for this slave
-  dc -h ${ABBREV} ssh                                    # test ssh login for the slave
-  dc -h ${ABBREV} upgrade                                # install/upgrade docker engine on the slave
-  dc ls                                                  # list slave machines (docker-compose ls)
-```
-
-
-### Register a service
-
-
-### dc
-rm|up|login
-
-### dc-rdc
-
-### dc-manage
-
-
-### dc-swarm
-ls|rm|up|test
-
-### dc-yml
-
 
