@@ -62,11 +62,11 @@ dc -h ${ABBREV} ssh chmod a+rwx /Docker
 ```
 ABBREV="xyz"
 cd ~/Swarm
-/swarm.sh join   ${ABBREV}
+./swarm.sh join   ${ABBREV}
 cd ~/Swarm/rdc
 ./swarm.control  rm
 vi swarm.control
-./swarm.control  rm
+./swarm.control  up
 ./swarm.control  test
 ```
 ### copy data between nodes
