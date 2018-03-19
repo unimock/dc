@@ -10,6 +10,15 @@ if [ "$1" = "" ] ; then
   exit 0
 fi
 
+TFILE=/root/.config/hcloud/dc-token
+
+if [ ! -e ${TFILE} ] ; then
+  echo "error missing token file: <${TFILE}>"
+  exit 1
+fi
+export HCLOUD_TOKEN=$( cat ${TFILE} )
+
+
 CMD=$1
 shift
 if [ "$CMD" = "fip-target" ] ; then
