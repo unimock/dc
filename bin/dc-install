@@ -4,6 +4,7 @@ NGROK="2.2.8"
 MACHINE="0.14.0"
 COMPOSE="1.19.0"
 RESTIC="0.8.0"
+HCLOUD="1.3.1"
 
 
 if [ "$1" = "" ] ; then
@@ -113,6 +114,19 @@ if [ "$CMD" = "tools" ] ; then
     chmod a+x ngrok
   fi
 
+  VER=$( hcloud version | cut -d"v" -f2 )
+  if [ "$VER" != "$HCLOUD" ] ; then
+    VER=$HCLOUD
+    curl -L https://github.com/hetznercloud/cli/releases/download/v${VER}/hcloud-linux-amd64-v${VER}.tar.gz >  /tmp/hcloud-linux-amd64-v${VER}.tar.gz
+    tar -C /tmp -xzf /tmp/hcloud-linux-amd64-v${VER}.tar.gz
+    cp  /tmp/hcloud-linux-amd64-v${VER}/bin/hcloud /usr/local/bin
+    cp  /tmp/hcloud-linux-amd64-v${VER}/etc/hcloud.bash_completion.sh /etc
+    chmod a+x /usr/local/bin/hcloud
+    source <(hcloud completion bash)
+    if ! grep -q "(hcloud completion bash)" /root/.bashrc ; then echo 'source <(hcloud completion bash)' >> /root/.bashrc ; fi
+    rm -rf /tmp/hcloud-linux-amd64-v${VER}.tar.gz /tmp/hcloud-linux-amd64-v${VER}
+    echo "install hcloud $VER"
+  fi
   exit 0
 
 fi
