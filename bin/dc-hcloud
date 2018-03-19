@@ -1,0 +1,23 @@
+#!/bin/bash
+
+if [ "$1" = "" ] ; then
+  echo ""
+  echo " usage:    `basename $0` <command> <...>"
+  echo ""
+  echo " commands:"
+  echo "     fip-target <DNS> .... get target (node) of floating IP entry"
+  echo ""
+  exit 0
+fi
+
+CMD=$1
+shift
+if [ "$CMD" = "fip-target" ] ; then
+  float_ip=$1
+  sid=$( hcloud floating-ip list | grep "$float_ip" | awk '{ print $6 }')
+  echo "$( hcloud server list | grep "^${sid} " |  awk '{ print $2 }' )"
+  exit 0
+fi
+
+exit 0
+
