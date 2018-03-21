@@ -1,32 +1,161 @@
 #!/bin/bash
 
-if [ "$1" = "" ] ; then
+. /opt/dc/etc/config
+
+if [ "$2" = "" ] ; then
   echo ""
-  echo " usage:    `basename $0` <command> <...>"
+  echo "usage: `basename $0` token  get <server-name>"
+  echo "usage: `basename $0` server register|create|delete|info  <server-name> [...]"
   echo ""
-  echo " commands:"
-  echo "     fip-target <DNS> .... get target (node) of floating IP entry"
+  echo "             register ..... register machine"
+  echo "             create ....... create machine"
+  echo "             delete ....... delete machine"
+  echo "             info ......... show configuration"
   echo ""
   exit 0
 fi
 
-TFILE=/root/.config/hcloud/dc-token
-
-if [ ! -e ${TFILE} ] ; then
-  echo "error missing token file: <${TFILE}>"
-  exit 1
-fi
-export HCLOUD_TOKEN=$( cat ${TFILE} )
-
+TYPE=$1
+shift
 
 CMD=$1
 shift
-if [ "$CMD" = "fip-target" ] ; then
-  float_ip=$1
-  sid=$( hcloud floating-ip list | grep "$float_ip" | awk '{ print $6 }')
-  echo "$( hcloud server list | grep "^${sid} " |  awk '{ print $2 }' )"
+
+HNAME=$1
+if [ "$HNAME" = "" ] ; then
+  echo no hostname given
+  exit 1
+fi
+shift
+
+#####################################################################################################################
+if [ "$TYPE" = "token" ] ; then 
+  #########################################
+  if [ "$CMD" = "get" ] ; then
+    echo "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml host_hcloud_token  )"
+  fi
   exit 0
 fi
+#####################################################################################################################
+if [ "$TYPE" = "server" ] ; then 
+  #########################################
+  if [ "$CMD" = "register" ] ; then
+    if [ "$4" = "" ] ; then
+      echo ""
+      echo "missing parameter :"
+      echo ""
+      echo "  `basename $0` $TYPE $CMD  $HNAME  <server-type>  <server-location>  <server-image>  <project-token>"
+      echo "  `basename $0` $TYPE $CMD  $HNAME  cx11..cx51     nbg1|fsn1          ubuntu-16.04    ........"
+      echo ""
+      echo "  TOKEN="
+      echo "  `basename $0` $TYPE $CMD  $HNAME  cx11  nbg1  ubuntu-16.04 " '$TOKEN'
+      echo ""
+      exit 1
+    fi 
+    S_TYPE=$1
+    S_LOCATION=$2
+    S_IMAGE=$3
+    S_TOKEN=$4
+    echo ""
+    if [ ! -e ${MDE_DC_TEMPL_DIR}/ssh_keys/id_rsa ] ; then
+      echo "error: missing ssh-keys templates <${MDE_DC_TEMPL_DIR}/ssh_keys/id_rsa>"
+      exit 0
+    fi
+    if [ -e ${MDE_DC_HOST_DIR}/${HNAME} ] ; then
+      echo "machine configration <${MDE_DC_HOST_DIR}/${HNAME}> exists! Delete it? (y)"
+      read ans
+      if [ "$ans" != "y" ] ; then
+        exit 0
+      fi
+      rm -r ${MDE_DC_HOST_DIR}/${HNAME}
+    fi
+    mkdir -p ${MDE_DC_HOST_DIR}/${HNAME}
+    # copy ssh keys
+    cp -v ${MDE_DC_TEMPL_DIR}/ssh_keys/id_rsa*  ${MDE_DC_HOST_DIR}/${HNAME}/
+    # dc-host.yml
+    echo ""
+cat <<EOF > ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+version: "1"
+host:
+  state: active
+  driver: generic
+  ip: set_ip_after_creation
+  port: 2376
+  ssh:
+    port: 22
+    user: root
+    key: id_rsa
+  provider: hcloud   
+  hcloud:
+    type: $S_TYPE
+    location: $S_LOCATION
+    token: $S_TOKEN
+    image: $S_IMAGE
+EOF
+    cat ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+    echo ""
+    echo "config file <${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml> created."
+    echo ""
+    exit 0
+  fi
 
+  #########################################
+  if [ "$CMD" = "create" ] ; then
+      eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
+      #dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+      export HCLOUD_TOKEN=${host_hcloud_token}
+      hcloud ssh-key create --name dc-pub-key --public-key-from-file ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}.pub 2>/dev/null
+      hcloud ssh-key list
+      echo hcloud server  create --name $HNAME --type ${host_hcloud_type} --image ${host_hcloud_image} --ssh-key dc-pub-key --location ${host_hcloud_location}
+      hcloud server create --name $HNAME --type ${host_hcloud_type} --image ${host_hcloud_image} --ssh-key dc-pub-key --location ${host_hcloud_location}
+      hcloud server list
+      IP=$( hcloud -o noheader -o columns=name,ipv4 server list | grep ^$HNAME | awk '{ print $2 }')
+      ssh-keygen -R ${IP} >/dev/null 2>&1
+      ssh-keyscan -H ${IP} >> ~/.ssh/known_hosts
+      sed -i "s/ ip: .*/ ip: ${IP}/"  ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+      echo -n "Waiting for sshd " ; while ! netcat -vz $IP 22 >/dev/null 2>&1 ; do echo -n "." ; sleep 1 ; done
+      echo "Disable PasswordAuthentication in sshd_config ..."
+      ssh -o StrictHostKeyChecking=no -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP exit
+      ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "sed -i  's|#PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config" 
+      echo "Restart sshd ..."
+      ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "systemctl restart ssh"
+      echo "Unset root password ..."
+      ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "usermod -p ! root"
+      #if [ "$host_driver" = "hetzner" ] ; then
+      #  docker-machine create                                 \
+      #   --driver hetzner                                     \
+      #   --hetzner-api-token=${host_hcloud_token}            \
+      #   --hetzner-image=${host_hcloud_image}                \
+      #   --hetzner-server-location=${host_hcloud_location}   \
+      #   --hetzner-server-type=${host_hcloud_type}           \
+      #   --hetzner-existing-key-path=${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key} \
+      #   --hetzner-existing-key-id=19317 \
+      #  ${HNAME}
+      # IP=$( docker-machine ip $HNAME )
+      # ssh-keygen -R ${IP} >/dev/null 2>&1
+      # sed -i "s/ ip: .*/ ip: ${IP}/"  ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+      # echo "Disable PasswordAuthentication in sshd_config ..."
+      # docker-machine ssh $HNAME "sed -i  's|#PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config"
+      # echo "Restart sshd ..."
+      # docker-machine ssh $HNAME "systemctl restart ssh"
+      # echo "Unset root password ..."
+      # docker-machine ssh $HNAME "usermod -p ! root"
+      exit 0
+  fi
+  #########################################
+  if [ "$CMD" = "info" ] ; then
+    cat ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+    exit 0
+  fi
+  #########################################
+  if [ "$CMD" = "delete" ] ; then
+    #docker-machine rm $HNAME
+    eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
+    export HCLOUD_TOKEN=${host_hcloud_token}
+    hcloud server delete $HNAME
+    exit 0
+  fi
+fi
+
+#####################################################################################################################
 exit 0
-
