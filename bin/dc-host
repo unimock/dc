@@ -11,13 +11,36 @@ _ask()
   return
 }
 
+
+HOST=$1
+CMD=$2
+
 if [ "$2" = "" ] ; then
-  echo " usage: `basename $0` <host> upgrade|update|check|rm|up|ps|stop|start|reboot"
+  echo " usage: `basename $0` <host> upgrade|update|nrc|reboot|check|rm|up|ps|stop|start"
+  if [ "$HOST" = "" ] ; then HOST="<host>" ; fi
+  echo ""
+  echo " host commands:"
+  echo ""
+  echo "    `basename $0` $HOST upgrade ...... do dist-upgrade"
+  echo "    `basename $0` $HOST update ....... update docker-ce"
+  echo "    `basename $0` $HOST nrc .......... number of running containers"
+  echo "    `basename $0` $HOST reboot ....... reboot host"
+  echo ""
+  echo " service commands"
+  echo ""
+  echo "    `basename $0` $HOST check ........ check services on $HOST"
+  echo "    `basename $0` $HOST stop|start ... start or stop all services on $HOST"
+  echo "    `basename $0` $HOST rm|up ........ start or stop all services on $HOST"
+  echo "    `basename $0` $HOST ps ........... show services on $HOST"
+  echo ""
   exit 0
 fi
 
-CMD=$2
-HOST=$1
+
+if [ "$CMD" = "nrc" ] ; then
+  dc -h $HOST ssh docker ps -q | wc -l 
+  exit 0
+fi
 
 if [ "$CMD" = "update" ] ; then
   BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
@@ -26,6 +49,7 @@ if [ "$CMD" = "update" ] ; then
   echo "#"
   dc -h $HOST ssh apt-get update
   dc -h $HOST ssh apt-get -y install docker-ce
+  sleep 3
   NCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
   echo "#"
   echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
@@ -57,17 +81,6 @@ if [ "$CMD" = "upgrade" ] ; then
   exit 0
 fi
 if [ "$CMD" = "check" ] ; then
-    #while true ; do
-    #  sleep 1
-    #  netcat -vz $HOST 22 >/dev/null 2>&1
-    #  ret=$?
-    #  echo "waiting until $HOST is up (ret=$ret)"
-    #  if [ "$ret" = "0" ] ; then
-    #    echo "$HOST is up!"
-    #    sleep 2
-    #    break
-    #  fi
-    #done
   BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
   echo "#"
   echo "# Active containers on <$HOST> = $BCOUNT"
@@ -82,8 +95,6 @@ if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD
   done
   exit 0
 fi
-
-
 if [ "$CMD" = "reboot"   ] ; then
   dc -h $HOST ssh "reboot ; exit"
   exit 0
