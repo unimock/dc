@@ -1,0 +1,147 @@
+#!/bin/bash
+
+. /opt/dc/etc/config
+
+kcloud()
+{
+  hserver=${1}
+  shift
+  ssh root@${hserver} "kc-kcloud $*"
+  return $?
+}
+
+if [ "$2" = "" ] ; then
+  echo ""
+  echo "usage: `basename $0` server register|create|delete|info|list  <server-name> [...]"
+  echo ""
+  echo "             register ..... register machine"
+  echo "             create ....... create machine"
+  echo "             delete ....... delete machine"
+  echo "             info ......... show configuration"
+  echo "             list ......... list machines"
+  echo ""
+  exit 0
+fi
+
+TYPE=$1 ; shift
+CMD=$1  ; shift
+
+HNAME=$1 
+if [ "$HNAME" = "" -a "$CMD" ] ; then
+  echo no server name given
+  exit 1
+fi
+shift
+#####################################################################################################################
+if [ "$TYPE" = "server" ] ; then
+  #########################################
+  if [ "$CMD" = "list" ] ; then
+    eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
+    kcloud ${host_kcloud_location} "server list"
+    exit 0
+  fi
+  #########################################
+  if [ "$CMD" = "register" ] ; then
+    if [ "$6" = "" ] ; then
+      echo ""
+      echo "  `basename $0` $TYPE $CMD $HNAME  <location>  <server-image>  <hdd>  <vcpu>  <ram>  <swap>"
+      echo "  `basename $0` $TYPE $CMD $HNAME     kvm       kcloud-ubuntu-16.04    8G       2     2G     2G   "
+      echo ""
+      exit 0
+    fi
+    S_LOCATION=$1 ; shift
+    S_IMAGE=$1    ; shift
+    S_HDD=$1      ; shift
+    S_VCPU=$1     ; shift
+    S_RAM=$1      ; shift
+    S_SWAP=$1     ; shift
+    echo ""
+    if [ ! -e ${MDE_DC_TEMPL_DIR}/ssh_keys/id_rsa ] ; then
+      echo "error: missing ssh-keys templates <${MDE_DC_TEMPL_DIR}/ssh_keys/id_rsa>"
+      exit 0
+    fi
+    if [ -e ${MDE_DC_HOST_DIR}/${HNAME} ] ; then
+      echo "machine configration <${MDE_DC_HOST_DIR}/${HNAME}> exists! Delete it? (y)"
+      read ans
+      if [ "$ans" != "y" ] ; then
+        exit 0
+      fi
+      rm -r ${MDE_DC_HOST_DIR}/${HNAME}
+    fi
+    mkdir -p ${MDE_DC_HOST_DIR}/${HNAME}
+    # copy ssh keys
+    cp -v ${MDE_DC_TEMPL_DIR}/ssh_keys/id_rsa*  ${MDE_DC_HOST_DIR}/${HNAME}/
+    # dc-host.yml
+    echo ""
+cat <<EOF > ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+version: "1"
+host:
+  state: active
+  driver: generic
+  ip: ${HNAME}
+  port: 2376
+  ssh:
+    port: 22
+    user: root
+    key: id_rsa
+  provider: kcloud
+  kcloud:
+    location: $S_LOCATION
+    image: $S_IMAGE
+    hdd: $S_HDD
+    vcpu: $S_VCPU
+    ram: $S_RAM
+    swap: $S_SWAP
+    auth_keys: ${MDE_DC_HOST_DIR}/${HNAME}/id_rsa.pub
+EOF
+    cat ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+    echo ""
+    echo "config file <${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml> created."
+    echo ""
+    exit 0
+  fi
+
+  #########################################
+  if [ "$CMD" = "create" ] ; then
+      eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
+      dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+
+      #kc-cloud ssh-key create --name dc-pub-key --public-key-from-file ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}.pub 2>/dev/null
+      #kc-cloud ssh-key list
+      TF=$( tempfile)
+      cp -v ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}.pub $TF
+      scp $TF root@${host_kcloud_location}:/tmp
+
+      kcloud ${host_kcloud_location} "server create --name $HNAME --image ${host_kcloud_image} --hdd ${host_kcloud_hdd} --vcpu ${host_kcloud_vcpu} --ram ${host_kcloud_ram} --swap ${host_kcloud_swap} --auth_keys $TF"
+      kcloud ${host_kcloud_location} "server list"
+
+      IP=${host_ip}
+      ssh-keygen -R ${IP} >/dev/null 2>&1
+      echo -n "Waiting for sshd " ; while ! netcat -vz $IP 22 >/dev/null 2>&1 ; do echo -n "." ; sleep 1 ; done
+      echo "Disable PasswordAuthentication in sshd_config ..."
+      ssh -o StrictHostKeyChecking=no -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP exit
+      ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "sed -i  's|#PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config" 
+      echo "Restart sshd ..."
+      ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "systemctl restart ssh"
+      echo "Unset root password ..."
+      ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "usermod -p ! root"
+      echo "Login to ${HNAME} with:"
+      echo "   ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP"
+      echo "Remeber to set the root passwrd!"
+      exit 0
+  fi
+  #########################################
+  if [ "$CMD" = "info" ] ; then
+    cat ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
+    exit 0
+  fi
+  #########################################
+  if [ "$CMD" = "delete" ] ; then
+    eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
+    kcloud ${host_kcloud_location} "server delete $HNAME"
+    exit 0
+  fi
+fi
+
+#####################################################################################################################
+exit 0
