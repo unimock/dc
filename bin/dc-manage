@@ -72,6 +72,7 @@ CMD="$1"
 if [ "$CMD" = "" ] ; then _help ; fi
 
 if [ "$CMD" = "backup" ] ; then
+  # hier hcloud abfragen
   SOURCE=$2
   TARGET=$3
   MASK=$4
@@ -113,6 +114,7 @@ for yml in $yml_list ; do
      continue
   fi
   SERVICE=$(dc-yml -c $yml service_name)
+  # hier hcloud abfragen
   S_HOST=$( dc-yml -c $yml service_hosts[0])
   T_HOST=$( dc-yml -c $yml service_hosts[1])
   S_STATE=$(dc-yml -c $yml service_state[0])   # state of source service: active|standby
