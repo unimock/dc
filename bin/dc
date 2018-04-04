@@ -188,7 +188,11 @@ case "$CMD" in
     esac  
     exit 0
     ;;
-  push|pull)
+  pull)
+    docker-compose pull
+    exit 0
+    ;;
+  push)
     echo " !!!<pull|push> is deprecated!!! Use <data pull|push> insted."
     exit 1
     ;;
