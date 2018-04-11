@@ -3,16 +3,18 @@
 
 error_detect=0
 with_images=0
+SIDX="0" ; TIDX="1"
+SHST=""  ; THST=""
 
 _help()
 {
   echo ""
-  echo " usage: `basename $0` [--images] [ -c <yml-file>] <command>"
+  echo " usage: `basename $0` [--images] [-c <yml-file>] [-i <source>:<target>] [-h <source>:<target>] <command>"
   echo ""
   echo "    commands:"
   echo ""
   echo "       sync .................. copy data and restart service"
-  echo "       sync_group <group> .... copy data and restart services"
+  echo "       sync_group <group> .... copy data and restart services []"
   echo "       copy .................. only copy data (persistent/service)"
   echo "       image_update .......... update an image (tbd)"
   echo "       backup <source> <target> <mask> ... swarm backup"
@@ -60,9 +62,11 @@ YML="./dc-service.yml"
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -c) YML="$2" ;                  shift 2 ;;
-    --images) with_images=1;        shift 1 ;;
-    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+    -c)  YML="$2" ;                   shift 2 ;;
+    -i) SIDX=${2%:*} ; TIDX=${2#*:} ; shift 2 ;;
+    -h) SHST=${2%:*} ; THST=${2#*:} ; shift 2 ;;
+    --images) with_images=1;          shift 1 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ;   shift 1 ;;
   esac
 done
 eval set -- $CURROPT
@@ -72,7 +76,6 @@ CMD="$1"
 if [ "$CMD" = "" ] ; then _help ; fi
 
 if [ "$CMD" = "backup" ] ; then
-  # hier hcloud abfragen
   SOURCE=$2
   TARGET=$3
   MASK=$4
@@ -114,15 +117,29 @@ for yml in $yml_list ; do
      continue
   fi
   SERVICE=$(dc-yml -c $yml service_name)
-  # hier hcloud abfragen
-  S_HOST=$( dc-yml -c $yml service_hosts[0])
-  T_HOST=$( dc-yml -c $yml service_hosts[1])
-  S_STATE=$(dc-yml -c $yml service_state[0])   # state of source service: active|standby
-  T_STATE=$(dc-yml -c $yml service_state[1])   # state of target service: active|standby
 
+  if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
+    unset service_hosts
+    unset service_state
+    eval $( dc-yml -c $yml )
+    for i in "${!service_hosts[@]}"; do
+      #echo i=$i
+      if [[ "${service_hosts[$i]}" = "${SHST}" ]]; then SIDX="$i" ; fi
+      if [[ "${service_hosts[$i]}" = "${THST}" ]]; then TIDX="$i" ; fi
+    done
+    #echo "SIDX=$SIDX TIDX=$TIDX"
+  fi
 
+  S_HOST=$( dc-yml -c $yml service_hosts[${SIDX}])
+  T_HOST=$( dc-yml -c $yml service_hosts[${TIDX}])
+
+  S_STATE=$(dc-yml -c $yml service_state[0])   # state of primary service: active|standby
+  T_STATE=$(dc-yml -c $yml service_state[1])   # state of secondary service: active|standby
+
+  #echo "S_HOST=$S_HOST ($S_STATE)"
+  #echo "T_HOST=$T_HOST ($T_STATE)"
   if [ "$T_HOST" = "" ] ; then
-    echo "error: second host missing in <$yml>"
+    echo "error: target host (second) in <$yml> missing."
     exit 1
   fi
 
@@ -141,7 +158,7 @@ for yml in $yml_list ; do
       echo " $SERVICE not active. Skipping!"
       continue ;
     fi
-# check images
+    # check images
     image_mismatch=0
     images=$( dc -c $yml -h $S_HOST compose ps -q  )
     for C in $images ; do
@@ -149,7 +166,6 @@ for yml in $yml_list ; do
       [[ $N != *:* ]] && N=$N:latest
       S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
       T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
-#echo "C=$C  N=$N S_ID=$S_ID T_ID=$T_ID"
       if [ "$S_ID" != "$T_ID" ] ; then
         image_mismatch=1
         echo "detect image mismatch for service: <$SERVICE> !!!!!"
@@ -200,7 +216,7 @@ for yml in $yml_list ; do
         fi
       done
       if [ "$T_STATE" = "active" ] ; then
-        dc_command $yml up      $SERVICE $T_HOST
+        dc_command $yml up     $SERVICE $T_HOST
       else
         echo "#ERROR: Service: <$SERVICE> is not acitivated on <$T_HOST>."
         echo "#       Please create the containers manually with:"
