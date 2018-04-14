@@ -8,7 +8,10 @@ RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
 HCLOUD="1.3.2"
-HMACHINE="1.0.0"
+#HMACHINE="1.0.0"
+
+#
+DDDVB="0.9.33"
 
 if [ "$1" = "" ] ; then
   echo ""
@@ -18,6 +21,7 @@ if [ "$1" = "" ] ; then
   echo "       tools ...... install additional tools. (pv, tree, ...)"
   echo "       hcloud ..... hcloud, docker-machine-driver-hetzner"
   echo "       docker ..... install docker-ce"
+  echo "       dddvb ...... install dddvb (only for vdr server)"
   echo ""
 fi
 CMD="$1"
@@ -52,6 +56,7 @@ if [ "$CMD" = "init" ] ; then
   
   exit 0
 fi
+####################################################################################
 
 if [ "$CMD" = "docker" ] ; then
   REL=$(lsb_release -cs)
@@ -67,6 +72,35 @@ if [ "$CMD" = "docker" ] ; then
   exit 0
 fi
 
+####################################################################################
+if [ "$CMD" = "dddvb" ] ; then
+  modinfo ddbridge | head -n6
+  . /etc/profile
+  apt-get install -y dvb-apps mercurial build-essential libproc-processtable-perl linux-headers-`uname -r`
+  ### Digital Devices kernel module
+  # http://support.digital-devices.eu/knowledgebase.php?article=152
+  REL="${DDDVB}"
+  cd /usr/src
+  if [ ! -f ${REL}.tar.gz ] ; then
+    echo wget https://github.com/DigitalDevices/dddvb/archive/${REL}.tar.gz
+    wget https://github.com/DigitalDevices/dddvb/archive/${REL}.tar.gz
+  fi
+  if [ -d dddvb-${REL} ] ; then
+    rm -rf dddvb-${REL}
+  fi
+  tar -xvf ${REL}.tar.gz
+  cd dddvb-${REL}
+  make
+  make install
+  mkdir -p /etc/depmod.d
+  echo 'search extra updates built-in' | sudo tee /etc/depmod.d/extra.conf
+  depmod -a
+  modprobe ddbridge
+  modinfo ddbridge | head -n6
+  chgrp -Rvf video /dev/dvb/adapter*/*
+  exit 0
+fi
+####################################################################################
 if [ "$CMD" = "hcloud" ] ; then
   . /etc/profile
 
@@ -91,11 +125,6 @@ if [ "$CMD" = "hcloud" ] ; then
   #  mv /usr/local/bin/docker-machine-driver-hetzner /usr/local/bin/docker-machine-driver-hetzner-${HMACHINE}
   #  ( cd /usr/local/bin ; ln -sf docker-machine-driver-hetzner-${HMACHINE} docker-machine-driver-hetzner )
   #fi
-  exit 0
-
-
-
-
   exit 0
 fi
 
