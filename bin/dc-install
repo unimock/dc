@@ -7,11 +7,11 @@ COMPOSE="1.22.0"
 RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
-HCLOUD="1.5.0"
+HCLOUD="1.8.0"
 HMACHINE="1.0.0"
 
 #
-DDDVB="0.9.35"
+DDDVB="0.9.36"
 
 if [ "$1" = "" ] ; then
   echo ""
