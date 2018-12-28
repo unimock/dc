@@ -262,6 +262,11 @@ case "$CMD" in
                 docker-compose exec  ${service_name} $cmd
               fi
               ;;
+  cmd)      shift
+            docker-compose exec -T  ${service_name} $*
+            ret=$?
+            exit $ret
+            ;;
   config|migrate|track)
               FI=$1
               shift
