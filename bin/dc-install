@@ -2,8 +2,8 @@
 
 # tools
 NGROK="2.2.8"
-MACHINE="0.14.0"
-COMPOSE="1.22.0"
+MACHINE="0.16.0"
+COMPOSE="1.23.2"
 RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
