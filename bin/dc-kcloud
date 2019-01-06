@@ -19,7 +19,11 @@ if [ "$2" = "" ] ; then
   echo "             delete ....... delete machine"
   echo "             info ......... show configuration"
   echo "             list ......... list machines"
+  echo "example:"
   echo ""
+  echo "  dc-kcloud server register monitor kvm kcloud-ubuntu-16.04 20G 2 4G 4G"
+  echo "  dc-kcloud server info     monitor"
+  echo "  dc-kcloud server create   monitor"
   exit 0
 fi
 
