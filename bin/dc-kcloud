@@ -131,7 +131,7 @@ EOF
       ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP "usermod -p ! root"
       echo "Login to ${HNAME} with:"
       echo "   ssh -i ${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}  root@$IP"
-      echo "Remeber to set the root passwrd!"
+      echo "Remember to set the root passwrd!"
       exit 0
   fi
   #########################################
