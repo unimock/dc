@@ -19,11 +19,21 @@ if [ "$2" = "" ] ; then
   echo "             delete ....... delete machine"
   echo "             info ......... show configuration"
   echo "             list ......... list machines"
-  echo "example:"
   echo ""
-  echo "  dc-kcloud server register monitor kvm kcloud-ubuntu-16.04 20G 2 4G 4G"
-  echo "  dc-kcloud server info     monitor"
-  echo "  dc-kcloud server create   monitor"
+  echo "example:"
+  echo ''
+  echo '  ABBREV=sys-abbrev'
+  echo ''
+  echo '  dc-kcloud server register ${ABBREV} kvm kcloud-ubuntu-16.04 20G 2 4G 4G'
+  echo '  dc-kcloud server info     ${ABBREV}'
+  echo '  dc-kcloud server create   ${ABBREV}'
+  echo '  # configure network within the new system'
+  echo '  # do dist-upgrade, release-upgrade'
+  echo '  dc -h ${ABBREV} create'
+  echo '  dc -h ${ABBREV} docker info'
+  echo '  dc -h ${ABBREV} ssh mkdir /Docker'
+  echo '  dc -h ${ABBREV} ssh chmod a+rwx /Docker'
+  echo ""
   exit 0
 fi
 
