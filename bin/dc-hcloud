@@ -109,7 +109,8 @@ EOF
       echo hcloud server  create --name $HNAME --type ${host_hcloud_type} --image ${host_hcloud_image} --ssh-key dc-pub-key --location ${host_hcloud_location}
       hcloud server create --name $HNAME --type ${host_hcloud_type} --image ${host_hcloud_image} --ssh-key dc-pub-key --location ${host_hcloud_location}
       hcloud server list
-      IP=$( hcloud -o noheader -o columns=name,ipv4 server list | grep ^$HNAME | awk '{ print $2 }')
+      #IP=$( hcloud -o noheader -o columns=name,ipv4 server list | grep ^$HNAME | awk '{ print $2 }')
+      IP=$( hcloud server  list | grep " $HNAME " | awk '{ print  $4 } '  )
       ssh-keygen -R ${IP} >/dev/null 2>&1
       ssh-keyscan -H ${IP} >> ~/.ssh/known_hosts
       sed -i "s/ ip: .*/ ip: ${IP}/"  ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml
