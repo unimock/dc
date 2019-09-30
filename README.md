@@ -21,8 +21,8 @@ git clone https://github.com/unimock/dc.git /opt/dc
 ```
 
 ## Usage
-
-### Create a slave machine and install docker-engine on it
+### Slave machines
+#### Create a slave machine and install docker-engine on it
 ```
 ABBREV="xyz"
 HNAME="host.domain.de"
@@ -49,15 +49,29 @@ host:
     key: id_rsa
 EOF
 cat ~/.docker/hosts/${ABBREV}/dc-host.yml
-#
-# create and test
-#
+```
+
+#### create a hetzner cloud slave machine
+
+```
+ABBREV=
+dc-hcloud server register ${ABBREV} # check output for parameters
+dc-hcloud server register ${ABBREV} ....
+dc-hcloud server create   ${ABBREV}
+cat ~/.docker/hosts/${ABBREV}/dc-host.yml
+```
+#### create a kvm slave (check kc reprot)
+
+### register slave machine in docker-machine
+
+```
 dc -h ${ABBREV} create
 dc ls
 dc -h ${ABBREV} docker info
 dc -h ${ABBREV} ssh mkdir /Docker
 dc -h ${ABBREV} ssh chmod a+rwx /Docker
 ```
+
 ### join slave machine to swarm with rdc support
 ```
 ABBREV="xyz"
