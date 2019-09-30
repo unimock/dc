@@ -8,15 +8,16 @@ from a central host and directory (master).
 It only works as a wrapper for the docker-machine, docker and docker-compose commands for convenient usage.
 
 ## Requirements for master and slaves
- * ubuntu-server-16.04
+ * ubuntu-server-16.04, ubuntu-server-18.04
  * openssh-server (pubkey mode)
 
 ## Installation (master)
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
 /opt/dc/bin/dc-install init    # initialize dc environment
-/opt/dc/bin/dc-install docker  # install docker-de (edge)
+#/opt/dc/bin/dc-install docker  # install docker-de (edge)
 /opt/dc/bin/dc-install tools   # istall additional tools (pv, tree, compose, machine, ..)
+/opt/dc/bin/dc-install hcloud
 . /etc/profile
 ```
 
