@@ -60,7 +60,7 @@ dc-hcloud server register ${ABBREV} ....
 dc-hcloud server create   ${ABBREV}
 cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 ```
-#### create a kvm slave (check kc reprot)
+#### create a kvm slave (check kc repro)
 
 ### register slave machine in docker-machine
 
@@ -68,8 +68,8 @@ cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 dc -h ${ABBREV} create
 dc ls
 dc -h ${ABBREV} docker info
-dc -h ${ABBREV} ssh mkdir /Docker
-dc -h ${ABBREV} ssh chmod a+rwx /Docker
+dc -h ${ABBREV} ssh mkdir /Docker/Backup  /Docker/Cache  /Docker/Data  /Docker/Logs  /Docker/Services
+dc -h ${ABBREV} ssh chmod -R a+rwx /Docker
 ```
 
 ### join slave machine to swarm with rdc support
