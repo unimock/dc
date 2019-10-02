@@ -96,8 +96,9 @@ if [ "$CMD" = "services" ] ; then
         result+=("$name")
       fi
     fi
-  done 
-  echo ${result[*]} | sort
+  done
+  printf '%s\n' "${result[@]}" 
+  #echo ${result[*]} | sort
 fi
 
 exit 0
