@@ -20,9 +20,21 @@ if [ "$CMD" = "" ] ; then
   echo "       -y ..........................print yml-config-file instaed of name"
   echo "    commands:"
   echo ""
+  echo "       active_hosts ..................... list all hosts, which are configured as active in ndc-host.yml"
   echo "       used_hosts ....................... list all hosts, which are used in services"
   echo "       services [-h <on_host>] .......... list services defined for host <on_host> or all services"
   echo "       services [-g <service-group>] .... list services from group"
+  exit 0
+fi
+
+if [ "$CMD" = "active_hosts" ] ; then
+  list=`find  $MDE_DC_HOST_DIR -type f -name dc-host.yml`
+  for i in $list ; do
+    state=$( dc-yml  -c $i host_state )	  
+    if [ "$state" = "active" ] ; then
+      echo `basename ${i%/dc-host.yml}`
+    fi	    
+  done	  
   exit 0
 fi
 

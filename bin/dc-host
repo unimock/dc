@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. /opt/dc/etc/config
+
 _ask()
 {
   text="$1"
@@ -12,95 +14,136 @@ _ask()
 }
 
 
-HOST=$1
+H=$1
 CMD=$2
+shift ; shift
 
-if [ "$2" = "" ] ; then
-  echo " usage: `basename $0` <host> upgrade|update|nrc|reboot|check|list|rm|up|ps|stop|start"
-  if [ "$HOST" = "" ] ; then HOST="<host>" ; fi
+if [ "$CMD" = "" ] ; then
+  echo " usage: `basename $0` --all|<host>  <command>  # rund coammds on one or all hosts"
+  if [ "$H" = "" ] ; then H="--all|<host>" ; fi
   echo ""
   echo " host commands:"
   echo ""
-  echo "    `basename $0` $HOST upgrade ...... do dist-upgrade"
-  echo "    `basename $0` $HOST update ....... update docker-ce"
-  echo "    `basename $0` $HOST nrc .......... number of running containers"
-  echo "    `basename $0` $HOST reboot ....... reboot host"
+  echo "    `basename $0` $H upgrade             # do dist-upgrade"
+  echo "    `basename $0` $H update              # update docker-ce"
+  echo "    `basename $0` $H nrc                 # number of running containers"
+  echo "    `basename $0` $H reboot              # reboot host"
+  echo "    `basename $0` $H large_files <size>  # find lage files, size=xG"
+  echo "    `basename $0` $H dir_entries <count> # find directories with more then count entries"
+  echo "    `basename $0` $H cmd .....           # run commands on $H"
   echo ""
   echo " service commands"
   echo ""
-  echo "    `basename $0` $HOST list ......... list services on $HOST"
-  echo "    `basename $0` $HOST check ........ check services on $HOST"
-  echo "    `basename $0` $HOST stop|start ... start or stop all services on $HOST"
-  echo "    `basename $0` $HOST rm|up ........ start or stop all services on $HOST"
-  echo "    `basename $0` $HOST ps ........... show services on $HOST"
+  echo "    `basename $0` $H list                # list services on $H"
+  echo "    `basename $0` $H check               # check services on $H"
+  echo "    `basename $0` $H stop|start          # start or stop all services on $H"
+  echo "    `basename $0` $H rm|up               # start or stop all services on $H"
+  echo "    `basename $0` $H ps                  # show services on $H"
   echo ""
   exit 0
 fi
 
-
-if [ "$CMD" = "nrc" ] ; then
-  dc -h $HOST ssh docker ps -q | wc -l 
-  exit 0
+if [ "$H" = "--all" ] ; then
+	hlist=$( dc-list active_hosts )
+else
+  hlist="$H"
 fi
 
-if [ "$CMD" = "update" ] ; then
-  BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
-  echo "#"
-  echo "# Active containers on <$HOST> = $BCOUNT"
-  echo "#"
-  dc -h $HOST ssh apt-get update
-  dc -h $HOST ssh apt-get -y install docker-ce
-  sleep 3
-  NCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
-  echo "#"
-  echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
-  echo "#"
-  exit 0
-fi
+for HOST in $hlist ; do
+  if [ "$CMD" = "cmd" ] ; then
+    if [ "$H" = "--all" ] ; then
+      echo "#"	  
+      echo "# dssh ${HOST} $*"
+      echo "#"
+    fi  
+    dssh ${HOST} $*
+  fi    
+  if [ "$CMD" = "large_files" -o   "$CMD" = "dir_entries"  ] ; then
+    if [ "$CMD" = "large_files" ] ; then
+    FI=/tmp/.dc-remote-cmd.lf
+cat <<EOF > $FI
+find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null | awk '{ print "${HOST} " \$5 " " \$9 }'
+EOF
+    else
+    FI=/tmp/.dc-remote-cmd.de
+cat <<EOF > $FI
+find /Docker -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '\$NF>=${1}'
+EOF
+    fi
 
-if [ "$CMD" = "upgrade" ] ; then
-  BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
-  echo "#"
-  echo "# Active containers on <$HOST> = $BCOUNT"
-  echo "#"
-  dc-check hosts $HOST
-  _ask "Start autoremove?"
-  dc -h $HOST ssh apt-get -y autoremove
-  _ask "Start apt-get update?"
-  dc -h $HOST ssh apt-get update
-  _ask "Start dist-uprade?"
-  dc -h $HOST ssh apt-get -y dist-upgrade
-  _ask "Check, if all containers are started!"
-  NCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
-  echo "#"
-  echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
-  echo "#"
-  _ask "Show running containers!"
-  dc-check hosts $HOST
-  _ask "reboot?"
-  dc -h $HOST ssh init 6
-  exit 0
-fi
-if [ "$CMD" = "check" ] ; then
-  BCOUNT=$( dc -h $HOST ssh docker ps -q | wc -l )
-  echo "#"
-  echo "# Active containers on <$HOST> = $BCOUNT"
-  echo "#"
-  dc-check hosts $HOST
-  exit 0
-fi
-if [ "$CMD" = "list" ] ; then
-  dc-list -y services -h $HOST
-  exit 0
-fi
-if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
-  list=$( dc-list -y services -h $HOST )
-  for i in $list ; do
-    dc -h $HOST -c $i $CMD
-  done
-  exit 0
-fi
-if [ "$CMD" = "reboot"   ] ; then
-  dc -h $HOST ssh "reboot ; exit"
-  exit 0
-fi
+
+    eval $(dc-yml -c $MDE_DC_HOST_DIR/$HOST/dc-host.yml)
+    scp -q -i $MDE_DC_HOST_DIR/$HOST/$host_ssh_key $FI $host_ssh_user@$host_ip:$FI
+    ssh -i $MDE_DC_HOST_DIR/$HOST/$host_ssh_key $host_ssh_user@$host_ip bash $FI
+    ssh -i $MDE_DC_HOST_DIR/$HOST/$host_ssh_key $host_ssh_user@$host_ip rm   $FI
+    rm -f $FI
+
+    #dssh ${HOST} "find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
+  fi
+
+  if [ "$CMD" = "nrc" ] ; then
+    dssh $HOST docker ps -q | wc -l 
+  fi
+
+  if [ "$CMD" = "update" ] ; then
+    BCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    echo "#"
+    echo "# Active containers on <$HOST> = $BCOUNT"
+    echo "#"
+    dssh $HOST apt-get update
+    dssh $HOST apt-get -y install docker-ce
+    sleep 3
+    NCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    echo "#"
+    echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
+    echo "#"
+  fi
+
+  if [ "$CMD" = "upgrade" ] ; then
+    BCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    echo "#"
+    echo "# Active containers on <$HOST> = $BCOUNT"
+    echo "#"
+    dc-check hosts $HOST
+    _ask "Start autoremove?"
+    dssh $HOST apt-get -y autoremove
+    _ask "Start apt-get update?"
+    dssh $HOST apt-get update
+    _ask "Start dist-uprade?"
+    dssh $HOST apt-get -y dist-upgrade
+    _ask "Check, if all containers are started!"
+    NCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    echo "#"
+    echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
+    echo "#"
+    _ask "Show running containers!"
+    dc-check hosts $HOST
+    _ask "reboot?"
+    dssh $HOST init 6
+  fi
+
+  if [ "$CMD" = "check" ] ; then
+    BCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    echo "#"
+    echo "# Active containers on <$HOST> = $BCOUNT"
+    echo "#"
+    dc-check hosts $HOST
+  fi
+
+  if [ "$CMD" = "list" ] ; then
+    dc-list -y services -h $HOST
+  fi
+
+  if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
+    list=$( dc-list -y services -h $HOST )
+    for i in $list ; do
+      dc -h $HOST -c $i $CMD
+    done
+  fi
+
+  if [ "$CMD" = "reboot"   ] ; then
+    dssh $HOST "reboot ; exit"
+  fi
+
+done
+exit 0
