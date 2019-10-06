@@ -3,7 +3,7 @@
 # tools
 NGROK="2.2.8"
 MACHINE="0.16.2"
-COMPOSE="1.23.2"
+COMPOSE="1.24.1"
 RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
@@ -13,13 +13,15 @@ HMACHINE="1.0.0"
 #
 DDDVB="0.9.36"
 
+APT_LIST="pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent"
+
 if [ "$1" = "" ] ; then
   echo ""
   echo " usage `basename $0` <command>"
   echo "     commands:"
   echo "       init ....... initialize dc environment"
-  echo "       tools ...... install additional tools. (pv, tree, ...)"
-  echo "       hcloud ..... hcloud, docker-machine-driver-hetzner"
+  echo "       tools ...... install additional tools. (pv, tree, dialog, docker-machine, docker-compose, ...)"
+  echo "       hcloud ..... hcloud"
   echo "       docker ..... install docker-ce"
   echo "       dddvb ...... install dddvb (only for vdr server)"
   echo ""
@@ -117,14 +119,6 @@ if [ "$CMD" = "hcloud" ] ; then
     rm -rf /tmp/hcloud-linux-amd64-v${VER}.tar.gz /tmp/hcloud-linux-amd64-v${VER}
     echo "install hcloud $VER"
   fi
-
-  #if [ ! -e /usr/local/bin/docker-machine-driver-hetzner-${HMACHINE} ] ; then
-  #  rm -f /usr/local/bin/docker-machine-driver-hetzner
-  #  curl -L https://github.com/JonasProgrammer/docker-machine-driver-hetzner/releases/download/${HMACHINE}/docker-machine-driver-hetzner_${HMACHINE}_linux_amd64.tar.gz | tar -C /usr/local/bin -xzv
-  #  chmod a+x /usr/local/bin/docker-machine-driver-hetzner
-  #  mv /usr/local/bin/docker-machine-driver-hetzner /usr/local/bin/docker-machine-driver-hetzner-${HMACHINE}
-  #  ( cd /usr/local/bin ; ln -sf docker-machine-driver-hetzner-${HMACHINE} docker-machine-driver-hetzner )
-  #fi
   exit 0
 fi
 
@@ -138,13 +132,7 @@ if [ "$CMD" = "tools" ] ; then
 
   if ! grep -q "export MDE_DC_TEMPL_DIR" /opt/dc/etc/config ; then echo "export MDE_DC_TEMPL_DIR=/root/.docker/templates" >> /opt/dc/etc/config  ; fi
 
-
-  alist="pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl"
-  if [ "$(systemd-detect-virt)" = "kvm" ] ; then
-    alist="$alist qemu-guest-agent"
-  fi
-
-  for i in $alist ; do
+  for i in $APT_LIST ; do
     if [ "$( which $i )" = "" ] ; then
       apt-get update
       apt-get install -y $alist
