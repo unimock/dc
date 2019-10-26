@@ -36,6 +36,7 @@ if [ "$CMD" = "" ] ; then
   echo ""
   echo "    `basename $0` $H list                # list services on $H"
   echo "    `basename $0` $H check               # check services on $H"
+  echo "    `basename $0` $H check details       # check services on $H and show details"
   echo "    `basename $0` $H stop|start          # start or stop all services on $H"
   echo "    `basename $0` $H rm|up               # start or stop all services on $H"
   echo "    `basename $0` $H ps                  # show services on $H"
@@ -62,12 +63,12 @@ for HOST in $hlist ; do
     if [ "$CMD" = "large_files" ] ; then
     FI=/tmp/.dc-remote-cmd.lf
 cat <<EOF > $FI
-find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null | awk '{ print "${HOST} " \$5 " " \$9 }'
+find /Docker /var /xxx /tmp /home /mnt/backup-volume -type f -size +${1} -exec ls -lh {} + 2>/dev/null | awk '{ print "${HOST} " \$5 " " \$9 }'
 EOF
     else
     FI=/tmp/.dc-remote-cmd.de
 cat <<EOF > $FI
-find /Docker -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '\$NF>=${1}'
+find /Docker /mnt/backup-volume -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '\$NF>=${1}'
 EOF
     fi
 
@@ -104,7 +105,7 @@ EOF
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
-    dc-check hosts $HOST
+    dc-host $HOST check
     _ask "Start autoremove?"
     dssh $HOST apt-get -y autoremove
     _ask "Start apt-get update?"
@@ -117,7 +118,7 @@ EOF
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
     _ask "Show running containers!"
-    dc-check hosts $HOST
+    dc-host $HOST check
     _ask "reboot?"
     dssh $HOST init 6
   fi
@@ -127,7 +128,11 @@ EOF
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
-    dc-check hosts $HOST
+    if [ "$1" = "details" ] ; then
+      dc-check hosts $HOST
+    else
+      dc-check hosts $HOST | grep ".state="
+    fi
   fi
 
   if [ "$CMD" = "list" ] ; then
