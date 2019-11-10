@@ -62,13 +62,10 @@ fi
 
 if [ "$CMD" = "docker" ] ; then
   REL=$(lsb_release -cs)
-  if [ "$REL" = "bionic" ] ; then
-    REL="xenial"
-  fi
   apt-get install -y apt-transport-https ca-certificates curl software-properties-common
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
   #add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) edge"
-  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $REL edge"
+  echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $REL stable" > /etc/apt/sources.list.d/docker.list
   apt-get update
   apt-get install -y docker-ce
   exit 0
