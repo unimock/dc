@@ -15,7 +15,7 @@ It only works as a wrapper for the docker-machine, docker and docker-compose com
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
 /opt/dc/bin/dc-install init    # initialize dc environment
-#/opt/dc/bin/dc-install docker  # install docker-de (edge)
+#/opt/dc/bin/dc-install docker # install docker-ce (stable)
 /opt/dc/bin/dc-install tools   # istall additional tools (pv, tree, compose, machine, ..)
 /opt/dc/bin/dc-install hcloud
 . /etc/profile
@@ -23,7 +23,43 @@ git clone https://github.com/unimock/dc.git /opt/dc
 
 ## Usage
 ### Slave machines
-#### Create a slave machine and install docker-engine on it
+#### Installation
+```
+#
+# static ip address
+#
+  TBD
+#
+# docker installation
+#
+  git clone https://github.com/unimock/dc.git /opt/dc
+  /opt/dc/bin/dc-install init    # initialize dc environment
+  /opt/dc/bin/dc-install docker  # install docker-ce (stable)
+  docker run hello-world
+#
+# optional mde installation
+#
+  m="mde-server.de"
+  wget -O - https://$m/apt/g7-apt-key | apt-key add -
+  echo "deb https://$m/apt/ mde main" > /etc/apt/sources.list.d/mde.list
+  apt-get update
+  apt-get install mde-base
+  . /etc/profile
+  mde-user -c <abbrev> <pw>
+#
+# config sshd
+#
+  vi /root/.ssh/authorized_keys
+
+  vi /etc/ssh/sshd_config
+    PermitRootLogin prohibit-password
+    PasswordAuthentication no
+  
+  systemctl reload sshd
+  
+```
+
+#### Register a slave machine
 ```
 ABBREV="xyz"
 HNAME="host.domain.de"
