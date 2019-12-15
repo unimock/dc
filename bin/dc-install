@@ -1,19 +1,20 @@
 #!/bin/bash
 
 # tools
-NGROK="2.2.8"
+#NGROK="2.2.8"
 MACHINE="0.16.2"
-COMPOSE="1.24.1"
-RESTIC="0.8.3"
+COMPOSE="1.25.0"
+#RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
-HCLOUD="1.13.0"
-HMACHINE="1.0.0"
+HCLOUD="1.14.0"
+#HCLOUD="1.13.0"
+#HMACHINE="1.0.0"
 
 #
 DDDVB="0.9.36"
 
-APT_LIST="pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent"
+APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent"
 
 if [ "$1" = "" ] ; then
   echo ""
@@ -153,20 +154,20 @@ if [ "$CMD" = "tools" ] ; then
     docker-machine --version
   fi
  
-  VER=$( /usr/local/bin/restic version | grep ^rest | awk '{ print $2 }' )
-  if [ "$VER" != "$RESTIC" ] ; then 
-    curl -L https://github.com/restic/restic/releases/download/v${RESTIC}/restic_${RESTIC}_linux_amd64.bz2 | bunzip2 > /usr/local/bin/restic
-    chmod +x /usr/local/bin/restic
-    restic version | grep ^restic
-  fi
+  #VER=$( /usr/local/bin/restic version | grep ^rest | awk '{ print $2 }' )
+  #if [ "$VER" != "$RESTIC" ] ; then 
+  #  curl -L https://github.com/restic/restic/releases/download/v${RESTIC}/restic_${RESTIC}_linux_amd64.bz2 | bunzip2 > /usr/local/bin/restic
+  #  chmod +x /usr/local/bin/restic
+  #  restic version | grep ^restic
+  #fi
 
-  VER=$( /usr/local/bin/ngrok --version | cut -d" " -f3 )
-  if [ "$VER" != "$NGROK" ] ; then
-    cd /usr/local/bin
-    rm -f ngrok.zip
-    curl -L https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip > /usr/local/bin/ngrok.zip
-    gunzip -S .zip ngrok.zip
-    chmod a+x ngrok
-  fi
+  #VER=$( /usr/local/bin/ngrok --version | cut -d" " -f3 )
+  #if [ "$VER" != "$NGROK" ] ; then
+  #  cd /usr/local/bin
+  #  rm -f ngrok.zip
+  #  curl -L https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip > /usr/local/bin/ngrok.zip
+  #  gunzip -S .zip ngrok.zip
+  #  chmod a+x ngrok
+  #fi
   exit 0
 fi
