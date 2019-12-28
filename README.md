@@ -61,15 +61,15 @@ git clone https://github.com/unimock/dc.git /opt/dc
 
 #### Register a slave machine
 ```
-ABBREV="xyz"
-HNAME="host.domain.de"
-mkdir ~/.docker/hosts/${ABBREV}
+ABBREV=xyz
+HNAME=host.domain.de
+mkdir -p ~/.docker/hosts/${ABBREV}
 #
 # copy or create ssh keys
 #
 OTHER="zyx"
 cp -v ~/.docker/hosts/$OTHER/id_rsa*     ~/.docker/hosts/${ABBREV}/
-# ssh-keygen --t rsa -b 4096 ~/.docker/hosts/${ABBREV}/id_rsa
+# ssh-keygen -t rsa -b 4096 -f ~/.docker/hosts/${ABBREV}/id_rsa
 #
 # dc-host.yml
 #
