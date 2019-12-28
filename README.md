@@ -63,7 +63,7 @@ git clone https://github.com/unimock/dc.git /opt/dc
 ```
 ABBREV=xyz
 HNAME=host.domain.de
-mkdir ~/.docker/hosts/${ABBREV}
+mkdir -p ~/.docker/hosts/${ABBREV}
 #
 # copy or create ssh keys
 #
