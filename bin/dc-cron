@@ -1,0 +1,16 @@
+#!/bin/bash
+
+CMD="$1"
+shift
+
+if [ "$CMD" = "START" ] ; then
+  mkdir -p /root/logs
+  rm -fv /root/logs/*
+  exit 0
+fi
+if [ "$CMD" = "END" ] ; then
+  exit 0
+fi
+
+/root/scripts/$CMD $*    >/root/logs/$CMD.log 2>&1
+
