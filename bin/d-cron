@@ -1,5 +1,5 @@
 #!/bin/bash
-
+. /opt/dc/funcs/script_funcs
 CMD="$1" ; shift
 if [ "$CMD" = "start" ] ; then
   mkdir -p /root/logs
@@ -17,7 +17,13 @@ if [ "$CMD" = "job" ] ; then
     NAME=`basename $1`
   fi
   cmd=$1 ; shift
+  sf_start
   $cmd $*    >/root/logs/${NAME}.log 2>&1
+  ret=$?
+  if [ "$ret" != "0" ] ; then
+    sf_set_error >>/root/logs/${NAME}.log 2>&1
+  fi
+  sf_end         >>/root/logs/${NAME}.log 2>&1
 fi
 
 
