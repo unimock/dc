@@ -14,7 +14,7 @@ HCLOUD="1.14.0"
 #
 DDDVB="0.9.36"
 
-APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent"
+APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs"
 
 if [ "$1" = "" ] ; then
   echo ""
