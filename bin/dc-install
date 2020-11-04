@@ -7,8 +7,8 @@ COMPOSE="1.27.4"
 #RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
-HCLOUD="1.14.0"
-#HCLOUD="1.13.0"
+HCLOUD="1.20.0"
+#HCLOUD="1.14.0"
 #HMACHINE="1.0.0"
 
 #
@@ -103,18 +103,18 @@ fi
 ####################################################################################
 if [ "$CMD" = "hcloud" ] ; then
   . /etc/profile
-
+  
   VER=$( hcloud version | cut -d"v" -f2 )
   if [ "$VER" != "$HCLOUD" ] ; then
     VER=$HCLOUD
-    curl -L https://github.com/hetznercloud/cli/releases/download/v${VER}/hcloud-linux-amd64-v${VER}.tar.gz >  /tmp/hcloud-linux-amd64-v${VER}.tar.gz
-    tar -C /tmp -xzf /tmp/hcloud-linux-amd64-v${VER}.tar.gz
-    cp  /tmp/hcloud-linux-amd64-v${VER}/bin/hcloud /usr/local/bin
-    cp  /tmp/hcloud-linux-amd64-v${VER}/etc/hcloud.bash_completion.sh /etc
+    TDIR=$( mktemp -d )
+    curl -L https://github.com/hetznercloud/cli/releases/download/v${VER}/hcloud-linux-amd64.tar.gz >  $TDIR/hcloud-linux-amd64.tar.gz
+    tar -C $TDIR -xzf $TDIR/hcloud-linux-amd64.tar.gz
+    cp  $TDIR/hcloud /usr/local/bin
     chmod a+x /usr/local/bin/hcloud
     source <(hcloud completion bash)
     if ! grep -q "(hcloud completion bash)" /root/.bashrc ; then echo 'source <(hcloud completion bash)' >> /root/.bashrc ; fi
-    rm -rf /tmp/hcloud-linux-amd64-v${VER}.tar.gz /tmp/hcloud-linux-amd64-v${VER}
+    rm -rf $TDIR 
     echo "install hcloud $VER"
   fi
   exit 0
