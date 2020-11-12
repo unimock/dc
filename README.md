@@ -8,7 +8,7 @@ from a central host and directory (master).
 It only works as a wrapper for the docker-machine, docker and docker-compose commands for convenient usage.
 
 ## Requirements for master and slaves
- * ubuntu-server-16.04, ubuntu-server-18.04
+ * ubuntu-server-20.04
  * openssh-server (pubkey mode)
 
 ## Installation (master)
@@ -25,20 +25,20 @@ git clone https://github.com/unimock/dc.git /opt/dc
 ### Slave machines
 #### Installation
 ```
-#
-# static ip address
-#
-  TBD
-#
-# docker installation
-#
+  #
+  # static ip address
+  #
+    TBD
+  #
+  # docker installation
+  #
   git clone https://github.com/unimock/dc.git /opt/dc
   /opt/dc/bin/dc-install init    # initialize dc environment
   /opt/dc/bin/dc-install docker  # install docker-ce (stable)
   docker run hello-world
-#
-# optional mde installation
-#
+  #
+  # optional mde installation
+  #
   m="mde-server.de"
   wget -O - https://$m/apt/g7-apt-key | apt-key add -
   echo "deb https://$m/apt/ mde main" > /etc/apt/sources.list.d/mde.list
@@ -46,9 +46,9 @@ git clone https://github.com/unimock/dc.git /opt/dc
   apt-get install mde-base
   . /etc/profile
   mde-user -c <abbrev> <pw>
-#
-# config sshd
-#
+  #
+  # config sshd
+  #
   vi /root/.ssh/authorized_keys
 
   vi /etc/ssh/sshd_config
@@ -120,6 +120,21 @@ vi swarm.control
 ./swarm.control  up
 ./swarm.control  test
 ```
+
+### install 2G swap file on slave machine
+```
+ABBREV=
+dc -h ${ABBREV} ssh
+ dd if=/dev/zero of=/swapfile bs=512M count=4
+ chown root:root /swapfile
+ chmod 0600 /swapfile
+ mkswap /swapfile
+ swapon /swapfile
+ echo "/swapfile  none swap sw 0 0" >> /etc/fstab
+ mount -a
+ free -m
+```
+
 ### copy data between nodes
 ```
 dc-rdc <source>
