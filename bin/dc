@@ -17,6 +17,7 @@ show_help() {
   echo ""
   echo "   commands:"
   echo ""
+  echo "     mounts [umount] ...... list or  unmount all slaves from dc"
   echo "     docker|compose|swarm|machine <commands>"
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
   echo "     rmup|up|rm|down|ps|logs [-f]|stop|start"
@@ -49,6 +50,21 @@ SERVICE=""
 CONF=""
 VERB=""
 HIDX="0"
+
+if [ "$1" = "mounts" ] ; then
+  if [ "$2" != "umount" ] ; then
+    mount | grep fuse.sshfs
+    exit 0
+  fi
+  if [ "$2" = "umount" ] ; then  
+    list=$( mount | grep fuse.sshfs | grep "/Docker"  | cut -d " " -f1 )
+    for i in $list ; do
+      umount $i
+      echo unmounting: $i
+    done
+  fi
+  exit 0 
+fi
 
 CURROPT=""
 while [ "$#" -gt 0 ]; do
@@ -97,7 +113,7 @@ CMD=${1}
 ######################################################################################################################################
 if [ "$CMD" = "" ] ; then
   show_help
-fi  
+fi
 if [ "$HNAME" != "" ] ; then
   eval "$(docker-machine env ${HNAME})"
   eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"

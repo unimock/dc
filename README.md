@@ -135,6 +135,29 @@ dc -h ${ABBREV} ssh
  free -m
 ```
 
+### install unbound on ubuntu slave
+```
+ABBREV=
+dc -h ${ABBREV} ssh
+  host hugo.de.multi.uribl.com # 127.0.0.1              -> not ok
+  apt-get install -y unbound
+  unbound-anchor
+  systemctl disable systemd-resolved
+  mkdir -p /etc/NetworkManager/conf.d
+  echo -e "[main]\ndns=none\nsystemd-resolved=false" > /etc/NetworkManager/conf.d/nodns.conf
+  echo -e "hide-identity: yes\nhide-version: yes"    > /etc/unbound/unbound.conf.d/hide.conf
+  init 6
+dc -h ${ABBREV} ssh
+  dig mailbox.org                          # ;; flags: qr rd ra ad;    ad...-> OK
+  host hugo.de.multi.uribl.com             # not found: 3(NXDOMAIN)         -> OK
+  dig txt qnamemintest.internet.nl +short  # HORRAY                         -> OK
+  netstat -lnp | grep ":53 "               # listen only on 127.0.0.1
+  exit 0
+```
+
+
+
+
 ### copy data between nodes
 ```
 dc-rdc <source>
