@@ -1,0 +1,174 @@
+#!/bin/bash
+. /opt/dc/funcs/script_funcs
+. /opt/dc/etc/config
+
+if [ "$2" = "" ] ; then
+  echo ""
+  echo " usage: `basename $0` <batch-name> create|delete|run|debug"
+  echo ""
+  exit 0
+fi
+
+NAM="$1" ; shift
+CMD="$1" ; shift
+############################################################
+# delete
+############################################################
+if [ "$CMD" = "delete" ] ; then
+  rm -Rf $MDE_DC_BATCH_DIR/$NAM-log
+  echo "remove $MDE_DC_BATCH_DIR/$NAM-log"
+  rm -fv $MDE_DC_BATCH_DIR/$NAM.list
+  exit 0
+fi
+
+############################################################
+# create
+############################################################
+if [ "$CMD" = "create" ] ; then
+  mkdir -p $MDE_DC_BATCH_DIR/$NAM-log
+  if [ ! -f  $MDE_DC_BATCH_DIR/$NAM.list ] ; then
+    cat <<EOF >$MDE_DC_BATCH_DIR/$NAM.list
+##########################################################
+# job .... execute command and report
+# cmd .... execute command and do not report
+# mail ... send report"
+# 
+# examples:
+#
+#mail:reciemichael.mock@automatek.de
+#
+#cmd: ls /tmp >/tmp/.log                     # comment
+#job:nmae:5s: sleep 10                       # comment
+#job:    :5s: tar cvf /xxx/x.tar /root/batch # comment
+#
+##########################################################
+EOF
+    echo "-> configure your batch jobs in $MDE_DC_BATCH_DIR/$NAM.list"
+  fi
+  if [ ! -f  $MDE_DC_BATCH_DIR/global.yml ] ; then
+    cat <<EOF >$MDE_DC_BATCH_DIR/global.yml
+batch:
+  mail:
+    sender: noreply@my.domain
+    smtp:
+      host: xx.yyyy:587 
+      user:
+      pass:
+EOF
+  echo "-> set your smtp configuration in $MDE_DC_BATCH_DIR/global.yml"
+  fi
+  exit 0
+fi
+
+############################################################
+# run
+############################################################
+if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
+  #
+  # cleanup log files
+  #
+  rm -rf    $MDE_DC_BATCH_DIR/$NAM-log
+  mkdir -p  $MDE_DC_BATCH_DIR/$NAM-log
+  mail_to=""
+  mail_subject=""
+
+  while read line ; do
+    ifs=$IFS ; IFS=":" ; A=($line) ; IFS=$ifs
+    echo "execute: <${A[0]}> <${A[1]}> <${A[2]}> <${A[3]}>"
+    if [ "${A[0]}" = "cmd" ] ; then
+       echo "#"            >> $MDE_DC_BATCH_DIR/$NAM-log/body 2>&1
+       echo "# ${A[1]} :"  >> $MDE_DC_BATCH_DIR/$NAM-log/body 2>&1
+       echo "#"            >> $MDE_DC_BATCH_DIR/$NAM-log/body 2>&1
+       bash -c "${A[1]}"   >> $MDE_DC_BATCH_DIR/$NAM-log/body 2>&1
+    elif [ "${A[0]}" = "job" ] ; then
+       A[1]=$( echo ${A[1]} | xargs)  # remove blanks
+       if [ "${A[1]}" != "" ] ; then
+         job_name="${A[1]}"
+       else
+	 x=$(echo ${A[3]} | cut -d" " -f1 )
+	 job_name=$(basename $x)
+       fi
+       JOB_LOG=$MDE_DC_BATCH_DIR/$NAM-log/$job_name.log
+       sf_start
+       _cmd=${A[3]%%#*}
+       if [ "$CMD" = "debug" ] ; then
+         timeout ${A[2]} $_cmd              2>&1 </dev/null | tee $JOB_LOG
+       else
+         timeout ${A[2]} $_cmd                  >$JOB_LOG  2>&1 </dev/null
+       fi   
+       ret=$?
+       if [ "$ret" != "0" ] ; then
+         if [ "$ret" = "124" ] ; then
+           echo "    error timeout !!!!!!!!!!!!!!!!!!!!!"  >$JOB_LOG  2>&1
+	 fi
+	 if [ "$CMD" = "debug" ] ; then
+	   sf_set_error $ret                            2>&1 | tee -a $JOB_LOG
+	 else
+	   sf_set_error $ret                                >>$JOB_LOG  2>&1
+	 fi
+       fi
+       if [ "$CMD" = "debug" ] ; then
+         sf_end                                         2>&1 | tee -a $JOB_LOG
+       else
+         sf_end                                             >>$JOB_LOG  2>&1
+       fi
+    elif [ "${A[0]}" = "mail" ] ; then
+      mail_to="${A[1]}"
+    fi
+  done < <(grep -v '^\s*$\|^\s*\#' $MDE_DC_BATCH_DIR/$NAM.list)
+
+  #
+  # create report
+  #
+  FI=$MDE_DC_BATCH_DIR/$NAM-log/report
+  list=$(ls -tr $MDE_DC_BATCH_DIR/$NAM-log | grep -v body | grep -v report)
+  errors=0
+  checks=0
+  for i in $list ; do
+    R_FILE[$checks]=$i
+    R_RESULT[$checks]="NDEF"
+    res=$(grep "^#result=" $MDE_DC_BATCH_DIR/$NAM-log/${R_FILE[$checks]} )
+    ret=$?
+    if [ "$ret" = "0" ] ; then
+      res=${res#\#}
+      eval $res
+      #echo "$result $start $end $duration"
+      R_RESULT[$checks]=${result}
+      R_START[$checks]=${start}
+      R_END[$checks]=${end}
+      R_DURATION[$checks]=${duration}
+    fi
+    if [ "${R_RESULT[$checks]}" != "OK" ] ; then
+     errors=$(( errors + 1 ))
+    fi
+    checks=$(( checks +  1 ))
+  done
+  echo "checks=$checks errors=$errors"
+  rm -f $FI
+  echo "#"                                     >> $FI
+  echo "# job results:"                        >> $FI
+  echo "#"                                     >> $FI
+  E_FI=""
+  for ((idx=0; idx<${checks}; ++idx)); do
+    printf "%5s %s  %s %s (%s)\n" ${R_RESULT[idx]}  ${R_FILE[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
+    E_FI="${E_FI} /$MDE_DC_BATCH_DIR/$NAM-log/${R_FILE[$idx]}"
+  done
+  cat /$MDE_DC_BATCH_DIR/$NAM-log/body >> $FI
+  #
+  # send report mail
+  #
+  if [ "$mail_to" != "" ] ; then
+    eval $( dc-yml -c $MDE_DC_BATCH_DIR/global.yml )
+    sendemail -f $batch_mail_sender          \
+              -t $mail_to                    \
+              -s $batch_mail_smtp_host       \
+              -o message-file=$FI            \
+              -u "batch-report: $NAM@`hostname` (errors=$errors)" \
+              -a ${E_FI}
+  fi
+  exit 0
+fi
+
+exit 0
+
+

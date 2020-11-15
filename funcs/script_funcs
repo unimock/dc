@@ -11,7 +11,11 @@ sf_start()
 
 sf_set_error()
 {
-  _sf_error=1
+  if [ "$1" != "" ] ; then 
+    _sf_error=$1
+  else
+    _sf_error=1
+  fi
 }
 
 sf_end()
@@ -28,7 +32,7 @@ sf_end()
   else
     echo "#result=ERROR $tim"
   fi
-  exit ${_sf_error}
+  #exit ${_sf_error}
 }
 
 
