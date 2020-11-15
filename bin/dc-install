@@ -54,6 +54,7 @@ if [ "$CMD" = "init" ] ; then
     echo 'export MDE_DC_HOST_DIR=/root/.docker/hosts'      >> $FI
     echo 'export MDE_DC_TEMPL_DIR=/root/.docker/templates' >> $FI
     echo 'export MDE_DC_SERV_DIR=/root/Services'           >> $FI
+    echo 'export MDE_DC_BATCH_DIR=/root/batch'             >> $FI
     cat $FI
   fi
   

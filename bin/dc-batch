@@ -2,6 +2,8 @@
 . /opt/dc/funcs/script_funcs
 . /opt/dc/etc/config
 
+if [ "$MDE_DC_BATCH_DIR" = "" ] ; then echo "MDE_DC_BATCH_DIR not set in /opt/dc/etc/config" ; exit 0 ; fi
+
 if [ "$2" = "" ] ; then
   echo ""
   echo " usage: `basename $0` <batch-name> create|delete|run|debug"
