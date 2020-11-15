@@ -97,7 +97,7 @@ dc-hcloud server register ${ABBREV} ....
 dc-hcloud server create   ${ABBREV}
 cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 ```
-#### create a kvm slave (check kc repro)
+#### create a kvm slave (check kc repo)
 
 ### register slave machine in docker-machine
 
@@ -154,13 +154,22 @@ dc -h ${ABBREV} ssh
   netstat -lnp | grep ":53 "               # listen only on 127.0.0.1
   exit 0
 ```
-
-
-
-
 ### copy data between nodes
 ```
 dc-rdc <source>
 rdc . sync /Docker rdc-<target>:/Docker real
 ```
 
+### remove a a service and all related data
+```
+# TBD: integrate functionality in dc script
+cd <serive-directory>
+dc -i 0 data umount
+dc -i 0 rm
+grep image: docker-compose.yml     # print <service-image>
+dc -i 0 docker rmi <service-image>
+grep "/Docker" docker-compose.yml  # print out <host-volume>
+dc -i 0 ssh rm -Rvf <host-volume>
+cd ..
+rm -Rvf <serive-directory>
+```
