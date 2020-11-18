@@ -1,19 +1,13 @@
 #!/bin/bash
 
 # tools
-#NGROK="2.2.8"
 MACHINE="0.16.2"
 COMPOSE="1.27.4"
-#RESTIC="0.8.3"
 
 # hcloud ... hetzner cloud
 HCLOUD="1.20.0"
-#HCLOUD="1.14.0"
-#HMACHINE="1.0.0"
 
 #
-DDDVB="0.9.36"
-
 APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs"
 
 if [ "$1" = "" ] ; then
@@ -30,36 +24,31 @@ fi
 CMD="$1"
 if [ "$CMD" = "init" ] ; then
   ##############################################################
-  DCD=/opt/dc
-  if [ -d $DCD ] ; then
-    cd $DCD ; git pull
+  FI=/opt/dc/etc/config
+  if [ ! -f $FI ] ; then
+    echo "creating dc default configuration file <$FI>"
+    mkdir -p `dirname $FI`
+    echo 'export MDE_DC_DIR=/root'                                  > $FI
+    echo 'export MDE_DC_HOST_DIR=${MDE_DC_DIR}/.docker/hosts'      >> $FI
+    echo 'export MDE_DC_TEMPL_DIR=${MDE_DC_DIR}/.docker/templates' >> $FI
+    echo 'export MDE_DC_SERV_DIR=${MDE_DC_DIR}/Services'           >> $FI
+    echo 'export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch'             >> $FI
+    echo 'export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs'                >> $FI
+    echo 'export MDE_DC_CONFIG_DIR=${MDE_DC_DIR}/config'           >> $FI
   else
-    git clone https://github.com/unimock/dc.git $DCD
+    if ! grep -q "export MDE_DC_TEMPL_DIR" /opt/dc/etc/config ; then echo 'export MDE_DC_TEMPL_DIR=${MDE_DC_DIR}/.docker/templates' >> /opt/dc/etc/config  ; fi
   fi
   ##############################################################
   FI=/etc/profile.d/dc-profile.sh
-  echo -e "\ncreating dc profile <$FI> with following content:"
+  . /opt/dc/etc/config
+  echo "creating dc profile <$FI>"
   rm -f $FI
   mkdir -p `dirname $FI`
-  echo 'export PATH=$PATH:/opt/dc/bin'                                       >> $FI
-  echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"  >> $FI
-  cat $FI
+  echo '. /opt/dc/etc/config'                                                     > $FI
+  echo 'export PATH=$PATH:/opt/dc/bin:${MDE_DC_DIR}/utils:${MDE_DC_DIR}/scripts' >> $FI
+  echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"      >> $FI
   . /etc/profile
   ##############################################################
-  FI=/opt/dc/etc/config
-
-  if [ ! -f $FI ] ; then
-    echo -e "\ncreating dc default configuration file <$FI> with following defines:"
-    mkdir -p `dirname $FI`
-    echo 'export MDE_DC_HOST_DIR=/root/.docker/hosts'      >> $FI
-    echo 'export MDE_DC_TEMPL_DIR=/root/.docker/templates' >> $FI
-    echo 'export MDE_DC_SERV_DIR=/root/Services'           >> $FI
-    echo 'export MDE_DC_BATCH_DIR=/root/batch'             >> $FI
-    echo 'export MDE_DC_LOG_DIR=/root/logs'                >> $FI
-    echo 'export MDE_DC_CONFIG_DIR=/root/config'           >> $FI
-    cat $FI
-  fi
-  
   exit 0
 fi
 ####################################################################################
@@ -72,35 +61,6 @@ if [ "$CMD" = "docker" ] ; then
   echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $REL stable" > /etc/apt/sources.list.d/docker.list
   apt-get update
   apt-get install -y docker-ce
-  exit 0
-fi
-
-####################################################################################
-if [ "$CMD" = "dddvb" ] ; then
-  modinfo ddbridge | head -n6
-  . /etc/profile
-  apt-get install -y dvb-apps mercurial build-essential libproc-processtable-perl linux-headers-`uname -r`
-  ### Digital Devices kernel module
-  # http://support.digital-devices.eu/knowledgebase.php?article=152
-  REL="${DDDVB}"
-  cd /usr/src
-  if [ ! -f ${REL}.tar.gz ] ; then
-    echo wget https://github.com/DigitalDevices/dddvb/archive/${REL}.tar.gz
-    wget https://github.com/DigitalDevices/dddvb/archive/${REL}.tar.gz
-  fi
-  if [ -d dddvb-${REL} ] ; then
-    rm -rf dddvb-${REL}
-  fi
-  tar -xvf ${REL}.tar.gz
-  cd dddvb-${REL}
-  make
-  make install
-  mkdir -p /etc/depmod.d
-  echo 'search extra updates built-in' | sudo tee /etc/depmod.d/extra.conf
-  depmod -a
-  modprobe ddbridge
-  modinfo ddbridge | head -n6
-  chgrp -Rvf video /dev/dvb/adapter*/*
   exit 0
 fi
 ####################################################################################
@@ -122,7 +82,7 @@ if [ "$CMD" = "hcloud" ] ; then
   fi
   exit 0
 fi
-
+####################################################################################
 if [ "$CMD" = "tools" ] ; then
   . /etc/profile
 
@@ -131,7 +91,6 @@ if [ "$CMD" = "tools" ] ; then
     update-locale LC_ALL=en_US.UTF-8
   fi
 
-  if ! grep -q "export MDE_DC_TEMPL_DIR" /opt/dc/etc/config ; then echo "export MDE_DC_TEMPL_DIR=/root/.docker/templates" >> /opt/dc/etc/config  ; fi
 
   for i in $APT_LIST ; do
     if [ "$( which $i )" = "" ] ; then
@@ -156,21 +115,5 @@ if [ "$CMD" = "tools" ] ; then
     chmod +x /usr/local/bin/docker-machine
     docker-machine --version
   fi
- 
-  #VER=$( /usr/local/bin/restic version | grep ^rest | awk '{ print $2 }' )
-  #if [ "$VER" != "$RESTIC" ] ; then 
-  #  curl -L https://github.com/restic/restic/releases/download/v${RESTIC}/restic_${RESTIC}_linux_amd64.bz2 | bunzip2 > /usr/local/bin/restic
-  #  chmod +x /usr/local/bin/restic
-  #  restic version | grep ^restic
-  #fi
-
-  #VER=$( /usr/local/bin/ngrok --version | cut -d" " -f3 )
-  #if [ "$VER" != "$NGROK" ] ; then
-  #  cd /usr/local/bin
-  #  rm -f ngrok.zip
-  #  curl -L https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip > /usr/local/bin/ngrok.zip
-  #  gunzip -S .zip ngrok.zip
-  #  chmod a+x ngrok
-  #fi
   exit 0
 fi
