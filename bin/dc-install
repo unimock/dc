@@ -92,13 +92,14 @@ if [ "$CMD" = "tools" ] ; then
   fi
 
 
-  for i in $APT_LIST ; do
-    if [ "$( which $i )" = "" ] ; then
+
+#  for i in $APT_LIST ; do
+#    if [ "$( which $i )" = "" ] ; then
       apt-get update
-      apt-get install -y $alist
-      break
-    fi 
-  done
+      apt-get install -y $APT_LIST
+#      break
+#    fi 
+#  done
  
   VER=$( docker-compose --version | awk '{ print $3 }' )
   VER=${VER%,}

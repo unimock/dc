@@ -5,11 +5,11 @@
 ####################################################################################################################################
 show_help() {
   echo ""
-  echo " usage: `basename $0` [<options>] [<command>]"
+  echo " usage: `basename $0` [<options>] [<command>|<vm-commands>] ..."
   echo ""
   echo "   options:"
   echo ""
-  echo "     -i <host-index>] ........... work with host from dc-service.yml  0|1|2|.."
+  echo "     -i <host-index>  ........... work with host from dc-service.yml  0|1|2|.."
   echo "     -c <path>/dc-service.yml ... work with service of the according service"
   echo "     -h <host> .................. work with this host, instead of the one which is defined in the service dc-service.yml file. "
   echo "     -s <service> ............... work with this service."
@@ -21,12 +21,16 @@ show_help() {
   echo "     docker|compose|swarm|machine <commands>"
   echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
   echo "     rmup|up|rm|down|ps|logs [-f]|stop|start"
-  echo "     -h <host> -s <service> check ...... print service state (Up, Error, disabled,..."
+  echo "     check ................................................ print service state (Up, Error, disabled,..."
   echo "     data pull|push service|s|persistent|p|sp [real|r] .... sync service and persistent data"
-  echo "     data mount|umount .....................................mount service and persistent data to ./data"
+  echo "     data mount|umount .................................... mount service and persistent data to ./data"
   echo "     encrypt|decrypt"
-  echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
+  echo ""
+  echo "   vm-commands:"
+  echo ""
   echo "     login [command] ..... login or run a command within <$DCN>."
+  echo "     cmd   [command] ..... run a command within <$DCN> without terminal (cron jobes, ..)."
+  echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
   echo "     syslog .............. show last lines from syslog"
   echo "     maillog ............. show last lines from mail.log"
   echo "     config .............. configure ispconfig (set server_name, passwords ...)"
@@ -34,9 +38,6 @@ show_help() {
   echo "     ovw push ............ push the content of </service/ovw> to </> within the container."
   echo "     ovw fetch ........... copy a file or directory from </> to </service/ovw/> within the container."
   echo "     ovw diff <file> ..... compare a overwrite file"
-  echo "     track init .......... initialize file tracking for /etc and /usr/local/ispconfig."
-  echo "     track show .......... show file tracking results"
-  echo "     track git <...> ..... git commands"
   echo ""
   exit 0
 }
@@ -272,18 +273,17 @@ case "$CMD" in
   login)      shift
               if [ "$1" = "" ] ; then
                 cmd="bash"
-                docker-compose exec ${service_name}  $cmd
               else
                 cmd=$*
-                docker-compose exec  ${service_name} $cmd
               fi
+	      docker-compose exec  ${service_name} $cmd
               ;;
   cmd)      shift
             docker-compose exec -T  ${service_name} $*
             ret=$?
             exit $ret
             ;;
-  config|migrate|track)
+  config|migrate)
               FI=$1
               shift
               docker-compose  exec ${service_name} /usr/local/bin/${FI} $*
