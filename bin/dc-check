@@ -1,95 +1,18 @@
 #!/bin/bash
-
-. /opt/dc/etc/config
-. /opt/dc/funcs/script_funcs
-
-error=0
-error_list=""
-
-if [ "$1" = "" ] ; then
-  echo ""
-  echo " usage: `basename $0`  hosts [<hostname>]"
-  echo ""
-  exit 0
-fi
- 
-if [ "$2" != "" ] ; then
-  hosts="$2"
-else
-  hosts=$( dc-list used_hosts )
-fi
-
-for host in $hosts ; do
-  echo "#"	
-  echo "# checking host $host ..."
-  echo "#"
-  host_error_marker=0
-  H_STATE=$( dc-yml -c $MDE_DC_HOST_DIR/$host/dc-host.yml host_state )
-  if [ "$H_STATE" = "active" ] ; then
-    state=$( dc machine status $host)
-    if [ "$state" = "Running" ] ; then
-      host_up=1
-    else
-      host_up=0
-      host_error_marker=1
-      error_list="$error_list $host:not_running"
-      error=1
-    fi
+echo "##############################################################"
+echo "#  !!! dc-check is deprecated, use \"dc inspect\" instead !!!  #"
+echo "##############################################################"
+ret=0
+if [ "$1" = "hosts" ] ; then
+  if [ "$2" != "" ] ; then
+    dc-info -h "$2" inspect
+    ret=$?
   else
-    state=$H_STATE
-    host_up=0
+    dc-info inspect
+    ret=$?
   fi
-
-  echo "$host.state=$state"
-
-  if [ $host_up = 1 ] ; then
-    os=$( dc -h $host ssh "lsb_release -s -r" )
-    echo "$host.os=$os"
-    proc=$( dc -h $host ssh df /Docker | grep "^/" | awk -F" " '{ print $5 }' )
-    echo "$host.disk=$proc"
-    version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
-    echo "$host.version=$version"
-  fi
-
-  yml_list=$( dc-list -y services -h $host )
-  for yml in $yml_list ; do
-    service=$(dc-yml -c $yml service_name)
-    if [ $host_up = 1 ] ; then
-      service_stat=$( dc -h $host -s $service check )
-      if [ "$?" != "0" ] ; then
-        host_error_marker=1
-	error_list="$error_list $host:$service"
-        error=1
-      fi
-      echo "$host.service.$service.state=$service_stat"
-    else
-      echo "$host.service.$service.state=?"
-    fi
-    echo "$host.service.$service.config=$yml"
-    compose_file="$( dirname $yml )/docker-compose.yml"
-    img_list=$( dc-yml -c $compose_file | grep "_image=" )
-    for i in $img_list ; do
-      img=${i#*\"}
-      img=${img%\")*}
-      img=${img%)}
-      if [ "$img" != "" ] ; then
-        echo "$host.service.$service.image=$img"
-      fi
-    done
- 
-  done
-  # print result for this host  
-  if [ $host_error_marker = 0 ] ; then
-    echo "$host.checkresult=OK"
-  else
-    echo "$host.checkresult=ERR/WARN"
-  fi
-
-done
-if [ "$error" = "1" ] ; then
-  echo "#"	
-  echo "# detected errors: $error_list"
-  echo "#"	
+echo "##############################################################"
+echo "#  !!! dc-check is deprecated, use \"dc inspect\" instead !!!  #"
+echo "##############################################################"
 fi
-exit $error
-
+exit $ret

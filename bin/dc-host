@@ -13,41 +13,49 @@ _ask()
   return
 }
 
+on_host=""
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h) on_host="$2" ; shift 2 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
 
-H=$1
-CMD=$2
-shift ; shift
+CMD=$1
+shift
 
 if [ "$CMD" = "" ] ; then
-  echo " usage: `basename $0` --all|<host>  <command>  # rund coammds on one or all hosts"
-  if [ "$H" = "" ] ; then H="--all|<host>" ; fi
+  echo ""
+  echo " usage: `basename $0` [-h <host>] <command>  # manage hosts and/or services on hosts"
   echo ""
   echo " host commands:"
   echo ""
-  echo "    `basename $0` $H upgrade             # do dist-upgrade"
-  echo "    `basename $0` $H update              # update docker-ce"
-  echo "    `basename $0` $H nrc                 # number of running containers"
-  echo "    `basename $0` $H reboot              # reboot host"
-  echo "    `basename $0` $H large_files <size>  # find lage files, size=xG"
-  echo "    `basename $0` $H dir_entries <count> # find directories with more then count entries"
-  echo "    `basename $0` $H cmd .....           # run commands on $H"
+  echo "    upgrade             # do dist-upgrade"
+  echo "    update              # update docker-ce"
+  echo "    nrc                 # number of running containers"
+  echo "    reboot              # reboot host"
+  echo "    large_files <size>  # find lage files, size=xG"
+  echo "    dir_entries <count> # find directories with more then count entries"
+  echo "    cmd .....           # run commands on $H"
   echo ""
   echo " service commands"
   echo ""
-  echo "    `basename $0` $H list                # list services on $H"
-  echo "    `basename $0` $H check               # check services on $H"
-  echo "    `basename $0` $H check details       # check services on $H and show details"
-  echo "    `basename $0` $H stop|start          # start or stop all services on $H"
-  echo "    `basename $0` $H rm|up               # start or stop all services on $H"
-  echo "    `basename $0` $H ps                  # show services on $H"
+  echo "    list                # list services on $H"
+  echo "    check               # check services on $H"
+  echo "    check details       # check services on $H and show details"
+  echo "    stop|start          # start or stop all services on $H"
+  echo "    rm|up               # start or stop all services on $H"
+  echo "    ps                  # show services on $H"
   echo ""
   exit 0
 fi
 
-if [ "$H" = "--all" ] ; then
-	hlist=$( dc-list active_hosts )
+if [ "$on_host" = "" ] ; then
+  hlist=$( dc-list active_hosts )
 else
-  hlist="$H"
+  hlist="$on_host"
 fi
 
 for HOST in $hlist ; do
@@ -105,7 +113,7 @@ EOF
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
-    dc-host $HOST check
+    dc host -h $HOST check
     _ask "Start autoremove?"
     dssh $HOST apt-get -y autoremove
     _ask "Start apt-get update?"
@@ -118,7 +126,7 @@ EOF
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
     _ask "Show running containers!"
-    dc-host $HOST check
+    dc host -h $HOST check
     _ask "reboot?"
     dssh $HOST init 6
   fi
@@ -129,9 +137,9 @@ EOF
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
     if [ "$1" = "details" ] ; then
-      dc-check hosts $HOST
+      dc inspect -h $HOST runtime
     else
-      dc-check hosts $HOST | grep ".state="
+      dc inspect -h $HOST | grep ".state="
     fi
   fi
 

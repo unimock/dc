@@ -49,7 +49,7 @@ if [ "$TYPE" = "server" ] ; then
       echo "  `basename $0` $TYPE $CMD  $HNAME  <server-type>  <server-location>  <server-image>  <project-token>"
       echo "  `basename $0` $TYPE $CMD  $HNAME  cx11..cx51     nbg1|fsn1|hel1      ubuntu-20.04    ........"
       echo ""
-      echo '  TOKEN=$( dc-hcloud token get apps0 )'
+      echo '  TOKEN=$( dc hcloud token get apps0 )'
       echo "  `basename $0` $TYPE $CMD  $HNAME  cx11  nbg1  ubuntu-20.04 " '$TOKEN'
       echo ""
       exit 1

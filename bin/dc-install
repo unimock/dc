@@ -18,7 +18,6 @@ if [ "$1" = "" ] ; then
   echo "       tools ...... install additional tools. (pv, tree, dialog, docker-machine, docker-compose, ...)"
   echo "       hcloud ..... hcloud"
   echo "       docker ..... install docker-ce"
-  echo "       dddvb ...... install dddvb (only for vdr server)"
   echo ""
 fi
 CMD="$1"

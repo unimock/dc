@@ -1,0 +1,120 @@
+#!/bin/bash
+. /opt/dc/etc/config
+. /opt/dc/funcs/script_funcs
+
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h) on_host="$2" ; shift 2 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
+
+error=0
+error_list=""
+
+if [ "$1" = "" ] ; then
+  echo ""
+  echo "print config and/or runtime informations about the dc cluster"
+  echo ""
+  echo ""
+  echo " usage: `basename $0` [-h <host>] runtime|config"
+  echo ""
+  exit 0
+fi
+
+check_runtime="1"
+if [ "$1" = "config" ] ; then
+  check_runtime="0"
+fi
+
+
+if [ "$on_host" != "" ] ; then
+  hosts="$on_host"
+else
+  hosts=$( dc-list used_hosts )
+fi
+
+host_error_marker=0
+for host in $hosts ; do
+  if [ "$check_runtime" = "1" ] ; then 	
+    echo "#"	
+    echo "# checking host $host ..."
+    echo "#"
+    host_error_marker=0
+    H_STATE=$( dc-yml -c $MDE_DC_HOST_DIR/$host/dc-host.yml host_state )
+    if [ "$H_STATE" = "active" ] ; then
+      state=$( dc machine status $host)
+      if [ "$state" = "Running" ] ; then
+        host_up=1
+      else
+        host_up=0
+        host_error_marker=1
+        error_list="$error_list $host:not_running"
+        error=1
+      fi
+    else
+      state=$H_STATE
+      host_up=0
+    fi
+    echo "${host}_state=$state"
+    if [ $host_up = 1 ] ; then
+      os=$( dc -h $host ssh "lsb_release -s -r" )
+      echo "${host}_os=$os"
+      proc=$( dc -h $host ssh df /Docker | grep "^/" | awk -F" " '{ print $5 }' )
+      echo "${host}_disk=$proc"
+      version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
+      echo "${host}_version=$version"
+    fi
+  fi
+  yml_list=$( dc-list -y services -h $host )
+  for yml in $yml_list ; do
+    service=$(dc-yml -c $yml service_name)
+    if [ "$check_runtime" = "1" ] ; then
+      if [ $host_up = 1 ] ; then
+        service_stat=$( dc -h $host -s $service check )
+        if [ "$?" != "0" ] ; then
+          host_error_marker=1
+          error_list="$error_list $host:$service"
+          error=1
+        fi
+        echo "${host}_service_${service}_state=$service_stat"
+      else
+        echo "${host}_service_${service}_state=?"
+      fi
+    fi
+    echo "${host}_service_${service}_config=$yml"
+    directory=$( dirname $yml )
+    compose_file="${directory}/docker-compose.yml"
+    if [ -e ${directory}/.env ] ; then
+       # if some entries in docker-compose.yml contains variables
+       . ${directory}/.env
+    fi
+    img_list=$( dc-yml -c $compose_file | grep "_image=" )
+    for i in $img_list ; do
+      img=${i#*\"}
+      img=${img%\")*}
+      img=${img%)}
+      if [ "$img" != "" ] ; then
+	# use eval to expand variables in img
+	eval echo "${host}_service_${service}_image=$img"
+      fi
+    done
+  done
+  if [ "$check_runtime" = "1" ] ; then
+    # print result for this host  
+    if [ $host_error_marker = 0 ] ; then
+      echo "${host}_checkresult=OK"
+    else
+      echo "${host}_checkresult=ERR/WARN"
+    fi
+  fi
+done
+if [ "$error" = "1" ] ; then
+  echo "#"	
+  echo "# detected errors: $error_list"
+  echo "#"	
+fi
+exit $error
+

@@ -14,10 +14,10 @@ It only works as a wrapper for the docker-machine, docker and docker-compose com
 ## Installation (master)
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
-/opt/dc/bin/dc-install init    # initialize dc environment
-#/opt/dc/bin/dc-install docker # install docker-ce (stable)
-/opt/dc/bin/dc-install tools   # istall additional tools (pv, tree, compose, machine, ..)
-/opt/dc/bin/dc-install hcloud
+/opt/dc/bin/dc install init    # initialize dc environment
+/opt/dc/bin/dc install docker  # install docker-ce (stable)
+/opt/dc/bin/dc install tools   # install additional tools (pv, tree, compose, machine, ..)
+/opt/dc/bin/dc install hcloud  # optional: manage hetzner cloud hosts
 . /etc/profile
 ```
 
@@ -33,8 +33,8 @@ git clone https://github.com/unimock/dc.git /opt/dc
   # docker installation
   #
   git clone https://github.com/unimock/dc.git /opt/dc
-  /opt/dc/bin/dc-install init    # initialize dc environment
-  /opt/dc/bin/dc-install docker  # install docker-ce (stable)
+  /opt/dc/bin/dc install init    # initialize dc environment
+  /opt/dc/bin/dc install docker  # install docker-ce (stable)
   docker run hello-world
   #
   # optional mde installation
@@ -92,9 +92,9 @@ cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 
 ```
 ABBREV=
-dc-hcloud server register ${ABBREV} # check output for parameters
-dc-hcloud server register ${ABBREV} ....
-dc-hcloud server create   ${ABBREV}
+dc hcloud server register ${ABBREV} # check output for parameters
+dc hcloud server register ${ABBREV} ....
+dc hcloud server create   ${ABBREV}
 cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 ```
 #### create a kvm slave (check kc repo)

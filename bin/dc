@@ -5,7 +5,9 @@
 ####################################################################################################################################
 show_help() {
   echo ""
-  echo " usage: `basename $0` [<options>] [<command>|<vm-commands>] ..."
+  echo "docker cluster management"
+  echo ""
+  echo " usage: `basename $0` [<options>] [<cluster-command>|<service-command>|<container-command>] ..."
   echo ""
   echo "   options:"
   echo ""
@@ -15,29 +17,40 @@ show_help() {
   echo "     -s <service> ............... work with this service."
   echo "     -v ......................... verbose"
   echo ""
-  echo "   commands:"
+  echo "   cluster-commands:"
   echo ""
-  echo "     mounts [umount] ...... list or  unmount all slaves from dc"
-  echo "     docker|compose|swarm|machine <commands>"
-  echo "     create|test|remove|enable|disable|upgrade|inspect|status|ssh|info .... "
-  echo "     rmup|up|rm|down|ps|logs [-f]|stop|start"
-  echo "     check ................................................ print service state (Up, Error, disabled,..."
-  echo "     data pull|push service|s|persistent|p|sp [real|r] .... sync service and persistent data"
-  echo "     data mount|umount .................................... mount service and persistent data to ./data"
+  echo "     install ...                   # dc installation and update functions"
+  echo "     ls                            # list dc hosts"
+  echo "     list ...                      # list hosts/services/.."
+  echo "     host ...                      # manage hosts and services on host"
+  echo "     mounts [umount] ...           # list/unmount all service mounts to hosts"
+  echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
+  echo "     hcloud ...                    # create and manage Hezner-Cloud hosts"
+  echo "     batch ...                     # manage job batches"
+  echo "     docker|compose|swarm|machine  # delegate command to standard tools"
+  echo "     create|test|remove|enable|disable"
+  echo "     ssh                           # login into a host"                          
+  echo "     manage ...                    # sync,.. services between hosts"
+  echo ""
+  echo "   service-commands"
+  echo ""
+  echo "     rmup|up|rm|down|ps|start|stop # control services"
+  echo "     logs [-f]|stop|start          # print logs from service console"
+  echo "     data pull|push service|s|persistent|p|sp [real|r] # sync service and persistent data"
+  echo "     data mount|umount             # mount service and persistent data to ./data"
   echo "     encrypt|decrypt"
   echo ""
-  echo "   vm-commands:"
+  echo "   container-commands:"
   echo ""
-  echo "     login [command] ..... login or run a command within <$DCN>."
-  echo "     cmd   [command] ..... run a command within <$DCN> without terminal (cron jobes, ..)."
-  echo "     supervisor .......... connect to supervisord (help|quit|start|stop|restart)"
-  echo "     syslog .............. show last lines from syslog"
-  echo "     maillog ............. show last lines from mail.log"
-  echo "     config .............. configure ispconfig (set server_name, passwords ...)"
-  echo "     migrate ............. migration tool (import and export data)"
-  echo "     ovw push ............ push the content of </service/ovw> to </> within the container."
-  echo "     ovw fetch ........... copy a file or directory from </> to </service/ovw/> within the container."
-  echo "     ovw diff <file> ..... compare a overwrite file"
+  echo "     login [command]               # login or run a command within <$DCN>."
+  echo "     cmd   [command]               # run a command within <$DCN> without terminal (cron jobes, ..)."
+  echo "     supervisor                    # connect to supervisord (help|quit|start|stop|restart)"
+  echo "     syslog                        # print last lines from syslog"
+  echo "     config                        # configure ispconfig (set server_name, passwords ...)"
+  echo "     migrate                       # migration tool (import and export data)"
+  echo "     ovw push                      # push the content of </service/ovw> to </> within the container."
+  echo "     ovw fetch                     # copy a file or directory from </> to </service/ovw/> within the container."
+  echo "     ovw diff <file>               # compare a overwrite file"
   echo ""
   exit 0
 }
@@ -67,6 +80,16 @@ if [ "$1" = "mounts" ] ; then
   exit 0 
 fi
 
+wrapper_list="inspect host install hcloud batch list manage"
+for i in $wrapper_list ; do
+  if [ "$1" = "$i" ] ; then
+    shift
+    /opt/dc/bin/dc-$i $*
+    exit $?
+  fi  
+done
+
+
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -82,6 +105,7 @@ while [ "$#" -gt 0 ]; do
   esac
 done  
 eval set -- $CURROPT
+
 
 
 if [ "$CONF" != "" ] ; then
@@ -150,29 +174,6 @@ case "$CMD" in
            docker rmi nginx:alpine ;;
   disable) docker-machine ssh $HNAME "systemctl stop docker ; systemctl disable docker" ;;
   enable)  docker-machine ssh $HNAME "systemctl enable docker ; systemctl start docker" ;;
-  info)    docker-machine ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
-  check)   for i in "${!service_hosts[@]}"; do
-             if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
-             if [ "${service_state[${i}]}" != "active" ] ; then
-               echo "${service_state[${i}]}"
-               exit 0
-             fi
-             container_list=$(dc -c $CONF compose ps -q)
-             if [ "$container_list" = "" ] ; then
-               echo "error_no_containers"
-               exit 1
-             fi
-             stat_list=$( echo "$container_list" | xargs dc -c $CONF docker inspect --format '{{.State.Status}}')
-             for stat in $stat_list ; do
-               if [ "$stat" != "running" ] ; then
-                 echo "error_incomplete_containers"
-                 exit 1
-               fi
-             done
-             echo "Up"
-             exit 0
-           done
-           ;; 
   snap)
     SNAPDIR=/Docker/snapshot
     subcmd=$2
@@ -269,7 +270,6 @@ case "$CMD" in
   ############
   supervisor) docker-compose exec ${service_name} supervisorctl ;;
   syslog)     docker-compose exec ${service_name} tail -n 200 /var/log/syslog ;;
-  maillog)    docker-compose exec ${service_name} tail -n 200 /var/log/mail.log ;;
   login)      shift
               if [ "$1" = "" ] ; then
                 cmd="bash"

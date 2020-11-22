@@ -7,6 +7,9 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -y) print_yml="1" ; shift 1 ;;
+    -s) service="$2" ; shift 2 ;;
+    -h) on_host="$2" ; shift 2 ;;
+    -g) group="$2"   ; shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done
@@ -16,14 +19,19 @@ CMD="$1"
 
 if [ "$CMD" = "" ] ; then
   echo ""
-  echo " usage: `basename $0` [-y] <command>"
-  echo "       -y ..........................print yml-config-file instaed of name"
+  echo " usage: `basename $0` [<optinons>] <command>"
+  echo "   options:"
+  echo""
+  echo "       -y ................... print yml-config-file instaed of name"
+  echo "       -g ................... print services for a group"
+  echo "       -h ................... print services defined for a host"
+  echo ""
   echo "    commands:"
   echo ""
-  echo "       active_hosts ..................... list all hosts, which are configured as active in ndc-host.yml"
-  echo "       used_hosts ....................... list all hosts, which are used in services"
-  echo "       services [-h <on_host>] .......... list services defined for host <on_host> or all services"
-  echo "       services [-g <service-group>] .... list services from group"
+  echo "       active_hosts ......... list all hosts, which are configured as active in ndc-host.yml"
+  echo "       used_hosts ........... list all hosts, which are used in services"
+  echo "       services [-h|-g] ..... list services"
+  echo "       images [-h] ........... list images"
   exit 0
 fi
 
@@ -65,14 +73,6 @@ fi
 if [ "$CMD" = "services" ] ; then
   shift
 
-  group=""
-  while [ "$#" -gt 0 ]; do
-    case "$1" in
-      -s) service="$2" ; shift 2 ;;
-      -h) on_host="$2" ; shift 2 ;;
-      -g) group="$2" ; shift 2 ;;
-    esac
-  done
   result=()
   flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
   for s in $flist ; do
@@ -112,6 +112,5 @@ if [ "$CMD" = "services" ] ; then
   printf '%s\n' "${result[@]}" 
   #echo ${result[*]} | sort
 fi
-
 exit 0
 
