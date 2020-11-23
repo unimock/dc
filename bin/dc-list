@@ -31,7 +31,6 @@ if [ "$CMD" = "" ] ; then
   echo "       active_hosts ......... list all hosts, which are configured as active in ndc-host.yml"
   echo "       used_hosts ........... list all hosts, which are used in services"
   echo "       services [-h|-g] ..... list services"
-  echo "       images [-h] ........... list images"
   exit 0
 fi
 
@@ -110,7 +109,6 @@ if [ "$CMD" = "services" ] ; then
     fi
   done
   printf '%s\n' "${result[@]}" 
-  #echo ${result[*]} | sort
 fi
 exit 0
 
