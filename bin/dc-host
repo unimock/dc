@@ -139,7 +139,7 @@ EOF
     if [ "$1" = "details" ] ; then
       dc inspect -h $HOST runtime
     else
-      dc inspect -h $HOST | grep "_state="
+      dc inspect -h $HOST runtime | grep "_state="
     fi
   fi
 
