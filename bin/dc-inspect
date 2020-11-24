@@ -2,6 +2,8 @@
 . /opt/dc/etc/config
 . /opt/dc/funcs/script_funcs
 
+DISK_USAGE_LIMIT=90 # error if >40%
+
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -23,6 +25,8 @@ if [ "$1" = "" ] ; then
   echo ""
   exit 0
 fi
+
+dc mounts umount
 
 check_runtime="1"
 if [ "$1" = "config" ] ; then
@@ -63,7 +67,15 @@ for host in $hosts ; do
       os=$( dc -h $host ssh "lsb_release -s -r" )
       echo "${host}_os=$os"
       proc=$( dc -h $host ssh df /Docker | grep "^/" | awk -F" " '{ print $5 }' )
-      echo "${host}_disk=$proc"
+      size=${proc%\%}
+      size_text=""
+      if [ ${size} -ge ${DISK_USAGE_LIMIT} ] ; then
+        size_text=" # disk_usage>${DISK_USAGE_LIMIT} warning!!!"
+        error_list="$error_list $host:disk_size=$proc"
+        host_error_marker=1
+        error=1
+      fi
+      echo "${host}_disk=$proc $size_text"
       version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
       echo "${host}_version=$version"
     fi

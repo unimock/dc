@@ -14,10 +14,12 @@ _ask()
 }
 
 on_host=""
+verbose=""
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -h) on_host="$2" ; shift 2 ;;
+    -v) shift ; verbose="1" ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done
@@ -38,7 +40,8 @@ if [ "$CMD" = "" ] ; then
   echo "    reboot              # reboot host"
   echo "    large_files <size>  # find lage files, size=xG"
   echo "    dir_entries <count> # find directories with more then count entries"
-  echo "    cmd .....           # run commands on $H"
+  echo "    cmd <command>       # run commands on $H"
+  echo "    image [-v] ...      # list,backup,restore host images"
   echo ""
   echo " service commands"
   echo ""
@@ -58,10 +61,12 @@ else
   hlist="$on_host"
 fi
 
+dc mounts umount
+
 for HOST in $hlist ; do
   if [ "$CMD" = "cmd" ] ; then
     if [ "$H" = "--all" ] ; then
-      echo "#"	  
+      echo "#"    
       echo "# dssh ${HOST} $*"
       echo "#"
     fi  
@@ -146,7 +151,7 @@ EOF
   if [ "$CMD" = "list" ] ; then
     dc-list -y services -h $HOST
   fi
-
+  ####################################################################################################################
   if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
     list=$( dc-list -y services -h $HOST )
     for i in $list ; do
@@ -157,6 +162,98 @@ EOF
   if [ "$CMD" = "reboot"   ] ; then
     dssh $HOST "reboot ; exit"
   fi
-
 done
+
+####################################################################################################################
+if [ "$CMD" = "image"   ] ; then
+    cmd="$1"
+    if [ "$cmd" = "" ] ; then
+      echo ""
+      echo "usage: `basename $0` [-h <host>] [-v] list|backup|restore"
+      echo ""
+      exit 0
+    fi
+
+    # TBD move this in dc-install init sectioen 
+    if [ ! -f ${MDE_DC_CONFIG_DIR}/dc_cluster.yml ] ; then
+      cat <<EOF > ${MDE_DC_CONFIG_DIR}/dc_cluster.yml
+cluster:
+  name:
+  backup:
+    image_url:
+EOF
+    fi
+    #
+    # read config data
+    #
+    eval `dc-yml -c ${MDE_DC_CONFIG_DIR}/dc_cluster.yml`
+    if [ "$cluster_name" = "" -o "$cluster_backup_image_url" = "" ] ; then
+      echo "cluster_name and/or cluster_backup_image_url not set in ${MDE_DC_CONFIG_DIR}/dc_cluster.yml !!!"
+       exit 1
+    fi
+
+    url="$cluster_backup_image_url"
+    cluster="$cluster_name"
+    echo ""
+    for host in $hlist ; do
+      if [ "$cmd" = "restore" -a "$on_host" = "" ] ; then
+        echo "restoring images only allowd for single haosts. use -h <host> parameter"
+        exit 1
+      fi
+      echo "###########################################################################"
+      echo "# $host image name ->  backup image name"
+      echo "###########################################################################"
+      if [ "$cmd" = "backup" ] ; then
+        echo "try to connect to $url"   
+        ping -c5 -W5  ${url%:*} >/dev/null
+        if [ "$?" != "0" ] ; then
+          echo "error connexting to $url !!!"
+          exit 1
+        fi
+        #dc -h ${host} docker login $url
+        #if [ "$?" != "0" ] ; then echo "login error!!!" ; exit 1 ; fi
+      fi
+      yml_list=$( dc list -y  -h $host services )
+     for i in $yml_list ; do
+       DIR=`dirname $i`
+       if [ -f $DIR/.env ] ; then
+          . $DIR/.env
+       fi
+       image_list=$(grep -v "^#" $DIR/docker-compose.yml  | grep " image:" | awk '{ print $2 }')
+        for x in $image_list ; do
+          image=$( eval echo "$x" )
+          if [ "$image" = "" ] ; then
+            echo "error read image from $DIR/docker-compose.yml !!!"
+            exit 1
+          fi
+          if [[ $image == *"/"* ]] ; then
+            rep="${image%/*}"
+            nam="${image#*/}"
+          else
+            rep=""
+            nam="$image"
+          fi
+          target="${url}/${cluster}_${host}_${rep}_${nam}"
+          target=${target%:}
+          echo "$image -> $target"
+          if [ "$cmd" = "backup" ] ; then
+              dc -h ${host} docker tag ${image} ${target}
+              if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi
+              if [ "$verbose" = "1" ] ; then
+                dc -h ${host} docker push          ${target}
+              else
+                dc -h ${host} docker push          ${target} >/dev/null
+              fi
+              if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
+          fi
+          if [ "$cmd" = "restore" ] ; then
+            dc -h ${host} docker image rm -f ${image} ${target}
+            dc -h ${host} docker pull ${target}
+            dc -h ${host} docker tag ${target}  ${image}
+            dc -h ${host} docker image rm -f ${target}
+          fi
+        done
+      done
+    done
+fi
 exit 0

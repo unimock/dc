@@ -34,15 +34,6 @@ if [ "$CMD" = "init" ] ; then
     echo 'export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch'             >> $FI
     echo 'export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs'                >> $FI
     echo 'export MDE_DC_CONFIG_DIR=${MDE_DC_DIR}/config'           >> $FI
-    echo 'export MDE_DC_CLUSTER_NAME=""'                           >> $FI
-  else
-    if ! grep -q "export MDE_DC_CLUSTER_NAME=" /opt/dc/etc/config ; then
-      echo 'export export MDE_DC_CLUSTER_NAME=""' >> /opt/dc/etc/config
-      echo " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-      echo " !!! cluster-name definition not set in MDE_DC_CLUSTER_NAME !!!"
-      echo " !!! visit /opt/dc/etc/config and enter a name              !!!"
-      echo " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    fi
   fi
   ##############################################################
   FI=/etc/profile.d/dc-profile.sh
