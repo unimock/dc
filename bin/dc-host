@@ -176,6 +176,7 @@ if [ "$CMD" = "image"   ] ; then
 
     # TBD move this in dc-install init sectioen 
     if [ ! -f ${MDE_DC_CONFIG_DIR}/dc_cluster.yml ] ; then
+      mkdir -p ${MDE_DC_CONFIG_DIR}
       cat <<EOF > ${MDE_DC_CONFIG_DIR}/dc_cluster.yml
 cluster:
   name:
