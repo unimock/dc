@@ -248,7 +248,7 @@ EOF
               if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
           fi
           if [ "$cmd" = "restore" ] ; then
-            dc -h ${host} docker image rm -f ${image} ${target}
+            #dc -h ${host} docker image rm -f ${image} ${target}
             dc -h ${host} docker pull ${target}
             dc -h ${host} docker tag ${target}  ${image}
             dc -h ${host} docker image rm -f ${target}
