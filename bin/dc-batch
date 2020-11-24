@@ -159,16 +159,23 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   if [ -f $MDE_DC_LOG_DIR/$JOB_NAME/body ] ; then 
     cat $MDE_DC_LOG_DIR/$JOB_NAME/body >> $FI
   fi
+
   #
   # send report mail
   #
   if [ "$mail_to" != "" ] ; then
-    eval $( dc-yml -c $MDE_DC_BATCH_DIR/global.yml )
+    eval $( dc-yml -c $MDE_DC_CONFIG_DIR/dc_cluster.yml )
+    eval $( dc-yml -c $MDE_DC_BATCH_DIR/global.yml   )
+    if [ "$errors" = "0" ] ; then
+      subject="report: ${JOB_NAME}@${cluster_name}"
+    else
+      subject="ERROR-report: ${JOB_NAME}@${cluster_name}"
+    fi
     sendemail -f $batch_mail_sender          \
-              -t $mail_to                    \
+              -t "$mail_to"                  \
               -s $batch_mail_smtp_host       \
               -o message-file=$FI            \
-              -u "batch-report: $JOB_NAME@`hostname` (errors=$errors)" \
+              -u "$subject"                  \
               -a ${E_FI}
   fi
   exit 0
