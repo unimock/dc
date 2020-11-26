@@ -64,7 +64,7 @@ EOF
 fi
 
 ############################################################
-# run
+# run / debug
 ############################################################
 if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   #
@@ -82,14 +82,14 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
        echo "#"            >> $MDE_DC_LOG_DIR/$JOB_NAME/body 2>&1
        echo "# ${A[1]} :"  >> $MDE_DC_LOG_DIR/$JOB_NAME/body 2>&1
        echo "#"            >> $MDE_DC_LOG_DIR/$JOB_NAME/body 2>&1
-       bash -c "${A[1]}"   >> $MDE_DC_LOG_DIR/$JOB_NAME/body 2>&1
+       bash -c "${A[1]}"   >> $MDE_DC_LOG_DIR/$JOB_NAME/body 2>&1 </dev/null
     elif [ "${A[0]}" = "job" ] ; then
        A[1]=$( echo ${A[1]} | xargs)  # remove blanks
        if [ "${A[1]}" != "" ] ; then
-         job_name="${A[1]}"
+          job_name="${A[1]}"
        else
-	 x=$(echo ${A[3]} | cut -d" " -f1 )
-	 job_name=$(basename $x)
+	        x=$(echo ${A[3]} | cut -d" " -f1 )
+	        job_name=$(basename $x)
        fi
        JOB_LOG=$MDE_DC_LOG_DIR/$JOB_NAME/$job_name.log
        sf_start
