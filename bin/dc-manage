@@ -2,7 +2,7 @@
 . /opt/dc/etc/config
 
 error_detect=0
-with_images=0
+with_images=1
 SIDX="0" ; TIDX="1"
 SHST=""  ; THST=""
 
@@ -86,26 +86,8 @@ if [ "$CMD" = "backup" ] ; then
   exit $?
 fi
 
-
-if [ "$CMD" = "image_update" ] ; then
-  echo "Todo:"
-  echo "  DIR=/root/Services/develop/mgl"
-  echo '  . ${DIR}/.env'
-  echo '  echo $DC_ENV_IMAGE'
-  echo "  NEW=sameersbn/gitlab:10.0.3"
-  echo '  dc -i 0 docker pull $NEW   # download image'
-  echo '  sed -i "s|DC_ENV_IMAGE=.*|DC_ENV_IMAGE=${NEW}|" ${DIR}/.env'  
-  echo '  dc -c ${DIR}/dc-service.yml rm'
-  echo '  dc -c ${DIR}/dc-service.yml up'
-  echo '  dc -c ${DIR}/dc-service.yml logs -f'
-  echo '  dc -i 1 docker pull $NEW   #check if image is available'
-  echo '  dc-manage -c ${DIR}/dc-service.yml --images sync'
-  echo "  #dc ssh tar -C /Docker -cjvf /tmp/snapshot.tar.bz2 ./Services/mgl"
-  exit 0
-fi
 if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
   yml_list=$YML
-
 elif [ "$CMD" = "sync_group" ] ; then
   yml_list=$( dc-list -y services -g $2 )
 fi
@@ -123,11 +105,9 @@ for yml in $yml_list ; do
     unset service_state
     eval $( dc-yml -c $yml )
     for i in "${!service_hosts[@]}"; do
-      #echo i=$i
       if [[ "${service_hosts[$i]}" = "${SHST}" ]]; then SIDX="$i" ; fi
       if [[ "${service_hosts[$i]}" = "${THST}" ]]; then TIDX="$i" ; fi
     done
-    #echo "SIDX=$SIDX TIDX=$TIDX"
   fi
 
   S_HOST=$( dc-yml -c $yml service_hosts[${SIDX}])
@@ -136,8 +116,6 @@ for yml in $yml_list ; do
   S_STATE=$(dc-yml -c $yml service_state[0])   # state of primary service: active|standby
   T_STATE=$(dc-yml -c $yml service_state[1])   # state of secondary service: active|standby
 
-  #echo "S_HOST=$S_HOST ($S_STATE)"
-  #echo "T_HOST=$T_HOST ($T_STATE)"
   if [ "$T_HOST" = "" ] ; then
     echo "error: target host (second) in <$yml> missing."
     exit 1
@@ -179,15 +157,12 @@ for yml in $yml_list ; do
       error_detect=1
       continue
     fi  
-
     if [ "$T_STATE" = "active" ] ; then
       dc_command $yml stop    $SERVICE $T_HOST  
     fi
     dc_command   $yml pause   $SERVICE $S_HOST
     copy_data                 $SERVICE $S_HOST $T_HOST
     dc_command   $yml unpause $SERVICE $S_HOST
-
-
     # copy remove taget containers
     # copy images
     # create target containers
