@@ -171,7 +171,11 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     else
       subject="ERROR-report: ${JOB_NAME}@${cluster_name}"
     fi
-    sendemail -f $batch_mail_sender          \
+    param=""
+    if [ "$batch_mail_smtp_user" != "" ] ; then
+      param="  -xu $batch_mail_smtp_user -xp $batch_mail_smtp_pass "
+    fi 
+    sendemail $param -f $batch_mail_sender   \
               -t "$mail_to"                  \
               -s $batch_mail_smtp_host       \
               -o message-file=$FI            \
