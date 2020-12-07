@@ -42,6 +42,7 @@ if [ "$CMD" = "" ] ; then
   echo "    dir_entries <count> # find directories with more then count entries"
   echo "    cmd <command>       # run commands on $H"
   echo "    image [-v] ...      # list,backup,restore host images"
+  echo "    prune               # do volume pruen and system prune interactive"
   echo ""
   echo " service commands"
   echo ""
@@ -94,7 +95,18 @@ EOF
 
     #dssh ${HOST} "find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
   fi
-
+  if [ "$CMD" = "prune" ] ; then
+     dssh ${HOST} df -h / | grep -v "^Filesystem"
+     dssh ${HOST} apt-get autoremove
+     dc inspect -h $HOST runtime | grep "_state="
+     echo "ret from dc inspect =$?  TBD: break if != 0 "
+     dc -h ${HOST} docker volume prune
+     dssh ${HOST} df -h / | grep -v "^Filesystem"
+     dc -h ${HOST} docker system prune -a
+     dssh ${HOST} df -h / | grep -v "^Filesystem"
+     dssh ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+     dssh ${HOST} df -h / | grep -v "^Filesystem"
+  fi
   if [ "$CMD" = "nrc" ] ; then
     dssh $HOST docker ps -q | wc -l 
   fi
