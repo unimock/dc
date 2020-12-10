@@ -1,0 +1,9 @@
+#!/bin/bash
+
+. /opt/dc/etc/config
+
+NA="$1" ; shift
+
+eval $(dc-yml -c $MDE_DC_HOST_DIR/$NA/dc-host.yml)
+scp  -i $MDE_DC_HOST_DIR/$NA/$host_ssh_key -P $host_ssh_port $1  $host_ssh_user@$host_ip:$2
+
