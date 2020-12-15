@@ -260,11 +260,19 @@ EOF
               dc -h ${host} docker image rm -f     ${target}
               if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
           fi
+          if [ "$cmd" = "reset" ] ; then
+# reset kann wieder raus, versehentlicher aufruf at atk
+target="${url}/vw_${host}_${rep}_${nam}"
+target=${target%:}
+
+            echo "dc -h ${host} docker image rm ${target}"
+            dc -h ${host} docker image rm ${target}
+          fi
           if [ "$cmd" = "restore" ] ; then
             #dc -h ${host} docker image rm -f ${image} ${target}
-            dc -h ${host} docker pull ${target}
-            dc -h ${host} docker tag ${target}  ${image}
-            dc -h ${host} docker image rm -f ${target}
+            dc -h ${host} docker pull     ${target}
+            dc -h ${host} docker tag      ${target}  ${image}
+            dc -h ${host} docker image rm ${target}
           fi
         done
       done

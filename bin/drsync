@@ -1,0 +1,34 @@
+#!/bin/bash
+
+if [ "$1" = "" ] ; then
+  echo ""
+  echo "usage: `basename $0` <host> [<rsycn-parameter>] <local-dir> remotehost:/<remote-dir>"
+  echo ""
+  echo "       remotehost will be replaced according dc-host.yml"
+  exit 0
+fi
+
+. /opt/dc/etc/config
+
+host="$1" ; shift
+
+if [ ! -f $MDE_DC_HOST_DIR/$host/dc-host.yml ] ; then
+  echo "error: $MDE_DC_HOST_DIR/$host/dc-host.yml missing!!!"
+  exit 1
+fi
+
+eval $(dc-yml -c $MDE_DC_HOST_DIR/$host/dc-host.yml)
+
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  if [[ "$1" == "remotehost:"* ]] ; then
+    CURROPT="$CURROPT \"$host_ssh_user@$host_ip:/${1#remotehost:}\""
+  else
+    CURROPT="$CURROPT \"$1\""
+  fi
+  shift
+done
+eval set -- $CURROPT
+
+rsync -e "ssh -p $host_ssh_port -i $MDE_DC_HOST_DIR/$host/$host_ssh_key" $*
+exit $?
