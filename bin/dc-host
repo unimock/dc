@@ -257,6 +257,10 @@ EOF
               else
                 dc -h ${host} docker push          ${target} >/dev/null
               fi
+              if [ "$?" != "0" ] ; then
+                echo "error: push image <${target}> to host <${host}>"
+                exit 1
+              fi
               dc -h ${host} docker image rm -f     ${target}
               if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
           fi
