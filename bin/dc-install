@@ -2,10 +2,10 @@
 
 # tools
 MACHINE="0.16.2"
-COMPOSE="1.27.4"
+COMPOSE="1.29.2"
 
 # hcloud ... hetzner cloud
-HCLOUD="1.20.0"
+HCLOUD="1.22.1"
 
 #
 APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd"
