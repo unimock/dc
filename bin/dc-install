@@ -8,7 +8,7 @@ COMPOSE="1.29.2"
 HCLOUD="1.22.1"
 
 #
-APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd"
+APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd micro"
 
 if [ "$1" = "" ] ; then
   echo ""
