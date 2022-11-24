@@ -8,7 +8,7 @@ from a central host and directory (master).
 It only works as a wrapper for the docker-machine, docker and docker-compose commands for convenient usage.
 
 ## Requirements for master and slaves
- * ubuntu-server-20.04
+ * ubuntu-server >= 20.04
  * openssh-server (pubkey mode)
 
 ## Installation (master)
