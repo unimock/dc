@@ -27,8 +27,8 @@ show_help() {
   echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
   echo "     hcloud ...                    # create and manage Hezner-Cloud hosts"
   echo "     batch ...                     # manage job batches"
-  echo "     docker|compose|swarm|machine  # delegate command to standard tools"
-  echo "     create|test|remove|enable|disable"
+  echo "     docker|compose|swarm          # delegate command to standard tools"
+  #echo "     create|test|remove|enable|disable"
   echo "     ssh                           # login into a host"                          
   echo "     manage ...                    # sync,.. services between hosts"
   echo ""
@@ -44,7 +44,6 @@ show_help() {
   echo "     logs [-f]|stop|start          # print logs from service console"
   echo "     data pull|push service|s|persistent|p|sp [real|r] # sync service and persistent data"
   echo "     data mount|umount             # mount service and persistent data to ./data"
-  echo "     encrypt|decrypt"
   echo ""
   echo "   container-commands:"
   echo ""
@@ -112,8 +111,6 @@ while [ "$#" -gt 0 ]; do
 done  
 eval set -- $CURROPT
 
-
-
 if [ "$CONF" != "" ] ; then
    if [ ! -f $CONF ] ; then
      echo "error: <$CONF> missing."
@@ -132,7 +129,6 @@ if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then
 fi
 
 if [ "$CONF" != "" ] ; then
-  #eval "$(parse_yaml $CONF)"
   eval "$(dc-yml -c $CONF)"
   HNAME=${service_hosts[${HIDX}]}
 fi
@@ -146,42 +142,36 @@ if [ "$CMD" = "" ] ; then
   show_help
 fi
 if [ "$HNAME" != "" ] ; then
-  eval "$(docker-machine env ${HNAME})"
-  eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
-  SSH_KEY_FILE=${MDE_DC_HOST_DIR}/${HNAME}/${host_ssh_key}
-
+  export DOCKER_HOST="ssh://${HNAME}"
   if [ "$CONF" != "" ] ; then
     cd `dirname $CONF`
   fi
 fi
 case "$CMD" in
-  ls)      docker-machine ls ;;
+  ls)     list=$( dc-list active_hosts )
+          for i in $list ; do
+            ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' )
+            os=$(  ssh $i lsb_release -d -s )
+            printf "%10s : %-20s %s\n" "$i" "$os" "$ver"
+          done
+          ;;
   ssh)     shift
-           docker-machine $CMD ${HNAME} $*
+           ssh ${HNAME} $*
            exit $?
            ;;
-  up)      docker-compose up -d ;;
-  rm)      docker-compose stop ; docker-compose rm -f  ;;
-  down)    docker-compose down  ;;
-  rmup)    docker-compose stop ; docker-compose rm -f ; docker-compose up -d ;;
-  create)  docker-machine create --driver        ${host_driver} \
-                          --generic-engine-port  ${host_port} \
-                          --generic-ip-address   ${host_ip} \
-                          --generic-ssh-key      ${SSH_KEY_FILE} \
-                          --generic-ssh-port     ${host_ssh_port} \
-                          --generic-ssh-user     ${host_ssh_user}  \
-                          $HNAME ;;
-  remove)  docker-machine rm $HNAME ;;
-  test)    docker run -d -p 11223:80 --name test-machine nginx:alpine
-           sleep 1
-           echo "############ check ##############" ; netcat -vz ${host_ip} 11223 ; echo "############ done  ##############"
-           docker stop test-machine
-           docker rm   test-machine
-           docker rmi nginx:alpine ;;
-  disable) docker-machine ssh $HNAME "systemctl stop docker ; systemctl disable docker" ;;
-  enable)  docker-machine ssh $HNAME "systemctl enable docker ; systemctl start docker" ;;
-
-  info)    docker-machine ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
+  up)      docker compose up -d ;;
+  rm)      docker compose stop ; docker compose rm -f  ;;
+  down)    docker compose down  ;;
+  rmup)    docker compose stop ; docker compose rm -f ; docker compose up -d ;;
+  #create)  docker-machine create --driver        ${host_driver} \
+  #                        --generic-engine-port  ${host_port} \
+  #                        --generic-ip-address   ${host_ip} \
+  #                        --generic-ssh-key      ${SSH_KEY_FILE} \
+  #                        --generic-ssh-port     ${host_ssh_port} \
+  #                        --generic-ssh-user     ${host_ssh_user}  \
+  #                        $HNAME ;;
+  #remove)  docker-machine rm $HNAME ;;
+  info)    ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
   check)   for i in "${!service_hosts[@]}"; do
              if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
              if [ "${service_state[${i}]}" != "active" ] ; then
@@ -204,42 +194,8 @@ case "$CMD" in
              exit 0
            done
            ;; 
-
-
-  snap)
-    SNAPDIR=/Docker/snapshot
-    subcmd=$2
-    if [ "$2" = "" ] ; then
-      echo "snap <sub-command> <name> ... ls|rm|create|restore"
-      exit 0
-    fi
-    name=$3
-    if [ "$name" = "" -a $subcmd != "list" ] ; then
-      echo "snap <sub-command> <name> ... ls|rm|create|restore"
-      exit 0
-    fi
-    ssh -i $SSH_KEY_FILE    -p ${host_ssh_port}  root@${host_ip} mkdir -p $SNAPDIR
-    mkdir -p /tmp/snapshot
-    case "$subcmd" in
-      ls)
-        ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} ls      $SNAPDIR
-        ;;
-      create)
-        docker-compose stop
-        ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} "tar -C /Docker/Services/${service_name} -cjvf $SNAPDIR/$name.tar.bz2 ."
-        docker-compose start
-        ;;
-      rm)
-        ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} rm -f   $SNAPDIR/$name.tar.bz2
-        ;;
-      restore)
-        echo "restore nur durchfeuhren, wenn archiv existiert $name"
-        ;;
-    esac  
-    exit 0
-    ;;
   pull)
-    docker-compose pull
+    docker compose pull
     exit 0
     ;;
   push)
@@ -250,11 +206,13 @@ case "$CMD" in
     scmd=$2
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      docker-machine mount $HNAME:/Docker/Services/${service_name} ./data
+      #docker-machine mount $HNAME:/Docker/Services/${service_name} ./data
+      sshfs $HNAME:/Docker/Services/${service_name} ./data
       exit $?
     fi
     if [ "$scmd" = "umount" ] ; then
-      docker-machine mount -u $HNAME:/Docker/Services/${service_name} ./data
+      #docker-machine mount -u $HNAME:/Docker/Services/${service_name} ./data
+      umount ./data
       rmdir ./data
     fi
     type=${3%/}
@@ -270,20 +228,17 @@ case "$CMD" in
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh -i $SSH_KEY_FILE -p ${host_ssh_port}  root@${host_ip} mkdir -p /Docker/Services/${service_name}
-        rsync  ${DRY} -arvzS --numeric-ids --delete \
-               -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} " \
-               ${LDIR}/ root@${host_ip}:/Docker/Services/${service_name}/$TYPE
-        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>)"
+        ssh ${HNAME}  mkdir -p /Docker/Services/${service_name}
+        rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
+               ${LDIR}/ ${HNAME}:/Docker/Services/${service_name}/$TYPE
+        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/Docker/Services/${service_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
-        ssh -i $SSH_KEY_FILE -p ${host_ssh_port} root@${host_ip} \
-             ls -d /Docker/Services/${service_name}/$TYPE >/dev/null 2>&1
+        ssh ${HNAME} ls -d /Docker/Services/${service_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
-          rsync   ${DRY} -arvzS --numeric-ids --delete \
-                  -e "ssh -i $SSH_KEY_FILE -p ${host_ssh_port} " \
-                  root@${host_ip}:/Docker/Services/${service_name}/$TYPE/ ${LDIR}
-          echo "pull $DRY folder FROM <$HNAME> (<${host_ip}:/Docker/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
+          rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
+                  ${HNAME}:/Docker/Services/${service_name}/$TYPE/ ${LDIR}
+          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/Docker/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
             echo "WARNING ./${TYPE} only exists locally!"  
@@ -294,34 +249,30 @@ case "$CMD" in
          echo "TBD"
       fi
     done
-    
     ;;
-  #############
-  encrypt)    mkdir -p ./utils ; tar -cjv ./private | openssl aes-256-cbc -salt -out ./utils/.private.enc ; rm -Rvf ./private ;;
-  decrypt)    openssl aes-256-cbc -d -salt -in ./utils/.private.enc | tar xjv ;;
   ############
-  supervisor) docker-compose exec ${service_name} supervisorctl ;;
-  syslog)     docker-compose exec ${service_name} tail -n 200 /var/log/syslog ;;
+  supervisor) docker compose exec ${service_name} supervisorctl ;;
+  syslog)     docker compose exec ${service_name} tail -n 200 /var/log/syslog ;;
   login)      shift
               if [ "$1" = "" ] ; then
                 cmd="bash"
               else
                 cmd=$*
               fi
-	      docker-compose exec  ${service_name} $cmd
+	      docker compose exec  ${service_name} $cmd
               ;;
   cmd)      shift
-            docker-compose exec -T  ${service_name} $*
+            docker compose exec -T  ${service_name} $*
             ret=$?
             exit $ret
             ;;
   config|migrate)
               FI=$1
               shift
-              docker-compose  exec ${service_name} /usr/local/bin/${FI} $*
+              docker compose  exec ${service_name} /usr/local/bin/${FI} $*
               ;;
   ovw)        if [ "$2" = "push" ] ; then
-                docker-compose  exec ${service_name} rsync -av /service/ovw/ /
+                docker compose  exec ${service_name} rsync -av /service/ovw/ /
                 exit 0
               fi
               if [ "$2" = "fetch" ] ; then
@@ -330,24 +281,20 @@ case "$CMD" in
                   exit 0
                 fi
                 echo "rsync -avR ${3} /service/ovw/"
-                docker-compose  exec ${service_name} rsync -avR ${3} /service/ovw/
+                docker compose  exec ${service_name} rsync -avR ${3} /service/ovw/
                 exit 0
               fi
               if [ "$2" = "fetch" ] ; then
-                docker-compose exec ${service_name} diff /service/ovw/${3} ${3}
+                docker compose exec ${service_name} diff /service/ovw/${3} ${3}
                 exit 0
               fi
               ;;
   #############
   docker)     shift ; docker $* ;;
-  compose|docker-compose)    shift ; docker-compose $*  ;;
+  compose|docker-compose)    shift ; docker compose $*  ;;
   swarm)      echo "swarm command (have to be done)" ;;
-  machine|docker-machine)    shift ; docker-machine $* ;;
-  ls)         docker-machine ls ;;
   *)          if [ "$CONF" != "" ] ; then
-                docker-compose $* 
-              else
-                docker-machine $*
+                docker compose $* 
               fi
               ;;
 esac

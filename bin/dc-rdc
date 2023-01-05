@@ -3,15 +3,12 @@
 NODE="$1"
 shift
 
-
-
 CMD=$1
 shift
 
 ret=0
 
-eval "$(docker-machine env ${NODE})"
-
+export DOCKER_HOST="ssh://${NODE}"
 CNA=`( docker ps | grep "rdc-${NODE}." | cut -f1 -d" ") `
 
 if [ "$CNA" = "" ] ; then

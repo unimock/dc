@@ -133,7 +133,6 @@ EOF
   fi
   #########################################
   if [ "$CMD" = "delete" ] ; then
-    #docker-machine rm $HNAME
     eval "$(dc-yml -c ${MDE_DC_HOST_DIR}/${HNAME}/dc-host.yml)"
     export HCLOUD_TOKEN=${host_hcloud_token}
     hcloud server delete $HNAME
