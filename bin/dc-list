@@ -35,12 +35,9 @@ if [ "$CMD" = "" ] ; then
 fi
 
 if [ "$CMD" = "active_hosts" ] ; then
-  list=`find  $MDE_DC_HOST_DIR -type f -name dc-host.yml`
+  list=$( grep -h "^Host" /root/.ssh/dc/config.* | sed -e "s/^Host//g" | sort )
   for i in $list ; do
-    state=$( dc-yml  -c $i host_state )	  
-    if [ "$state" = "active" ] ; then
-      echo `basename ${i%/dc-host.yml}`
-    fi	    
+    echo "$i"
   done	  
   exit 0
 fi

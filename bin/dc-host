@@ -68,10 +68,10 @@ for HOST in $hlist ; do
   if [ "$CMD" = "cmd" ] ; then
     if [ "$H" = "--all" ] ; then
       echo "#"    
-      echo "# dssh ${HOST} $*"
+      echo "# ssh ${HOST} $*"
       echo "#"
     fi  
-    dssh ${HOST} $*
+    ssh ${HOST} $*
   fi    
   if [ "$CMD" = "large_files" -o   "$CMD" = "dir_entries"  ] ; then
     if [ "$CMD" = "large_files" ] ; then
@@ -85,71 +85,67 @@ cat <<EOF > $FI
 find /Docker /mnt/backup-volume -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '\$NF>=${1}'
 EOF
     fi
-
-
-    eval $(dc-yml -c $MDE_DC_HOST_DIR/$HOST/dc-host.yml)
-    scp -q -i $MDE_DC_HOST_DIR/$HOST/$host_ssh_key $FI $host_ssh_user@$host_ip:$FI
-    ssh -i $MDE_DC_HOST_DIR/$HOST/$host_ssh_key $host_ssh_user@$host_ip bash $FI
-    ssh -i $MDE_DC_HOST_DIR/$HOST/$host_ssh_key $host_ssh_user@$host_ip rm   $FI
+    scp -q $FI ${HOST}:$FI
+    ssh ${HOST} bash $FI
+    ssh ${HOST} rm   $FI
     rm -f $FI
-
-    #dssh ${HOST} "find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
+    #ssh ${HOST} "find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
   fi
   if [ "$CMD" = "prune" ] ; then
-     dssh ${HOST} df -h / | grep -v "^Filesystem"
-     dssh ${HOST} apt-get autoremove
+     ssh ${HOST} df -h / | grep -v "^Filesystem"
+     ssh ${HOST} apt-get autoremove
      dc inspect -h $HOST runtime | grep "_state="
      echo "ret from dc inspect =$?  TBD: break if != 0 "
      dc -h ${HOST} docker volume prune
-     dssh ${HOST} df -h / | grep -v "^Filesystem"
+     ssh ${HOST} df -h / | grep -v "^Filesystem"
      dc -h ${HOST} docker system prune -a
-     dssh ${HOST} df -h / | grep -v "^Filesystem"
-     dssh ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
-     dssh ${HOST} df -h / | grep -v "^Filesystem"
+     ssh ${HOST} df -h / | grep -v "^Filesystem"
+     ssh ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+     ssh ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
-    dssh $HOST docker ps -q | wc -l 
+    ssh $HOST docker ps -q | wc -l 
   fi
 
   if [ "$CMD" = "update" ] ; then
-    BCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    BCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
-    dssh $HOST apt-get update
-    dssh $HOST apt-get -y install docker-ce
+    ssh $HOST apt-get update
+    ssh $HOST apt-get -y install docker-ce
     sleep 3
-    NCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    NCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
   fi
 
   if [ "$CMD" = "upgrade" ] ; then
-    BCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    BCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
     dc host -h $HOST check
     _ask "Start autoremove?"
-    dssh $HOST apt-get -y autoremove
+    ssh $HOST apt-get -y autoremove
     _ask "Start apt-get update?"
-    dssh $HOST apt-get update
+    ssh $HOST apt-get update
     _ask "Start dist-uprade?"
-    dssh $HOST apt-get -y dist-upgrade
+    ssh $HOST apt-get -y dist-upgrade
     _ask "Check, if all containers are started!"
-    NCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    NCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
     _ask "Show running containers!"
     dc host -h $HOST check
     _ask "reboot?"
-    dssh $HOST init 6
+    ssh $HOST init 6
   fi
 
   if [ "$CMD" = "check" ] ; then
-    BCOUNT=$( dssh $HOST docker ps -q | wc -l )
+    BCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
@@ -172,7 +168,7 @@ EOF
   fi
 
   if [ "$CMD" = "reboot"   ] ; then
-    dssh $HOST "reboot ; exit"
+    ssh $HOST "reboot ; exit"
   fi
 done
 
@@ -230,9 +226,9 @@ EOF
      for i in $yml_list ; do
        DIR=`dirname $i`
        if [ -f $DIR/.env ] ; then
-          . $DIR/.env
+          eval `grep -o '^[^#]*' $DIR/.env`
        fi
-       image_list=$(grep -v "^#" $DIR/docker-compose.yml  | grep " image:" | awk '{ print $2 }')
+       image_list=$(grep -o '^[^#]*' $DIR/docker-compose.yml  | grep " image:" | awk '{ print $2 }')
         for x in $image_list ; do
           image=$( eval echo "$x" )
           if [ "$image" = "" ] ; then

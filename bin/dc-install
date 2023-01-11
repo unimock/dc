@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# tools
-MACHINE="0.16.2"
-COMPOSE="1.29.2"
-
 # hcloud ... hetzner cloud
 HCLOUD="1.22.1"
 
@@ -15,7 +11,7 @@ if [ "$1" = "" ] ; then
   echo " usage `basename $0` <command>"
   echo "     commands:"
   echo "       init ....... initialize dc environment"
-  echo "       tools ...... install additional tools. (pv, tree, dialog, docker-machine, docker-compose, ...)"
+  echo "       tools ...... install additional tools. (pv, tree, dialog, ...)"
   echo "       hcloud ..... hcloud"
   echo "       docker ..... install docker-ce"
   echo ""
@@ -28,8 +24,6 @@ if [ "$CMD" = "init" ] ; then
     echo "creating dc default configuration file <$FI>"
     mkdir -p `dirname $FI`
     echo 'export MDE_DC_DIR=/root'                                  > $FI
-    echo 'export MDE_DC_HOST_DIR=${MDE_DC_DIR}/.docker/hosts'      >> $FI
-    echo 'export MDE_DC_TEMPL_DIR=${MDE_DC_DIR}/.docker/templates' >> $FI
     echo 'export MDE_DC_SERV_DIR=${MDE_DC_DIR}/Services'           >> $FI
     echo 'export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch'             >> $FI
     echo 'export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs'                >> $FI
@@ -43,7 +37,7 @@ if [ "$CMD" = "init" ] ; then
   mkdir -p `dirname $FI`
   echo '. /opt/dc/etc/config'                                                     > $FI
   echo 'export PATH=$PATH:/opt/dc/bin:${MDE_DC_DIR}/utils:${MDE_DC_DIR}/scripts' >> $FI
-  echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"      >> $FI
+  #echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"      >> $FI
   . /etc/profile
   ##############################################################
   exit 0
@@ -102,30 +96,8 @@ if [ "$CMD" = "tools" ] ; then
     update-locale LC_ALL=en_US.UTF-8
   fi
 
-
-
-#  for i in $APT_LIST ; do
-#    if [ "$( which $i )" = "" ] ; then
-      apt-get update
-      apt-get install -y $APT_LIST
-#      break
-#    fi 
-#  done
+  apt-get update
+  apt-get install -y $APT_LIST
  
-  VER=$( docker-compose --version | awk '{ print $3 }' )
-  VER=${VER%,}
-  if [ "$VER" != "$COMPOSE" ] ; then
-    curl -L https://github.com/docker/compose/releases/download/${COMPOSE}/docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose
-    chmod +x /usr/local/bin/docker-compose
-    docker-compose --version
-  fi
-
-  VER=$( docker-machine  --version | awk '{ print $3 }' )
-  VER=${VER%,}
-  if [ "$VER" != "$MACHINE" ] ; then
-    curl -L https://github.com/docker/machine/releases/download/v${MACHINE}/docker-machine-`uname -s`-`uname -m` >/usr/local/bin/docker-machine
-    chmod +x /usr/local/bin/docker-machine
-    docker-machine --version
-  fi
   exit 0
 fi
