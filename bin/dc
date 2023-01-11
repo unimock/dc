@@ -150,9 +150,17 @@ fi
 case "$CMD" in
   ls)     list=$( dc-list active_hosts )
           for i in $list ; do
-            ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' )
-            os=$(  ssh $i lsb_release -d -s )
-            printf "%10s : %-20s %s\n" "$i" "$os" "$ver"
+            ssh -o BatchMode=yes -o ConnectTimeout=2 $i hostname >/dev/null 2>&1
+            if [ "$?" = "0" ] ; then
+              ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' )
+              os=$(  ssh $i lsb_release -d -s | cut -d " " -f2)
+            else
+              ver=""
+              os="unreachable"
+            fi
+            desc=$( grep "^#desc:" /root/.ssh/dc/config.$i | sed "s/#desc: //g" )
+            prov=$( grep "^#prov:" /root/.ssh/dc/config.$i | sed "s/#prov: //g" )
+            printf "%10s : %-8s %-8s %1s  # %s\n" "$i" "$os" "$ver" "$prov" "$desc"
           done
           ;;
   ssh)     shift
