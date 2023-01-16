@@ -161,7 +161,7 @@ case "$CMD" in
             fi
             desc=$( grep "^#desc:" /root/.ssh/dc/config.$i | sed "s/#desc: //g" )
             prov=$( grep "^#prov:" /root/.ssh/dc/config.$i | sed "s/#prov: //g" )
-            printf "%10s : %-8s %-8s %1s  # %s\n" "$i" "$os" "$ver" "$prov" "$desc"
+            printf "%10s : %-8s %-8s %-11s  # %s\n" "$i" "$os" "$ver" "$prov" "$desc"
           done
           ;;
   ssh)     shift
