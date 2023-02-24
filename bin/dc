@@ -156,13 +156,17 @@ case "$CMD" in
             if [ "$ret" = "0" ] ; then
               ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
               os=$(  ssh $i lsb_release -d -s | cut -d " " -f2)
+              size=$(ssh $i df -h | grep '^/dev' | awk -F " " '{ print $5 }' | tr '\n' ',' )
+              size="["${size%,}"]"
+              
             else
               ver=""
               os="timeout"
+              size=""
             fi
             desc=$( grep "^#desc:" /root/.ssh/dc/config.$i | sed "s/#desc: //g" )
             prov=$( grep "^#prov:" /root/.ssh/dc/config.$i | sed "s/#prov: //g" )
-            printf "%10s : %-8s %-8s %-11s  # %s\n" "$i" "$os" "$ver" "$prov" "$desc"
+            printf "%10s : %-8s %-8s %-9s %-11s # %s\n" "$i" "$os" "$ver" "$size" "$prov" "$desc"
           done
           ;;
   ssh)     shift
