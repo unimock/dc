@@ -156,7 +156,7 @@ case "$CMD" in
             if [ "$ret" = "0" ] ; then
               ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
               os=$(  ssh $i lsb_release -d -s | cut -d " " -f2)
-              size=$(ssh $i df -h | grep '^/dev' | awk -F " " '{ print $5 }' | tr '\n' ',' )
+              size=$(ssh $i df -h | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
               size="["${size%,}"]"
               
             else
@@ -177,14 +177,6 @@ case "$CMD" in
   rm)      docker compose stop ; docker compose rm -f  ;;
   down)    docker compose down  ;;
   rmup)    docker compose stop ; docker compose rm -f ; docker compose up -d ;;
-  #create)  docker-machine create --driver        ${host_driver} \
-  #                        --generic-engine-port  ${host_port} \
-  #                        --generic-ip-address   ${host_ip} \
-  #                        --generic-ssh-key      ${SSH_KEY_FILE} \
-  #                        --generic-ssh-port     ${host_ssh_port} \
-  #                        --generic-ssh-user     ${host_ssh_user}  \
-  #                        $HNAME ;;
-  #remove)  docker-machine rm $HNAME ;;
   info)    ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
   check)   for i in "${!service_hosts[@]}"; do
              if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
