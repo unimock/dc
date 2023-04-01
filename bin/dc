@@ -157,7 +157,7 @@ case "$CMD" in
               ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
               os=$(  ssh $i lsb_release -d -s | cut -d " " -f2)
               size=$(ssh $i df -h | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
-              size="${size%,}"
+              size="[${size%,}]"
               
             else
               ver=""
@@ -166,7 +166,7 @@ case "$CMD" in
             fi
             desc=$( grep "^#desc:" /root/.ssh/dc/config.$i | sed "s/#desc: //g" )
             prov=$( grep "^#prov:" /root/.ssh/dc/config.$i | sed "s/#prov: //g" )
-            printf "%10s : %-8s %-8s %-13s %-8s # %s\n" "$i" "$os" "$ver" "[$size]" "$prov" "$desc"
+            printf "%10s : %-8s %-8s %-13s %-11s # %s\n" "$i" "$os" "$ver" "$size" "$prov" "$desc"
           done
           ;;
   ssh)     shift
