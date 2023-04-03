@@ -155,9 +155,9 @@ case "$CMD" in
             ver="-"
             if [ "$ret" = "0" ] ; then
               ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
-              os=$(  ssh $i lsb_release -d -s | cut -d " " -f2)
-              patch= ssh $i cat /etc/mde/patch 2>/dev/null )
-              size=$(ssh $i df -h | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
+              os=$(    ssh $i lsb_release -d -s | cut -d " " -f2)
+              patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
+              size=$(  ssh $i df -h | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
               size="[${size%,}]"
               
             else
