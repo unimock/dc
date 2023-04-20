@@ -150,24 +150,38 @@ fi
 case "$CMD" in
   ls)     list=$( dc-list active_hosts )
           for i in $list ; do
+            desc=$(  grep "^#desc:"  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
+            prov=$(  grep "^#prov:"  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
+            group=$( grep "^#group:" /root/.ssh/dc/config.$i | sed "s/#group: //g" )
+            if [ "$group" = "" ] ; then
+              group="-"
+            fi
+
+            ver="-"
+            os="timeout"
+            size="-"
+            patch="-"
+            serial="-"
             ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
             ret=$?
             if [ "$ret" = "0" ] ; then
-              ver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
-              os=$(    ssh $i lsb_release -d -s | cut -d " " -f2)
+              os=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
+              os=${os:0:8}
+              dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
+              if [ "$dver" = "" ] ; then
+                dver="-"
+              fi
+
               patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
-              size=$(  ssh $i df -h | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
+              if [ "$patch" = "" ] ; then
+                patch="-"
+              fi
+              size=$(  ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
               size="[${size%,}]"
-              
-            else
-              ver="-"
-              os="timeout"
-              size="-"
-              patch="-"
+              serial=$( ssh $i dmidecode  -s system-uuid 2>/dev/null )
+              serial=${serial:0:37}
             fi
-            desc=$( grep "^#desc:" /root/.ssh/dc/config.$i | sed "s/#desc: //g" )
-            prov=$( grep "^#prov:" /root/.ssh/dc/config.$i | sed "s/#prov: //g" )
-            printf "%10s : %-8s %-8s %-2s %-13s %-11s # %s\n" "$i" "$os" "$ver" "$patch" "$size" "$prov" "$desc"
+            printf "%10s : %-3s %-8s %-8s %-2s %-13s %-11s %-38s # %s\n" "$i" "$group" "$os" "$dver" "$patch" "$size" "$prov" "$serial" "$desc"
           done
           ;;
   ssh)     shift
