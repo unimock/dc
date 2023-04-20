@@ -157,7 +157,7 @@ case "$CMD" in
               group="-"
             fi
 
-            ver="-"
+            dver="-"
             os="timeout"
             size="-"
             patch="-"
