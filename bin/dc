@@ -149,26 +149,38 @@ if [ "$HNAME" != "" ] ; then
 fi
 case "$CMD" in
   ls)     list=$( dc-list active_hosts )
+          MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-2s|%-36s|%s\n"
+          printf "$MASK" "HOST" "GRP" "OS" "OS-VER" "Docker" "MDE-VER" "M" "P" "HD" "SERIAL" "DESCRIPTION"
+          printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "--" "------------------------------------" "-----------"
           for i in $list ; do
-            desc=$(  grep "^#desc:"  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
-            prov=$(  grep "^#prov:"  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
-            group=$( grep "^#group:" /root/.ssh/dc/config.$i | sed "s/#group: //g" )
+            desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
+            prov=$(  grep "^#prov: "  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
+            group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
+            os=$( grep "^#os: " /root/.ssh/dc/config.$i | sed "s/#os: //g" )
             if [ "$group" = "" ] ; then
               group="-"
             fi
 
             dver="-"
             mver="-"
-            os="timeout"
+            os_ver="timeout"
             size="-"
             patch="-"
             serial="-"
             monitor="-"
+
             ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
             ret=$?
             if [ "$ret" = "0" ] ; then
-              os=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
-              os=${os:0:8}
+              if [ "$os" = "ubuntu" ] ; then
+                os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
+                os_ver=${os_ver:0:8}
+              else
+                VERSION_ID=""
+                eval $( ssh $i "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
+                os_ver="$VERSION_ID"
+                os_ver=${os_ver%_*}
+              fi 
               dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
               if [ "$dver" = "" ] ; then
                 dver="-"
@@ -188,7 +200,7 @@ case "$CMD" in
               size="${size}"
               serial=$( ssh $i dmidecode  -s system-uuid 2>/dev/null )
               serial=${serial:0:37}
-              mver=$( ssh $i dpkg -l | awk '$2=="mde-base" { print $3 }' 2>/dev/null )
+              mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
               if [ "$mver" = "" ] ; then
                 mver="-"
               else
@@ -200,8 +212,7 @@ case "$CMD" in
                 fi
               fi 
             fi
-            #      host   grp  os  docker mde monit patch size id      comment
-            printf "%10s  %-3s %-8s %-8s %-8s %1s %-2s %-2s %-38s # %s\n" "$i" "$group" "$os" "$dver" "${mver}" "${monitor}" "$patch" "$size" "$serial" "$desc"
+            printf "$MASK" "${i}" "${group}" "${os}" "${os_ver}" "${dver}" "${mver}" "${monitor}" "${patch}" "${size}" "${serial}" "${desc}"
           done
           ;;
   ssh)     shift
