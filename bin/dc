@@ -163,7 +163,7 @@ case "$CMD" in
             size="-"
             patch="-"
             serial="-"
-            monitor=""
+            monitor="-"
             ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
             ret=$?
             if [ "$ret" = "0" ] ; then
@@ -185,9 +185,7 @@ case "$CMD" in
                   let size=$x
                 fi
               done
-              size="${size}%"
-              #size=$(  ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
-              #size="[${size%,}]"
+              size="${size}"
               serial=$( ssh $i dmidecode  -s system-uuid 2>/dev/null )
               serial=${serial:0:37}
               mver=$( ssh $i dpkg -l | awk '$2=="mde-base" { print $3 }' 2>/dev/null )
@@ -196,13 +194,14 @@ case "$CMD" in
               else
                 monitor=$( ssh $i pgrep mde-monitor 2>/dev/null)
                 if [ "$monitor" != "" ] ; then
-                  monitor=":M"
+                  monitor="M"
                 else
-                  monitor=""
+                  monitor="-"
                 fi
               fi 
             fi
-            printf "%10s : %-3s %-8s %-8s %-8s %-2s %-3s %-11s %-38s # %s\n" "$i" "$group" "$os" "$dver" "${mver}${monitor}" "$patch" "$size" "$prov" "$serial" "$desc"
+            #      host   grp  os  docker mde monit patch size id      comment
+            printf "%10s  %-3s %-8s %-8s %-8s %1s %-2s %-2s %-38s # %s\n" "$i" "$group" "$os" "$dver" "${mver}" "${monitor}" "$patch" "$size" "$serial" "$desc"
           done
           ;;
   ssh)     shift
