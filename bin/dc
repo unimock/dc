@@ -178,8 +178,16 @@ case "$CMD" in
               if [ "$patch" = "" ] ; then
                 patch="-"
               fi
-              size=$(  ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
-              size="[${size%,}]"
+              size=0
+              size_list=$(ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
+              for x in $size_list ; do
+                if (( $x >= $size )) ; then
+                  let size=$x
+                fi
+              done
+              size="${size}%"
+              #size=$(  ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | tr '\n' ',' )
+              #size="[${size%,}]"
               serial=$( ssh $i dmidecode  -s system-uuid 2>/dev/null )
               serial=${serial:0:37}
               mver=$( ssh $i dpkg -l | awk '$2=="mde-base" { print $3 }' 2>/dev/null )
@@ -194,7 +202,7 @@ case "$CMD" in
                 fi
               fi 
             fi
-            printf "%10s : %-3s %-8s %-8s %-8s %-2s %-13s %-11s %-38s # %s\n" "$i" "$group" "$os" "$dver" "${mver}${monitor}" "$patch" "$size" "$prov" "$serial" "$desc"
+            printf "%10s : %-3s %-8s %-8s %-8s %-2s %-3s %-11s %-38s # %s\n" "$i" "$group" "$os" "$dver" "${mver}${monitor}" "$patch" "$size" "$prov" "$serial" "$desc"
           done
           ;;
   ssh)     shift
