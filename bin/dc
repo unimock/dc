@@ -148,15 +148,23 @@ if [ "$HNAME" != "" ] ; then
   fi
 fi
 case "$CMD" in
+  reset)
+    list=$( dc-list active_hosts )
+    for i in $list ; do
+      scntl=$(grep ControlPath /root/.ssh/dc/config.$i | awk -F " " '{ print $2 }' | cut -d "%" -f1)
+      rm -vf "${scntl}${i}"
+    done
+    ;;
   ls)     list=$( dc-list active_hosts )
-          MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-2s|%-36s|%s\n"
-          printf "$MASK" "HOST" "GRP" "OS" "OS-VER" "Docker" "MDE-VER" "M" "P" "HD" "SERIAL" "DESCRIPTION"
-          printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "--" "------------------------------------" "-----------"
+          MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
+          printf "$MASK" "HOST" "GRP" "OS" "OS-VER" "Docker" "MDE-VER" "M" "P" "HD" "ID" "DESCRIPTION"
+          printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
           for i in $list ; do
             desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
             prov=$(  grep "^#prov: "  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
             group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
-            os=$( grep "^#os: " /root/.ssh/dc/config.$i | sed "s/#os: //g" )
+            os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
+            mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
             if [ "$group" = "" ] ; then
               group="-"
             fi
@@ -198,8 +206,11 @@ case "$CMD" in
                 fi
               done
               size="${size}"
-              serial=$( ssh $i dmidecode  -s system-uuid 2>/dev/null )
-              serial=${serial:0:37}
+              serial=$( ssh $i cat /etc/machine-id 2>/dev/null )
+              if [ "$serial" = "$mid" ] ; then
+                serial="OK"
+              fi
+              #serial=${serial:0:37}
               mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
               if [ "$mver" = "" ] ; then
                 mver="-"
