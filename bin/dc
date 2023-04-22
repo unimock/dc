@@ -151,8 +151,8 @@ case "$CMD" in
   reset)
     list=$( dc-list active_hosts )
     for i in $list ; do
-      scntl=$(grep ControlPath /root/.ssh/dc/config.$i | awk -F " " '{ print $2 }' | cut -d "%" -f1)
-      rm -vf "${scntl}${i}"
+      scntl=$(grep ControlPath /root/.ssh/dc/config.$i | awk -F " " '{ print $2 }' | cut -d "%" -f1 | sed -e "s|~|$HOME|g" )
+      rm -vf ${scntl}${i}
     done
     ;;
   ls)     list=$( dc-list active_hosts )
