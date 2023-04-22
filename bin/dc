@@ -207,10 +207,11 @@ case "$CMD" in
               done
               size="${size}"
               serial=$( ssh $i cat /etc/machine-id 2>/dev/null )
-              if [ "$serial" = "$mid" ] ; then
+              if [ "$serial" = "" ] ; then
+                serial="!!"
+              elif [ "$serial" = "$mid" ] ; then
                 serial="OK"
               fi
-              #serial=${serial:0:37}
               mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
               if [ "$mver" = "" ] ; then
                 mver="-"
