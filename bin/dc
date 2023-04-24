@@ -155,28 +155,17 @@ case "$CMD" in
       rm -vf ${scntl}${i}
     done
     ;;
-  ls)     list=$( dc-list active_hosts )
-          MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
-          printf "$MASK" "HOST" "GRP" "OS" "OS-VER" "Docker" "MDE-VER" "M" "P" "HD" "ID" "DESCRIPTION"
-          printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
-          for i in $list ; do
+  ls)
+    list=$( dc-list active_hosts )
+    MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
+    printf "$MASK" "HOST" "GRP" "OS" "OS-VER" "Docker" "MDE-VER" "M" "P" "HD" "ID" "DESCRIPTION"
+    printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
+    for i in $list ; do
             desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
             prov=$(  grep "^#prov: "  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
             group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
             os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
             mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
-            if [ "$group" = "" ] ; then
-              group="-"
-            fi
-
-            dver="-"
-            mver="-"
-            os_ver="timeout"
-            size="-"
-            patch="-"
-            serial="-"
-            monitor="-"
-
             ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
             ret=$?
             if [ "$ret" = "0" ] ; then
@@ -222,11 +211,32 @@ case "$CMD" in
                 else
                   monitor="-"
                 fi
-              fi 
+              fi
+              col_i='\e[1;92m'      # green
+              col_size='\e[m' # default
+              if [ $size -gt 80 ] ; then
+                col_size='\033[0;33m' # orange
+              fi
+              if [ $size -gt 90 ] ; then
+                col_size='\e[1;91m' # red
+              fi
+            else
+              dver="-"
+              mver="-"
+              os_ver="-"
+              size="-"
+              patch="-"
+              serial="-"
+              monitor="-"
+              col_i='\033[1;30m' # dark gray
+              col_size='\033[0;33m' 
+              col_size='\e[m' # default
             fi
-            printf "$MASK" "${i}" "${group}" "${os}" "${os_ver}" "${dver}" "${mver}" "${monitor}" "${patch}" "${size}" "${serial}" "${desc}"
-          done
-          ;;
+            col_def='\e[m'  #default
+      MASK="${col_i}%10s${col_def}|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_def}|%-2s|%s\n"
+      printf "$MASK" "${i}" "${group}" "${os}" "${os_ver}" "${dver}" "${mver}" "${monitor}" "${patch}" "${size}" "${serial}" "${desc}"
+    done
+    ;;
   ssh)     shift
            ssh ${HNAME} $*
            exit $?
