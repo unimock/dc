@@ -182,7 +182,7 @@ case "$CMD" in
               if [ "$dver" = "" ] ; then
                 dver="-"
               fi
-
+              # get mde-wg patch number
               patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
               if [ "$patch" = "" ] ; then
                 patch="-"
@@ -204,6 +204,7 @@ case "$CMD" in
               mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
               if [ "$mver" = "" ] ; then
                 mver="-"
+                monitor="-"
               else
                 monitor=$( ssh $i pgrep mde-monitor 2>/dev/null)
                 if [ "$monitor" != "" ] ; then
