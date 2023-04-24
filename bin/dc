@@ -156,9 +156,56 @@ case "$CMD" in
     done
     ;;
   ls)
-    list=$( dc-list active_hosts )
+    opt_active="0"
+    opt_short="0"
+    opt_group=""
+    shift
+    COPT=""
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        --active) opt_active="1"    ; shift ;;
+        --help)   echo "TBD ..."    ; exit 0 ; shift ;;
+        --short)  opt_short="1"     ; shift ;;
+        --group=*) opt_group=${1#"--group="}   ; shift ;;
+        *)  COPT="$COPT \"$1\""     ; shift ;;
+      esac
+    done
+    eval set -- $COPT
+
+    list_all=$( dc-list active_hosts )
+    list=""
+    for i in $list_all ; do
+      if [ "$opt_group" != "" ] ; then
+        group=$(  grep "^#group: "  /root/.ssh/dc/config.$i | sed "s/#group: //g"  )
+        for (( k=0; k<${#opt_group}; k++ )); do
+          opt_group_char="${opt_group:$k:1}"
+          if [[ (${group} != "") && ( ${group} == *${opt_group_char}* ) ]]; then
+            list="$list $i"
+            break
+          fi
+        done
+      else
+        list="$list $i"
+      fi
+    done
+    if [ "$opt_short" = "1" ] ; then
+      for i in $list ; do     
+        if [ "$opt_active" = "1" ] ; then
+          ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
+          ret=$?
+          if [ "$ret" = "0" ] ; then
+            echo "$i"
+          fi
+        else
+            echo "$i"
+        fi
+      done 
+      exit 0
+    fi
+
+
     MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
-    printf "$MASK" "HOST" "GRP" "OS" "OS-VER" "Docker" "MDE-VER" "M" "P" "HD" "ID" "DESCRIPTION"
+    printf "$MASK" "HOST" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "DESCRIPTION"
     printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
     for i in $list ; do
             desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
@@ -168,6 +215,9 @@ case "$CMD" in
             mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
             ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
             ret=$?
+            if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
+              continue 
+            fi
             if [ "$ret" = "0" ] ; then
               if [ "$os" = "ubuntu" ] ; then
                 os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
