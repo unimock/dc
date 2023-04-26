@@ -156,18 +156,23 @@ case "$CMD" in
     done
     ;;
   ls)
+
     opt_active="0"
     opt_short="0"
     opt_group=""
+    opt_format=""
+    opt_host=""
     shift
     COPT=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
-        --active) opt_active="1"    ; shift ;;
-        --help)   echo "TBD ..."    ; exit 0 ; shift ;;
-        --short)  opt_short="1"     ; shift ;;
-        --group=*) opt_group=${1#"--group="}   ; shift ;;
-        *)  COPT="$COPT \"$1\""     ; shift ;;
+        --active) opt_active="1"                ; shift ;;
+        --help)   echo "TBD ..."    ; exit 0    ; shift ;;
+        --short)  opt_short="1"                 ; shift ;;
+        --group=*) opt_group=${1#"--group="}    ; shift ;;
+        --host=*) opt_host=${1#"--host="}       ; shift ;;
+        --format=*) opt_format=${1#"--format="} ; shift ;;
+        *)  COPT="$COPT \"$1\""                 ; shift ;;
       esac
     done
     eval set -- $COPT
@@ -203,89 +208,151 @@ case "$CMD" in
       exit 0
     fi
 
-
-    MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
-    printf "$MASK" "HOST" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "DESCRIPTION"
-    printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
+    if [ "$opt_format" = "" ] ; then
+      MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
+      printf "$MASK" "HOST" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "DESCRIPTION"
+      printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
+    fi
     for i in $list ; do
-            desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
-            prov=$(  grep "^#prov: "  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
-            group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
-            os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
-            mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
-            ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
-            ret=$?
-            if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
-              continue 
-            fi
-            if [ "$ret" = "0" ] ; then
-              if [ "$os" = "ubuntu" ] ; then
-                os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
-                os_ver=${os_ver:0:8}
-              else
-                VERSION_ID=""
-                eval $( ssh $i "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
-                os_ver="$VERSION_ID"
-                os_ver=${os_ver%_*}
-              fi 
-              dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
-              if [ "$dver" = "" ] ; then
-                dver="-"
-              fi
-              # get mde-wg patch number
-              patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
-              if [ "$patch" = "" ] ; then
-                patch="-"
-              fi
-              size=0
-              size_list=$(ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
-              for x in $size_list ; do
-                if (( $x >= $size )) ; then
-                  let size=$x
-                fi
-              done
-              size="${size}"
-              serial=$( ssh $i cat /etc/machine-id 2>/dev/null )
-              if [ "$serial" = "" ] ; then
-                serial="!!"
-              elif [ "$serial" = "$mid" ] ; then
-                serial="OK"
-              fi
-              mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
-              if [ "$mver" = "" ] ; then
-                mver="-"
-                monitor="-"
-              else
-                monitor=$( ssh $i pgrep mde-monitor 2>/dev/null)
-                if [ "$monitor" != "" ] ; then
-                  monitor="M"
-                else
-                  monitor="-"
-                fi
-              fi
-              col_i='\e[1;92m'      # green
-              col_size='\e[m' # default
-              if [ $size -gt 80 ] ; then
-                col_size='\033[0;33m' # orange
-              fi
-              if [ $size -gt 90 ] ; then
-                col_size='\e[1;91m' # red
-              fi
-            else
-              dver="-"
-              mver="-"
-              os_ver="-"
-              size="-"
-              patch="-"
-              serial="-"
-              monitor="-"
-              col_i='\033[1;30m' # dark gray
-              col_size='\033[0;33m' 
-              col_size='\e[m' # default
-            fi
-            col_def='\e[m'  #default
-      MASK="${col_i}%10s${col_def}|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_def}|%-2s|%s\n"
-      printf "$MASK" "${i}" "${group}" "${os}" "${os_ver}" "${dver}" "${mver}" "${monitor}" "${patch}" "${size}" "${serial}" "${desc}"
+      if [ "$opt_host" != "" -a "$opt_host" != "$i" ] ; then
+         continue
+      fi
+      desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
+      prov=$(  grep "^#prov: "  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
+      group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
+      os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
+      mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
+
+      dver=""
+      mver=""
+      os_ver=""
+      size=""
+      patch=""
+      serial=""
+      monitor=""
+      state=""
+
+      ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
+      ret=$?
+      if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
+        continue 
+      fi
+      
+      if [ "$ret" = "0" ] ; then
+        state="up"
+        if [ "$os" = "ubuntu" ] ; then
+          os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
+          os_ver=${os_ver:0:8}
+        else
+          VERSION_ID=""
+          eval $( ssh $i "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
+          os_ver="$VERSION_ID"
+          os_ver=${os_ver%_*}
+        fi 
+        dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
+        if [ "$dver" = "" ] ; then
+          dver=""
+        fi
+        # get mde-wg patch number
+        patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
+        size=0
+        size_list=$(ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
+        for x in $size_list ; do
+          if (( $x >= $size )) ; then
+            let size=$x
+          fi
+        done
+        x=$( ssh $i cat /etc/machine-id 2>/dev/null )
+        if [ "$x" = "" ] ; then
+          serial="!!"
+        elif [ "$x" = "$mid" ] ; then
+          serial="OK"
+        else
+          serial="$x"
+        fi
+        mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
+        if [ "$mver" = "" ] ; then
+          mver=""
+          monitor=""
+        else
+          x=$( ssh $i pgrep mde-monitor 2>/dev/null)
+          if [ "$x" != "" ] ; then
+            monitor="M"
+          fi
+        fi
+        #
+        # store latests host data
+        #
+        mkdir -p /var/dc/hosts
+        host_data_file=/var/dc/hosts/$i
+        rm -f $host_data_file
+        HOST="host"
+        echo "dc_${HOST}_name=\"${i}\""                 >> $host_data_file
+        echo "dc_${HOST}_state=\"${state}\""            >> $host_data_file
+        echo "dc_${HOST}_group=\"${group}\""            >> $host_data_file
+        echo "dc_${HOST}_os=\"${os}\""                  >> $host_data_file
+        echo "dc_${HOST}_os_version=\"${os_ver}\""      >> $host_data_file
+        echo "dc_${HOST}_docker_version=\"${dver}\""    >> $host_data_file
+        echo "dc_${HOST}_mde_version=\"${mver}\""       >> $host_data_file
+        echo "dc_${HOST}_mde_monitor=\"${monitor}\""    >> $host_data_file
+        echo "dc_${HOST}_patch=\"${patch}\""            >> $host_data_file
+        echo "dc_${HOST}_hd_size=${size}"               >> $host_data_file
+        echo "dc_${HOST}_machine_id=\"${serial}\""      >> $host_data_file
+        echo "dc_${HOST}_desc=\"${desc}\""              >> $host_data_file
+      else
+        #
+        # host not connected
+        #
+        host_data_file="/var/dc/hosts/$i"
+        if [ ! -f $host_data_file ] ; then
+          HOST="host"
+          echo "dc_${HOST}_name=\"${i}\""               >> $host_data_file
+          echo "dc_${HOST}_state=\"${state}\""          >> $host_data_file
+          echo "dc_${HOST}_group=\"${group}\""          >> $host_data_file
+          echo "dc_${HOST}_os=\"${os}\""                >> $host_data_file
+          echo "dc_${HOST}_os_version=\"-\""            >> $host_data_file
+          echo "dc_${HOST}_docker_version=\"-\""        >> $host_data_file
+          echo "dc_${HOST}_mde_version=\"-\""           >> $host_data_file
+          echo "dc_${HOST}_mde_monitor=\"-\""           >> $host_data_file
+          echo "dc_${HOST}_patch=\"-\""                 >> $host_data_file
+          echo "dc_${HOST}_hd_size=\"-\""               >> $host_data_file
+          echo "dc_${HOST}_machine_id=\"-\""            >> $host_data_file
+          echo "dc_${HOST}_desc=\"${desc}\""            >> $host_data_file
+        fi  
+      fi
+      eval `cat $host_data_file`
+      #
+      # Farben fuer Ausgabe definieren
+      #
+      COL_DEFAULT='\e[m'
+      COL_GREEN='\e[1;92m'
+      COL_ORANGE='\033[0;33m'
+      COL_GRAY='\033[1;30m'
+      COL_RED='\e[1;91m'         
+      if [ "$dc_host_state" = "up" ] ; then
+        col_state=$COL_GREEN
+        col_std=$COL_DEFAULT
+        col_size=$COL_DEFAULT
+        if [ $size -gt 80 ] ; then
+           col_size=$COL_ORANGE
+        fi
+        if [ $size -gt 90 ] ; then
+           col_size=$COL_RED
+        fi
+      else
+        col_state=$COL_GRAY
+        col_std=$COL_GRAY
+        col_size=$COL_GRAY
+      fi
+      #
+      # Ausgabe
+      #
+      if [ "$opt_format" = "" ] ; then
+        MASK="${col_state}%10s${col_std}|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%s${COL_DEFAULT}\n"
+        printf "$MASK" "${dc_host_name}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${dc_host_desc}"
+      elif [ "$opt_format" = "eval" ] ; then
+        cat $host_data_file
+      fi
     done
     ;;
   ssh)     shift
@@ -331,12 +398,10 @@ case "$CMD" in
     scmd=$2
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      #docker-machine mount $HNAME:/Docker/Services/${service_name} ./data
       sshfs $HNAME:/Docker/Services/${service_name} ./data
       exit $?
     fi
     if [ "$scmd" = "umount" ] ; then
-      #docker-machine mount -u $HNAME:/Docker/Services/${service_name} ./data
       umount ./data
       rmdir ./data
     fi
