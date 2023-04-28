@@ -166,11 +166,11 @@ case "$CMD" in
     COPT=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
-        --active) opt_active="1"                ; shift ;;
-        --help)   echo "TBD ..."    ; exit 0    ; shift ;;
-        --short)  opt_short="1"                 ; shift ;;
-        --group=*) opt_group=${1#"--group="}    ; shift ;;
-        --host=*) opt_host=${1#"--host="}       ; shift ;;
+        --active)   opt_active="1"              ; shift ;;
+        --help)     echo "TBD ..."    ; exit 0  ; shift ;;
+        --short)    opt_short="1"               ; shift ;;
+        --group=*)  opt_group=${1#"--group="}   ; shift ;;
+        --host=*)   opt_host=${1#"--host="}     ; shift ;;
         --format=*) opt_format=${1#"--format="} ; shift ;;
         *)  COPT="$COPT \"$1\""                 ; shift ;;
       esac
@@ -209,9 +209,9 @@ case "$CMD" in
     fi
 
     if [ "$opt_format" = "" ] ; then
-      MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%s\n"
-      printf "$MASK" "HOST" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "DESCRIPTION"
-      printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "-----------"
+      MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
+      printf "$MASK" "HOST" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "LAST_REACHABLE" "DESCRIPTION"
+      printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
     fi
     for i in $list ; do
       if [ "$opt_host" != "" -a "$opt_host" != "$i" ] ; then
@@ -298,11 +298,13 @@ case "$CMD" in
         echo "dc_${HOST}_patch=\"${patch}\""            >> $host_data_file
         echo "dc_${HOST}_hd_size=${size}"               >> $host_data_file
         echo "dc_${HOST}_machine_id=\"${serial}\""      >> $host_data_file
+        echo "dc_${HOST}_last_reachable=$(date +%s)"    >> $host_data_file
         echo "dc_${HOST}_desc=\"${desc}\""              >> $host_data_file
       else
         #
         # host not connected
         #
+        dc_host_last_reachable="-"
         host_data_file="/var/dc/hosts/$i"
         if [ ! -f $host_data_file ] ; then
           HOST="host"
@@ -317,10 +319,13 @@ case "$CMD" in
           echo "dc_${HOST}_patch=\"-\""                 >> $host_data_file
           echo "dc_${HOST}_hd_size=\"-\""               >> $host_data_file
           echo "dc_${HOST}_machine_id=\"-\""            >> $host_data_file
+          echo "dc_${HOST}_last_reachable=\"-\""        >> $host_data_file
           echo "dc_${HOST}_desc=\"${desc}\""            >> $host_data_file
-        fi  
+        fi
+        sed -i -e 's/dc_host_state=.*/dc_host_state=""/'   $host_data_file
       fi
       eval `cat $host_data_file`
+      dc_host_state="${state}"
       #
       # Farben fuer Ausgabe definieren
       #
@@ -330,7 +335,8 @@ case "$CMD" in
       COL_GRAY='\033[1;30m'
       COL_RED='\e[1;91m'         
       if [ "$dc_host_state" = "up" ] ; then
-        col_state=$COL_GREEN
+        #col_state=$COL_GREEN
+        col_state=$COL_DEFAULT
         col_std=$COL_DEFAULT
         col_size=$COL_DEFAULT
         if [ $size -gt 80 ] ; then
@@ -347,9 +353,13 @@ case "$CMD" in
       #
       # Ausgabe
       #
+      last_reachable="-"
+      if [ "${dc_host_last_reachable}" != "-" ] ; then
+        last_reachable=$(date -d @${dc_host_last_reachable} +"%Y-%m-%d_%H:%M" )
+      fi
       if [ "$opt_format" = "" ] ; then
-        MASK="${col_state}%10s${col_std}|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%s${COL_DEFAULT}\n"
-        printf "$MASK" "${dc_host_name}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${dc_host_desc}"
+        MASK="${col_state}%10s${col_std}|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
+        printf "$MASK" "${dc_host_name}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${last_reachable}" "${dc_host_desc}"
       elif [ "$opt_format" = "eval" ] ; then
         cat $host_data_file
       fi
