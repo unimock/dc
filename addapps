@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 list="
 addapps;additional-apps;https://mde.gate-7.de/addapps/addapps
 selfextractor;selfextractor;https://mde.gate-7.de/addapps/selfextractor
@@ -9,36 +10,49 @@ difft;difftastic;https://github.com/Wilfred/difftastic/releases/download/0.48.0/
 drone;drone-cli;https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz
 "
 
+_install() {
+  name="$1"
+  url="$2"
+
+  FI=$(mktemp)
+  wget -q -O $FI $url
+  if [ -f /usr/local/bin/$name ] ; then
+    sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
+  fi
+  sudo rm -f /usr/local/bin/$name
+  if [[ $url == *".tar.gz" ]] ; then
+    sudo tar -C /usr/local/bin/ -xzvf $FI
+  else
+    sudo cp $FI /usr/local/bin/$name
+  fi
+  sudo chmod 755 /usr/local/bin/$name
+  sudo chown root:root /usr/local/bin/$name
+  rm $FI
+}
+
+
 if [ "$1" = "" ] ; then
   echo ""
-  echo "usage: $(basename $0) list|inst <app_name>"
+  echo "usage: $(basename $0) update|list|install <app_name>"
   echo ""
   exit 0
 fi
 
 echo "$list" | while read -r i ; do
+
   name=$( echo "$i" | cut -d";" -f1)
   bez=$(  echo "$i" | cut -d";" -f2)
   url=$(  echo "$i" | cut -d";" -f3)
   if [ "$name" = "" ] ; then continue ; fi
-  if [ "$1" = "list" ] ; then
+  if [[ "$1" == "list" && "$name" != "addapps" ]] ; then
     printf "%-15s %-20s # %s\n" $name $bez $url
   fi
-  if [ "$1" = "inst" -a "$2" = "$name" ] ; then
-    FI=$(mktemp)
-    wget -q -O $FI $url
-    if [ -f /usr/local/bin/$name ] ; then
-      sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
-    fi
-    sudo rm -f /usr/local/bin/$name
-    if [[ $url == *".tar.gz" ]] ; then
-      sudo tar -C /usr/local/bin/ -xzvf $FI
-    else
-      sudo cp $FI /usr/local/bin/$name
-    fi
-    sudo chmod 755 /usr/local/bin/$name
-    sudo chown root:root /usr/local/bin/$name
-    rm $FI
+  if [[ "$1" == "update" && "$name" == "addapps"  ]] ; then
+    _install "$name" "$url"
+    exit
+  fi
+  if [[ "$1" == "install" && "$2" == "$name" ]] ; then
+    _install "$name" "$url"
     exit 0
   fi
 
