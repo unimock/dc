@@ -1,0 +1,33 @@
+kind: pipeline
+name: default
+
+steps:
+- name: deploy
+  image: drillster/drone-rsync
+  settings:
+    hosts:
+      - mde.gate-7.de
+    port: 32000
+    username: root
+    key:
+      from_secret: aptrep_ssh_key
+    source: .
+    target: /downloads/addapps
+    #include: [ "app.jar", "app.jar.md5" ]
+    #script:
+    #  - reprepro.sh  mde   ${DRONE_REPO_NAME}
+
+- name: notify
+  image: drillster/drone-email
+  settings:
+    host:
+      from_secret: smtp_host
+    username:
+      from_secret: smtp_username
+    password:
+      from_secret: smtp_password
+    from: 
+      from_secret: smtp_from
+    port: 587
+    #subject: 
+    #body:
