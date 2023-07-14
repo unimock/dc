@@ -1,0 +1,40 @@
+#!/bin/bash
+
+list="
+stc;syncthing-cli;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
+difft;difftastic;https://github.com/Wilfred/difftastic/releases/download/0.47.0/difft-x86_64-unknown-linux-gnu.tar.gz
+drone;drone-cli;https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz
+"
+
+if [ "$1" = "" ] ; then
+  echo ""
+  echo "usage: $(basename $0) list|inst <app_name>"
+  echo ""
+  exit 0
+fi
+
+echo "$list" | while read -r i ; do
+  name=$( echo "$i" | cut -d";" -f1)
+  bez=$(  echo "$i" | cut -d";" -f2)
+  url=$(  echo "$i" | cut -d";" -f3)
+  if [ "$name" = "" ] ; then continue ; fi
+  if [ "$1" = "list" ] ; then
+    printf "%-10s %-20s # %s\n" $name $bez $url
+  fi
+  if [ "$1" = "inst" -a "$2" = "$name" ] ; then
+    FI=$(mktemp)
+    wget -q -O $FI $url
+    sudo cp -f /usr/local/bin/$name /usr/local/bin/$name-backup
+    sudo rm -f /usr/local/bin/$name
+    if [[ $url == *".tar.gz" ]] ; then
+      sudo tar -C /usr/local/bin/ -xzvf $FI
+    else
+      sudo cp $FI /usr/local/bin/$name
+    fi
+    sudo chmod a+x /usr/local/bin/$name
+    rm $FI
+    exit 0
+  fi
+
+done
+
