@@ -26,7 +26,9 @@ echo "$list" | while read -r i ; do
   if [ "$1" = "inst" -a "$2" = "$name" ] ; then
     FI=$(mktemp)
     wget -q -O $FI $url
-    sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
+    if [ -f /usr/local/bin/$name ] ; then
+      sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
+    fi
     sudo rm -f /usr/local/bin/$name
     if [[ $url == *".tar.gz" ]] ; then
       sudo tar -C /usr/local/bin/ -xzvf $FI
