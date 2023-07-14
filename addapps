@@ -1,8 +1,9 @@
 #!/bin/bash
 
 list="
-addapps;additionl-applications;https://mde.gate-7.de/addapps/addapps
+addapps;additional-apps;https://mde.gate-7.de/addapps/addapps
 selfextractor;selfextractor;https://mde.gate-7.de/addapps/selfextractor
+sshenc;ssh-encryption;https://mde.gate-7.de/addapps/sshenc
 stc;syncthing-cli;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
 difft;difftastic;https://github.com/Wilfred/difftastic/releases/download/0.47.0/difft-x86_64-unknown-linux-gnu.tar.gz
 drone;drone-cli;https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz
