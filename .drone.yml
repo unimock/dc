@@ -21,7 +21,7 @@ steps:
       - ".drone.yml"
       - ".git"
     #script:
-    #  - rm -f .drone.yml .git
+    #  - chmod 755 /downloads/addapps/*
     #include: [ "app.jar", "app.jar.md5" ]
     #script:
     #  - reprepro.sh  mde   ${DRONE_REPO_NAME}
