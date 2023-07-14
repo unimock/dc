@@ -12,7 +12,16 @@ steps:
     key:
       from_secret: aptrep_ssh_key
     source: .
+    delete: true
     target: /downloads/addapps
+    #prescript:
+    #  - rm -rf   /downloads/addapps
+    #  - mkdir -p /downloads/addapps
+    exclude:
+      - ".drone.yml"
+      - ".git"
+    #script:
+    #  - rm -f .drone.yml .git
     #include: [ "app.jar", "app.jar.md5" ]
     #script:
     #  - reprepro.sh  mde   ${DRONE_REPO_NAME}
