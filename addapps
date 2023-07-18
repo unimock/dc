@@ -1,13 +1,13 @@
 #!/bin/bash
-VERSION="0.0.1"
+VERSION="0.1.0"
 
 list="
-addapps;additional-apps;--version;https://mde.gate-7.de/addapps/addapps
-selfextractor;selfextractor;--version;https://mde.gate-7.de/addapps/selfextractor
-sshenc;ssh-encryption;--version;https://mde.gate-7.de/addapps/sshenc
-stc;syncthing-cli;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
-difft;difftastic;--version;https://github.com/Wilfred/difftastic/releases/download/0.48.0/difft-x86_64-unknown-linux-gnu.tar.gz
-drone;drone-cli;--version;https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz
+addapps;additional-apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
+selfextractor;selfextractor;0.0.1;--version;https://mde.gate-7.de/addapps/selfextractor
+sshenc;ssh-encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
+stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
+difft;difftastic;0.48.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
+drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/<VERSION>/download/drone_linux_amd64.tar.gz
 "
 
 _install() {
@@ -34,7 +34,7 @@ show_help()
 {
   if [ "$1" = "" ] ; then
     echo ""
-    echo "usage: $(basename $0) [-v|--version|-h|--help] update|list|install <app_name>"
+    echo "usage: $(basename $0) [-v|--version|-h|--help] refresh|update|list|install <app_name>"
     echo ""
     exit 0
   fi
@@ -72,8 +72,9 @@ echo "$list" | while read -r i ; do
 
   name=$( echo "$i" | cut -d";" -f1)
   bez=$(  echo "$i" | cut -d";" -f2)
-  ver_cmd=$(  echo "$i" | cut -d";" -f3)
-  url=$(  echo "$i" | cut -d";" -f4)
+  ver=$(  echo "$i" | cut -d";" -f3)
+  ver_cmd=$(  echo "$i" | cut -d";" -f4)
+  url=$(  echo "$i" | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g" )
   if [ "$name" = "" ] ; then continue ; fi
   state="-"
   if [ -e /usr/local/bin/$name ] ; then
@@ -85,9 +86,9 @@ echo "$list" | while read -r i ; do
     version="-"
   fi
   if [[ "$1" == "list" ]] ; then
-    printf "%-1s %-15s %-10s %-20s # %s\n" $state $name $version $bez $url
+    printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
   fi
-  if [[ "$1" == "update" && "$name" == "addapps"  ]] ; then
+  if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$name" "$url"
     exit
   fi
