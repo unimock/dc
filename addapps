@@ -1,13 +1,13 @@
 #!/bin/bash
-VERSION="0.1.0"
+VERSION="0.1.1"
 
 list="
 addapps;additional-apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
-selfextractor;selfextractor;0.0.1;--version;https://mde.gate-7.de/addapps/selfextractor
+selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
 sshenc;ssh-encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
 difft;difftastic;0.48.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
-drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/<VERSION>/download/drone_linux_amd64.tar.gz
+drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 "
 
 _install() {
@@ -29,12 +29,17 @@ _install() {
   sudo chown root:root /usr/local/bin/$name
   rm $FI
 }
+_remove() {
+  name="$1"
+  sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
+  sudo rm -f /usr/local/bin/$name
+}
 
-show_help()
-{
+
+show_help() {
   if [ "$1" = "" ] ; then
     echo ""
-    echo "usage: $(basename $0) [-v|--version|-h|--help] refresh|update|list|install <app_name>"
+    echo "usage: $(basename $0) [-v|--version|-h|--help] refresh|update|list|install|remove <app_name>"
     echo ""
     exit 0
   fi
@@ -78,12 +83,14 @@ echo "$list" | while read -r i ; do
   if [ "$name" = "" ] ; then continue ; fi
   state="-"
   if [ -e /usr/local/bin/$name ] ; then
-    state="I"
+    state="o"
   fi
+  version=""
   if [ "$ver_cmd" != "" ] ; then
     version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
-  else
-    version="-"
+    if [[ "$version" != "" && "$version" != "$ver" ]] ; then
+      state="!"
+    fi
   fi
   if [[ "$1" == "list" ]] ; then
     printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
@@ -94,6 +101,10 @@ echo "$list" | while read -r i ; do
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
     _install "$name" "$url"
+    exit 0
+  fi
+  if [[ "$1" == "remove" && "$2" == "$name" ]] ; then
+    _remove "$name"
     exit 0
   fi
 
