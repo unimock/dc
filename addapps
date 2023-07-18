@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.0.0"
+VERSION="0.0.1"
 
 list="
 addapps;additional-apps;--version;https://mde.gate-7.de/addapps/addapps
@@ -72,16 +72,20 @@ echo "$list" | while read -r i ; do
 
   name=$( echo "$i" | cut -d";" -f1)
   bez=$(  echo "$i" | cut -d";" -f2)
-  ver=$(  echo "$i" | cut -d";" -f3)
+  ver_cmd=$(  echo "$i" | cut -d";" -f3)
   url=$(  echo "$i" | cut -d";" -f4)
   if [ "$name" = "" ] ; then continue ; fi
+  state="-"
+  if [ -e /usr/local/bin/$name ] ; then
+    state="I"
+  fi
   if [ "$ver" != "" ] ; then
-    version=$( /usr/local/bin/$name $ver 2>/dev/null | grep -o '[0-9,.]*' )
+    version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
   else
     version="-"
   fi
   if [[ "$1" == "list" ]] ; then
-    printf "%-15s %-10s %-20s # %s\n" $name $version $bez $url
+    printf "%-1s %-15s %-10s %-20s # %s\n" $state $name $version $bez $url
   fi
   if [[ "$1" == "update" && "$name" == "addapps"  ]] ; then
     _install "$name" "$url"
