@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
-#
+#!/bin/bash
+VERSION="0.0.0"
+
 me=sshenc
 
 show_help() {
@@ -24,24 +25,56 @@ $me home page: https://github.com/S2-/sshenc.sh/
 EOF
 }
 
-# --- process option parameters
-OPTIND=1                           # reset in case getopts has been used previously in the shell
-while getopts "h?p:s:g:" opt; do
-    case "$opt" in
-    h|\?)
+options=$(getopt -l "help,version" -o "hvp:s:g:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
     show_help
     exit 0
     ;;
-    p)  public_key+=("$OPTARG")
+  -v|--version) 
+    echo "$VERSION"
+    exit 0
     ;;
-    s)  private_key=$OPTARG
+  -p)
+    shift
+    public_key+=("$1")
     ;;
-    g)  github_handle+=("$OPTARG")
-    esac
+  -s)
+    shift
+    private_key=$1
+    ;;
+  -g)
+    shift
+    github_handle+=("$1") 
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
 done
 
-shift $((OPTIND -1))               # pop the processed options off the stack
-[ "$1" = "--" ] && shift
+
+# --- process option parameters
+#OPTIND=1                           # reset in case getopts has been used previously in the shell
+#while getopts "h?p:s:g:" opt; do
+#    case "$opt" in
+#    h|\?)
+#      show_help
+#      exit 0
+#    ;;
+#    p)  public_key+=("$OPTARG")
+#    ;;
+#    s)  private_key=$OPTARG
+#    ;;
+#    g)  github_handle+=("$OPTARG")
+#    esac
+#done
+#
+#shift $((OPTIND -1))               # pop the processed options off the stack
+#[ "$1" = "--" ] && shift
 
 # --- setup environment
 

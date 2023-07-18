@@ -1,13 +1,13 @@
 #!/bin/bash
-
+VERSION="0.0.0"
 
 list="
-addapps;additional-apps;https://mde.gate-7.de/addapps/addapps
-selfextractor;selfextractor;https://mde.gate-7.de/addapps/selfextractor
-sshenc;ssh-encryption;https://mde.gate-7.de/addapps/sshenc
-stc;syncthing-cli;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
-difft;difftastic;https://github.com/Wilfred/difftastic/releases/download/0.48.0/difft-x86_64-unknown-linux-gnu.tar.gz
-drone;drone-cli;https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz
+addapps;additional-apps;--version;https://mde.gate-7.de/addapps/addapps
+selfextractor;selfextractor;--version;https://mde.gate-7.de/addapps/selfextractor
+sshenc;ssh-encryption;--version;https://mde.gate-7.de/addapps/sshenc
+stc;syncthing-cli;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
+difft;difftastic;--version;https://github.com/Wilfred/difftastic/releases/download/0.48.0/difft-x86_64-unknown-linux-gnu.tar.gz
+drone;drone-cli;--version;https://github.com/harness/drone-cli/releases/latest/download/drone_linux_amd64.tar.gz
 "
 
 _install() {
@@ -30,22 +30,58 @@ _install() {
   rm $FI
 }
 
+show_help()
+{
+  if [ "$1" = "" ] ; then
+    echo ""
+    echo "usage: $(basename $0) [-v|--version|-h|--help] update|list|install <app_name>"
+    echo ""
+    exit 0
+  fi
+}
 
-if [ "$1" = "" ] ; then
-  echo ""
-  echo "usage: $(basename $0) update|list|install <app_name>"
-  echo ""
+if [[ "$1" == "" ]] ; then
+  show_help
   exit 0
 fi
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
+    show_help
+    exit 0
+    ;;
+  -v|--version) 
+    echo "$VERSION"
+    exit 0
+    ;;
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
 
 echo "$list" | while read -r i ; do
 
   name=$( echo "$i" | cut -d";" -f1)
   bez=$(  echo "$i" | cut -d";" -f2)
-  url=$(  echo "$i" | cut -d";" -f3)
+  ver=$(  echo "$i" | cut -d";" -f3)
+  url=$(  echo "$i" | cut -d";" -f4)
   if [ "$name" = "" ] ; then continue ; fi
-  if [[ "$1" == "list" && "$name" != "addapps" ]] ; then
-    printf "%-15s %-20s # %s\n" $name $bez $url
+  if [ "$ver" != "" ] ; then
+    version=$( /usr/local/bin/$name $ver 2>/dev/null | grep -o '[0-9,.]*' )
+  else
+    version="-"
+  fi
+  if [[ "$1" == "list" ]] ; then
+    printf "%-15s %-10s %-20s # %s\n" $name $version $bez $url
   fi
   if [[ "$1" == "update" && "$name" == "addapps"  ]] ; then
     _install "$name" "$url"

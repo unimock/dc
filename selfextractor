@@ -1,9 +1,8 @@
 #!/bin/bash
-#
-#mde-help: TBD
-#
+VERSION="0.0.2"
 
-if [ "$1" = "" ] ; then
+show_help()
+{
   echo ""
   echo "usage: `basename $0` <content-directory> [selfextractor-file]"
   echo ""
@@ -18,8 +17,37 @@ if [ "$1" = "" ] ; then
   echo "#or:"
   echo "`basename $0` ./hugo /tmp/my-selfextractor.sh"
   echo ""
+}
+
+if [ "$1" = "" ] ; then
+  show_help
   exit 0
 fi
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
+    show_help
+    exit 0
+    ;;
+  -v|--version) 
+    echo "$VERSION"
+    exit 0
+    ;;
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+
 
 CDIR="$1" ; shift
 SEF="./${CDIR}.sh"
