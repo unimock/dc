@@ -5,8 +5,8 @@ list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
 selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
 sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
-2facli; 2FA CLI;0.0.0;--version;https://mde.gate-7.de/addapps/2facli
-crypter; gocryprt CLI;0.1.1;--version;https://mde.gate-7.de/addapps/crypter
+2facli;2FA CLI;0.0.0;--version;https://mde.gate-7.de/addapps/2facli
+crypter;gocryprt CLI;0.1.1;--version;https://mde.gate-7.de/addapps/crypter
 difft;difftastic;0.48.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
 drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
@@ -95,7 +95,9 @@ echo "$list" | while read -r i ; do
     fi
   fi
   if [[ "$1" == "list" ]] ; then
-    printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
+    printf "%-1s %-15s %-8s %-8s %-20s\n" "$state" "$name" "$version" "$ver" "$bez" 
+    #printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
+
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$name" "$url"
