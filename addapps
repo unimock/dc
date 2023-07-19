@@ -19,8 +19,8 @@ _install() {
   FI=$(mktemp)
   wget -q -O $FI $url
   if [ -f /usr/local/bin/${name} ] ; then
-    sudo rm -f /usr/local/bin/.${name}
-    sudo mv /usr/local/bin/${name} /usr/local/bin/.${name}
+    sudo rm -f /usr/local/bin/.addapps-${name}
+    sudo mv /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
   fi
   if [[ $url == *".tar.gz" ]] ; then
     sudo tar -C /usr/local/bin/ -xzvf $FI
@@ -33,8 +33,8 @@ _install() {
 }
 _remove() {
   name="$1"
-  sudo rm -f /usr/local/bin/.${name}
-  sudo mv    /usr/local/bin/${name} /usr/local/bin/.${name}
+  sudo rm -f /usr/local/bin/.addapps-${name}
+  sudo mv    /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
 }
 
 
