@@ -99,6 +99,7 @@ echo "$list" | while read -r i ; do
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$name" "$url"
+    $0 list
     exit
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
