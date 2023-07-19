@@ -1,0 +1,151 @@
+#!/bin/bash
+
+# remember to call "./addapps .getver" after version modifications!
+VERSION="0.1.0"
+IAM="crypter"
+
+CFG_DIR="${HOME}/.config/${IAM}"
+
+if ! command -v gocryptfs &> /dev/null
+then
+    echo "error: gocryptfs could not be found. Install it with: 'sudo apt-get install -y gocryptfs'"
+    exit 1
+fi
+
+show_help()
+{
+  echo ""
+  echo "# usage: `basename $0` init|vi|mount|umount|info [<AREA>]"
+  echo ""
+  echo "#  if no area is given, $IAM uses 'default'"
+  echo ""
+  echo "# example:"
+  echo ""
+  echo "`basename $0` init   test   # create gocryptfs AREA=test"
+  echo "`basename $0` vi     test   # modify mount/unmount settings"
+  echo "`basename $0` mount  test   # mount decrypted"
+  echo "`basename $0` umount test   # unmount decrypted"
+  echo "`basename $0` info   test   # show config and state"
+  echo "`basename $0` passwd test   # change password"
+  echo ""
+  echo "# configurations:"
+  echo ""
+  echo "  ${CFG_DIR}/<AREA>.conf"
+  echo ""
+  echo ""
+}
+
+if [ "$1" = "" ] ; then
+  show_help
+  exit 0
+fi
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
+    show_help
+    exit 0
+    ;;
+  -v|--version) 
+    echo "$VERSION"
+    exit 0
+    ;;
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+mkdir -p ~/.config/$IAM/
+
+AREA="default"
+if [ "$2" != "" ] ; then
+  AREA="$2"
+fi
+
+if [ ! -f ${CFG_DIR}/${AREA}.conf ] ; then
+  echo "crypter AREA definition not yet defined"
+  mkdir -p ${CFG_DIR}
+  echo 'CRYPTER_CLEAR_DIR="~/crypt"'   >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_SECRET_DIR="~/.crypt"' >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_IDLE_TIMEOUT="10m"'    >> ${CFG_DIR}/${AREA}.conf
+  echo "template file <${CFG_DIR}/${AREA}.conf> created. Modify it and call \"$IAM init $AREA\""
+  exit 0
+fi 
+eval $(cat ${CFG_DIR}/${AREA}.conf | sed -e "s|~|${HOME}|g" )
+
+if [ "$1" = "info" ] ; then
+  echo ""
+  echo "AREA=$AREA"
+  echo ""
+  echo "crypter config file <${CFG_DIR}/${AREA}.conf> :"
+  cat ${CFG_DIR}/${AREA}.conf
+  echo ""
+  echo "gocryptfs config file <${CFG_DIR}/${AREA}-crypt.conf>"
+  echo ""
+  if [ -f ${CRYPTER_CLEAR_DIR}/crypter.log ] ; then
+    echo "<${CRYPTER_SECRET_DIR}> is mounted to <${CRYPTER_CLEAR_DIR}>"
+  else
+    echo "<${CRYPTER_SECRET_DIR}> is not mounted to <${CRYPTER_CLEAR_DIR}>"
+  fi
+  echo ""
+fi
+if [ "$1" = "init" ] ; then
+  echo "establish gocryptfs config for $AREA"
+  mkdir -p ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
+  gocryptfs -init -config ${CFG_DIR}/${AREA}-crypt.conf ${CRYPTER_SECRET_DIR}
+  ret=$?
+  if [ "$ret" != "0" ] ; then
+    echo "error: on init gorypt, error=$ret"
+    exit 1
+  fi
+  echo ""
+  echo "or:"
+  echo "$IAM mount $AREA"
+  echo ""
+fi
+if [ "$1" = "passwd" ] ; then
+  gocryptfs -passwd  -config ${CFG_DIR}/${AREA}-crypt.conf ${CRYPTER_SECRET_DIR}
+fi 
+if [ "$1" = "vi" ] ; then
+  vi ${CFG_DIR}/${AREA}.conf
+fi
+if [ "$1" = "mount" ] ; then
+  if [ -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
+    echo "error: ${CRYPTER_CLEAR_DIR} still mounted!"
+    exit 1
+  fi
+  gocryptfs -i ${CRYPTER_IDLE_TIMEOUT} -config ${CFG_DIR}/${AREA}-crypt.conf ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
+  ret=$?
+  if [ "$ret" != "0" ] ; then
+    echo "error: on mounting error=$ret"
+    exit 1
+  fi
+  if [ ! -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
+    echo "init   $( date +'%Y-%m-%d %H:%M:%S' ) ${USER}@$(hostname)" > ${CRYPTER_CLEAR_DIR}/${IAM}.log
+  fi
+  log="mount  $( date +'%Y-%m-%d %H:%M:%S' ) ${USER}@$(hostname)"
+  sed -i "1s/^/${log}\n/" ${CRYPTER_CLEAR_DIR}/${IAM}.log
+fi
+
+if [ "$1" = "umount" ] ; then
+  if [ ! -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
+    echo "error: ${CRYPTER_CLEAR_DIR} not mounted!"
+    exit 1
+  fi
+  log="umount $( date +'%Y-%m-%d %H:%M:%S' ) ${USER}@$(hostname)"
+  sed -i "1s/^/${log}\n/" ${CRYPTER_CLEAR_DIR}/${IAM}.log
+  fusermount -u ${CRYPTER_CLEAR_DIR}
+  if [ -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
+    echo "error unmounting ${CRYPTER_CLEAR_DIR}"
+    exit 1
+  fi
+fi
+exit 0

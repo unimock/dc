@@ -1,10 +1,12 @@
 #!/bin/bash
-VERSION="0.1.3"
+VERSION="0.1.4"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
 selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
 sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
+2facli; 2FA CLI;0.0.0;--version;https://mde.gate-7.de/addapps/2facli
+crypter; gocryprt CLI;0.1.0;--version;https://mde.gate-7.de/addapps/crypter
 difft;difftastic;0.48.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
 drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
