@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.4"
+VERSION="0.1.5"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
@@ -18,10 +18,10 @@ _install() {
 
   FI=$(mktemp)
   wget -q -O $FI $url
-  if [ -f /usr/local/bin/$name ] ; then
-    sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
+  if [ -f /usr/local/bin/${name} ] ; then
+    sudo rm -f /usr/local/bin/.${name}
+    sudo mv /usr/local/bin/${name} /usr/local/bin/.${name}
   fi
-  sudo rm -f /usr/local/bin/$name
   if [[ $url == *".tar.gz" ]] ; then
     sudo tar -C /usr/local/bin/ -xzvf $FI
   else
@@ -33,8 +33,8 @@ _install() {
 }
 _remove() {
   name="$1"
-  sudo cp -f /usr/local/bin/$name /usr/local/bin/$name.backup
-  sudo rm -f /usr/local/bin/$name
+  sudo rm -f /usr/local/bin/.${name}
+  sudo mv    /usr/local/bin/${name} /usr/local/bin/.${name}
 }
 
 
