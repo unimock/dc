@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.1.5"
+VERSION="0.1.6"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
@@ -83,15 +83,15 @@ echo "$list" | while read -r i ; do
   ver_cmd=$(  echo "$i" | cut -d";" -f4)
   url=$(  echo "$i" | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g" )
   if [ "$name" = "" ] ; then continue ; fi
-  state="-"
+  state="☐"
   if [ -e /usr/local/bin/$name ] ; then
-    state="o"
+    state="✔"
   fi
   version=""
   if [ "$ver_cmd" != "" ] ; then
     version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
     if [[ "$version" != "" && "$version" != "$ver" ]] ; then
-      state="!"
+      state="💡"
     fi
   fi
   if [[ "$1" == "list" ]] ; then
