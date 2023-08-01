@@ -15,18 +15,19 @@ fi
 show_help()
 {
   echo ""
-  echo "# usage: `basename $0` <area> init|vi|mount|umount|info|passwd|mpoint"
+  echo "# usage: `basename $0` <area> init|vi|mount|umount|info|passwd|mpoint|list"
   echo ""
   echo "# example with a \"test\" environment"
   echo ""
   echo "`basename $0` test init   # create gocryptfs AREA=test"
   echo "`basename $0` test vi     # modify mount/unmount settings"
   echo "`basename $0` test mount  # mount decrypted"
-  echo "`basename $0` test umount # unmount decrypted"
   echo "`basename $0` test info   # show config and state"
+  echo "`basename $0` test umount # unmount decrypted"
   echo "`basename $0` test passwd # change password"
   echo "`basename $0` test mpoint # returns decrypted endpoint"
-    echo ""
+  echo "`basename $0` test list   # list available areas"
+  echo ""
   echo "# configurations:"
   echo ""
   echo "  ${CFG_DIR}/<AREA>.conf"
@@ -138,7 +139,6 @@ if [ "$CMD" = "mount" ] ; then
   log="mount  $( date +'%Y-%m-%d %H:%M:%S' ) ${USER}@$(hostname)"
   sed -i "1s/^/${log}\n/" ${CRYPTER_CLEAR_DIR}/${IAM}.log
 fi
-
 if [ "$CMD" = "umount" ] ; then
   if [ ! -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
     echo "error: ${CRYPTER_CLEAR_DIR} not mounted!"
@@ -152,4 +152,9 @@ if [ "$CMD" = "umount" ] ; then
     exit 1
   fi
 fi
+if [ "$CMD" = "list" ] ; then
+  ls -1 ${CFG_DIR}/ | grep -v crypt.conf | sed -e "s|.conf||g"
+fi
+
+
 exit 0
