@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.1.1"
+VERSION="0.2.0"
 IAM="crypter"
 
 CFG_DIR="${HOME}/.config/${IAM}"
@@ -15,19 +15,17 @@ fi
 show_help()
 {
   echo ""
-  echo "# usage: `basename $0` init|vi|mount|umount|info|mpoint [<AREA>]"
+  echo "# usage: `basename $0` <area> init|vi|mount|umount|info|passwd|mpoint"
   echo ""
-  echo "#  if no area is given, $IAM uses 'default'"
+  echo "# example with a \"test\" environment"
   echo ""
-  echo "# example:"
-  echo ""
-  echo "`basename $0` init   test   # create gocryptfs AREA=test"
-  echo "`basename $0` vi     test   # modify mount/unmount settings"
-  echo "`basename $0` mount  test   # mount decrypted"
-  echo "`basename $0` umount test   # unmount decrypted"
-  echo "`basename $0` info   test   # show config and state"
-  echo "`basename $0` passwd test   # change password"
-  echo "`basename $0` mpoint test   # returns decrypted endpoint"
+  echo "`basename $0` test init   # create gocryptfs AREA=test"
+  echo "`basename $0` test vi     # modify mount/unmount settings"
+  echo "`basename $0` test mount  # mount decrypted"
+  echo "`basename $0` test umount # unmount decrypted"
+  echo "`basename $0` test info   # show config and state"
+  echo "`basename $0` test passwd # change password"
+  echo "`basename $0` test mpoint # returns decrypted endpoint"
     echo ""
   echo "# configurations:"
   echo ""
@@ -36,7 +34,7 @@ show_help()
   echo ""
 }
 
-if [ "$1" = "" ] ; then
+if [ "$2" = "" ] ; then
   show_help
   exit 0
 fi
@@ -64,25 +62,26 @@ while true ; do
   shift
 done
 
-mkdir -p ~/.config/$IAM/
+AREA="$1"
+CMD="$2"
 
-AREA="default"
-if [ "$2" != "" ] ; then
-  AREA="$2"
-fi
-
-if [[ "$1" = "init"  && ! -f ${CFG_DIR}/${AREA}.conf ]] ; then
-  echo "crypter AREA definition not yet defined"
+if [[ "$CMD" = "init"  && ! -f ${CFG_DIR}/${AREA}.conf ]] ; then
+  echo "# Crypter area \"${AREA}\" definition not yet defined."
   mkdir -p ${CFG_DIR}
-  echo 'CRYPTER_CLEAR_DIR="~/crypt"'   >> ${CFG_DIR}/${AREA}.conf
-  echo 'CRYPTER_SECRET_DIR="~/.crypt"' >> ${CFG_DIR}/${AREA}.conf
-  echo 'CRYPTER_IDLE_TIMEOUT="10m"'    >> ${CFG_DIR}/${AREA}.conf
-  echo "template file <${CFG_DIR}/${AREA}.conf> created. Modify it and call \"$IAM init $AREA\""
+  echo 'CRYPTER_CLEAR_DIR="~/'"${AREA}"'"'   >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_SECRET_DIR="~/.'"${AREA}"'"' >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_IDLE_TIMEOUT="10m"'       >> ${CFG_DIR}/${AREA}.conf
+  echo "# Create template file:  ${CFG_DIR}/${AREA}.conf"
+  echo "# Modify it with:"
+  echo "$IAM $AREA vi"
+  echo "# and re-call init"
+  echo "$IAM $AREA init"
+  echo ""
   exit 0
 fi 
 eval $(cat ${CFG_DIR}/${AREA}.conf | sed -e "s|~|${HOME}|g" )
 
-if [ "$1" = "info" ] ; then
+if [ "$CMD" = "info" ] ; then
   echo ""
   echo "AREA=$AREA"
   echo ""
@@ -98,11 +97,11 @@ if [ "$1" = "info" ] ; then
   fi
   echo ""
 fi
-if [[ "$1" = "mpoint" && -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ]] ; then
+if [[ "$CMD" = "mpoint" && -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ]] ; then
     echo "${CRYPTER_CLEAR_DIR}"
 fi
 
-if [ "$1" = "init" ] ; then
+if [ "$CMD" = "init" ] ; then
   echo "establish gocryptfs config for $AREA"
   mkdir -p ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
   gocryptfs -init -config ${CFG_DIR}/${AREA}-crypt.conf ${CRYPTER_SECRET_DIR}
@@ -113,16 +112,16 @@ if [ "$1" = "init" ] ; then
   fi
   echo ""
   echo "or:"
-  echo "$IAM mount $AREA"
+  echo "$IAM $AREA mount"
   echo ""
 fi
-if [ "$1" = "passwd" ] ; then
+if [ "$CMD" = "passwd" ] ; then
   gocryptfs -passwd  -config ${CFG_DIR}/${AREA}-crypt.conf ${CRYPTER_SECRET_DIR}
 fi 
-if [ "$1" = "vi" ] ; then
+if [ "$CMD" = "vi" ] ; then
   vi ${CFG_DIR}/${AREA}.conf
 fi
-if [ "$1" = "mount" ] ; then
+if [ "$CMD" = "mount" ] ; then
   if [ -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
     echo "error: ${CRYPTER_CLEAR_DIR} still mounted!"
     exit 1
@@ -140,7 +139,7 @@ if [ "$1" = "mount" ] ; then
   sed -i "1s/^/${log}\n/" ${CRYPTER_CLEAR_DIR}/${IAM}.log
 fi
 
-if [ "$1" = "umount" ] ; then
+if [ "$CMD" = "umount" ] ; then
   if [ ! -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
     echo "error: ${CRYPTER_CLEAR_DIR} not mounted!"
     exit 1
