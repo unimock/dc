@@ -1,0 +1,135 @@
+#!/bin/bash
+
+# remember to call "./addapps .getver" after version modifications!
+VERSION="0.0.2"
+
+_spinner() {
+  type=$1         # type 1..13
+  interval=$2     # interval 0.25
+  pid=$3
+  msg="$4"
+  case "$type" in
+  1)  frame=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏") ;;
+  2)  frame=("-" "\\" "|" "/") ;;
+  3)  frame=("🌑" "🌒" "🌓" "🌔" "🌕" "🌖"  "🌗" "🌘") ;;
+  4)  frame=("◐" "◓" "◑" "◒") ;;
+  5)  frame=("◇" "◈" "◆") ;;
+  6)  frame=("⚬" "⚭" "⚮" "⚯") ;;
+  7)  frame=("░" "▒" "▓" "█" "▓" "▒") ;;
+  8) frame=("☉" "◎" "◉" "●" "◉") ;;
+  9) frame=("❤" "♥" "♡") ;;
+  10) frame=("✧" "☆" "★" "✪" "◌" "✲") ;;
+  11) frame=("●" "◕" "☯" "◔" "◕") ;;
+
+  esac
+  #https://github.com/lnfnunes/bash-progress-indicator.git
+  trap "{ tput cnorm ; exit 1 ; }" SIGINT SIGTERM
+  console=0
+  if [ -t 1 ]; then
+    console=1
+    tput civis # cursor invisible
+  else
+    echo "START: $msg ..."
+  fi
+  while ps -p $pid &>/dev/null; do
+    if [ "$console" = "1" ] ; then
+      echo -ne "\\r  $msg ..."
+      for k in "${!frame[@]}"; do
+        echo -ne "\\r${frame[k]}"
+        sleep $interval
+      done
+    else
+      sleep $interval
+    fi   
+  done
+  wait $pid
+  ret=$?
+  end="✔"
+  alt="OK:   "
+  if [ "$ret" != "0" ] ; then
+     end="❌"
+     alt="ERR:  "
+  fi
+  if [ "$console" = "1" ] ; then
+    echo -ne "\\r${end} $msg\\n"
+    tput cnorm  # cursor normal
+  else
+    echo "${alt} $msg"
+  fi
+  trap - SIGINT SIGTERM # Disable the trap      
+  return $ret
+}
+
+
+
+showU8_256() { 
+    local i a
+    for a ;do
+        for i in {0..9} {A..F}; do
+            printf '\\U%05Xx: %b %b %b %b %b %b %b %b %b %b %b %b %b %b %b %b\n' \
+                0x$a$i \\U$a${i}{{0..9},{A..F}}
+        done
+    done
+}
+
+show_help()
+{
+  echo ""
+  echo "# usage: `basename $0` bla"
+  echo ""
+  echo "#"
+  echo ""
+  echo "# example:"
+  echo ""
+  echo "`basename $0` # "
+  echo ""
+}
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help)
+    show_help
+    exit 0
+    ;;
+  -v|--version)
+    echo "$VERSION"
+    exit 0
+    ;;
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+echo "🎉"
+echo "🍏 "
+echo "💡"
+echo "🔎"
+echo "🐧"
+echo "🖥️"
+echo "✔" # printf '\u2714\n'
+echo "❌" # rintf '\u274c\n'
+echo "✅"
+echo "☑ done"
+echo "☒ fail"
+echo "☐ to do"
+
+showU8_256 1f{3,4}
+echo ""
+echo "Spinner examples:"
+echo ""
+(sleep 3;) &
+_spinner 1 0.25 $! "test without error"
+
+(sleep 3; /bin/false) &
+_spinner 3 0.1 $! "test with error return"
+
+echo ""
+exit 0
