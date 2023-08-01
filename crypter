@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.2.0"
+VERSION="0.2.1"
 IAM="crypter"
 
 CFG_DIR="${HOME}/.config/${IAM}"
@@ -35,10 +35,6 @@ show_help()
   echo ""
 }
 
-if [ "$2" = "" ] ; then
-  show_help
-  exit 0
-fi
 
 options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
 eval set -- "$options"
@@ -62,6 +58,11 @@ while true ; do
   esac
   shift
 done
+
+if [ "$2" = "" ] ; then
+  show_help
+  exit 0
+fi
 
 AREA="$1"
 CMD="$2"
