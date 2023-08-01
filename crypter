@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.2.2"
+VERSION="1.0.0"
 IAM="crypter"
 
 CFG_DIR="${HOME}/.config/${IAM}"
@@ -30,7 +30,6 @@ show_help()
   echo "# configurations:"
   echo ""
   echo "  ${CFG_DIR}/test.conf    # area configuration"
-  echo "  ${CFG_DIR}/test.crypt   # gocryptfs configurations"
   echo ""
 }
 
@@ -71,7 +70,9 @@ if [[ "$CMD" = "init"  && ! -f ${CFG_DIR}/${AREA}.conf ]] ; then
   mkdir -p ${CFG_DIR}
   echo 'CRYPTER_CLEAR_DIR="~/'"${AREA}"'"'   >> ${CFG_DIR}/${AREA}.conf
   echo 'CRYPTER_SECRET_DIR="~/.'"${AREA}"'"' >> ${CFG_DIR}/${AREA}.conf
-  echo 'CRYPTER_IDLE_TIMEOUT="10m"'       >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_CONF_INLINE="yes"'           >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_OPT_INIT="-plaintextnames"'  >> ${CFG_DIR}/${AREA}.conf
+  echo 'CRYPTER_OPT_MOUNT="-i 10m"'          >> ${CFG_DIR}/${AREA}.conf
   echo "# Create template file:  ${CFG_DIR}/${AREA}.conf"
   echo "# Modify it with:"
   echo "$IAM $AREA vi"
@@ -82,6 +83,11 @@ if [[ "$CMD" = "init"  && ! -f ${CFG_DIR}/${AREA}.conf ]] ; then
 fi 
 eval $(cat ${CFG_DIR}/${AREA}.conf | sed -e "s|~|${HOME}|g" )
 
+GCONF_PARA=""
+if [ "${CRYPTER_CONF_INLINE}" != "yes" ] ; then
+  GCONF_PARA="-config ${CFG_DIR}/${AREA}.crypt"
+fi
+
 if [ "$CMD" = "info" ] ; then
   echo ""
   echo "AREA=$AREA"
@@ -89,7 +95,11 @@ if [ "$CMD" = "info" ] ; then
   echo "crypter config file <${CFG_DIR}/${AREA}.conf> :"
   cat ${CFG_DIR}/${AREA}.conf
   echo ""
-  echo "gocryptfs config file <${CFG_DIR}/${AREA}.crypt>"
+  if [ "${GCONF_PARA}" = "" ] ; then
+    echo "gocryptfs config file: <inline>"
+  else
+    echo "gocryptfs config file: <${CFG_DIR}/${AREA}.crypt>"
+  fi
   echo ""
   if [ -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
     echo "<${CRYPTER_SECRET_DIR}> is mounted to <${CRYPTER_CLEAR_DIR}>"
@@ -105,7 +115,7 @@ fi
 if [ "$CMD" = "init" ] ; then
   echo "establish gocryptfs config for $AREA"
   mkdir -p ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
-  gocryptfs -init -config ${CFG_DIR}/${AREA}.crypt ${CRYPTER_SECRET_DIR}
+  gocryptfs ${CRYPTER_OPT_INIT} -init ${GCONF_PARA} ${CRYPTER_SECRET_DIR}
   ret=$?
   if [ "$ret" != "0" ] ; then
     echo "error: on init gorypt, error=$ret"
@@ -117,7 +127,7 @@ if [ "$CMD" = "init" ] ; then
   echo ""
 fi
 if [ "$CMD" = "passwd" ] ; then
-  gocryptfs -passwd  -config ${CFG_DIR}/${AREA}.crypt ${CRYPTER_SECRET_DIR}
+  gocryptfs -passwd  ${GCONF_PARA} ${CRYPTER_SECRET_DIR}
 fi 
 if [ "$CMD" = "vi" ] ; then
   vi ${CFG_DIR}/${AREA}.conf
@@ -127,7 +137,7 @@ if [ "$CMD" = "mount" ] ; then
     echo "error: ${CRYPTER_CLEAR_DIR} still mounted!"
     exit 1
   fi
-  gocryptfs -i ${CRYPTER_IDLE_TIMEOUT} -config ${CFG_DIR}/${AREA}.crypt ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
+  gocryptfs ${CRYPTER_OPT_MOUNT} ${GCONF_PARA} ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
   ret=$?
   if [ "$ret" != "0" ] ; then
     echo "error: on mounting error=$ret"
