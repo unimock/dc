@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# remember to call "./addapps .getver" after version modifications!
+VERSION="0.0.0"
+
+showU8_256() { 
+    local i a
+    for a ;do
+        for i in {0..9} {A..F}; do
+            printf '\\U%05Xx: %b %b %b %b %b %b %b %b %b %b %b %b %b %b %b %b\n' \
+                0x$a$i \\U$a${i}{{0..9},{A..F}}
+        done
+    done
+}
+
+show_help()
+{
+  echo ""
+  echo "# usage: `basename $0` bla"
+  echo ""
+  echo "#"
+  echo ""
+  echo "# example:"
+  echo ""
+  echo "`basename $0` # "
+  echo ""
+}
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help)
+    show_help
+    exit 0
+    ;;
+  -v|--version)
+    echo "$VERSION"
+    exit 0
+    ;;
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+echo "🎉"
+echo "🍏 "
+echo "💡"
+echo "🔎"
+echo "🐧"
+echo "🖥️"
+echo "✔" # printf '\u2714\n'
+echo "❌" # rintf '\u274c\n'
+echo "✅"
+echo ""
+
+echo "☑ done"
+echo "☒ fail"
+echo "☐ to do"
+
+showU8_256 1f{3,4}
