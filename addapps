@@ -1,29 +1,91 @@
 #!/bin/bash
-VERSION="0.1.6"
+VERSION="0.1.7"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
 selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
 sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
-2facli;2FA CLI;0.0.0;--version;https://mde.gate-7.de/addapps/2facli
+2facli;2FA CLI;0.0.1;--version;https://mde.gate-7.de/addapps/2facli
 crypter;gocryprt CLI;0.1.1;--version;https://mde.gate-7.de/addapps/crypter
 difft;difftastic;0.49.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
 drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
 "
 
+
+_spinner() {
+  type=$1         # type 1..13
+  interval=$2     # interval 0.25
+  pid=$3
+  msg="$4"
+  case "$type" in
+  1)  frame=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏") ;;
+  2)  frame=("-" "\\" "|" "/") ;;
+  3)  frame=("⠋" "⠙" "⠹" "⠸" "⠼" "⠴" "⠦" "⠧" "⠇" "⠏") ;;
+  4)  frame=("-" "\\" "|" "/") ;;
+  5)  frame=("◐" "◓" "◑" "◒") ;;
+  6)  frame=(":(" ":|" ":)" ":D") ;;
+  7)  frame=("◇" "◈" "◆") ;;
+  8)  frame=("⚬" "⚭" "⚮" "⚯") ;;
+  9)  frame=("░" "▒" "▓" "█" "▓" "▒") ;;
+  10) frame=("☉" "◎" "◉" "●" "◉") ;;
+  11) frame=("❤" "♥" "♡") ;;
+  12) frame=("✧" "☆" "★" "✪" "◌" "✲") ;;
+  13) frame=("●" "◕" "☯" "◔" "◕") ;;
+  esac
+  #https://github.com/lnfnunes/bash-progress-indicator.git
+  trap "{ tput cnorm ; exit 1 ; }" SIGINT SIGTERM
+  console=0
+  if [ -t 1 ]; then
+    console=1
+    tput civis # cursor invisible
+  else
+    echo "START: $msg ..."
+  fi
+  while ps -p $pid &>/dev/null; do
+    if [ "$console" = "1" ] ; then
+      echo -ne "\\r  $msg ..."
+      for k in "${!frame[@]}"; do
+        echo -ne "\\r${frame[k]}"
+        sleep $interval
+      done
+    else
+      sleep $interval
+    fi   
+  done
+  wait $pid
+  ret=$?
+  end="✔"
+  alt="OK:   "
+  if [ "$ret" != "0" ] ; then
+     end="❌"
+     alt="ERR:  "
+  fi
+  if [ "$console" = "1" ] ; then
+    echo -ne "\\r${end} $msg\\n"
+    tput cnorm  # cursor normal
+  else
+    echo "${alt} $msg"
+  fi
+  trap - SIGINT SIGTERM # Disable the trap      
+  return $ret
+}
+
+
 _install() {
   name="$1"
   url="$2"
 
   FI=$(mktemp)
-  wget -q -O $FI $url
+  (wget -q -O $FI $url) &
+  pid=$!
+  _spinner 1 0.25 $pid "installing $name"
   if [ -f /usr/local/bin/${name} ] ; then
     sudo rm -f /usr/local/bin/.addapps-${name}
     sudo mv /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
   fi
   if [[ $url == *".tar.gz" ]] ; then
-    sudo tar -C /usr/local/bin/ -xzvf $FI
+    sudo tar -C /usr/local/bin/ -xzf $FI
   else
     sudo cp $FI /usr/local/bin/$name
   fi
@@ -31,12 +93,12 @@ _install() {
   sudo chown root:root /usr/local/bin/$name
   rm $FI
 }
+
 _remove() {
   name="$1"
   sudo rm -f /usr/local/bin/.addapps-${name}
   sudo mv    /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
 }
-
 
 show_help() {
   if [ "$1" = "" ] ; then
@@ -51,7 +113,9 @@ if [[ "$1" == "" ]] ; then
   show_help
   exit 0
 fi
-
+####################################################################################
+# magic main
+####################################################################################
 options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
 eval set -- "$options"
 while true ; do
@@ -76,31 +140,33 @@ while true ; do
 done
 
 echo "$list" | while read -r i ; do
-
-  name=$( echo "$i" | cut -d";" -f1)
-  bez=$(  echo "$i" | cut -d";" -f2)
-  ver=$(  echo "$i" | cut -d";" -f3)
+  name=$( echo "$i"     | cut -d";" -f1)
+  bez=$(  echo "$i"     | cut -d";" -f2)
+  ver=$(  echo "$i"     | cut -d";" -f3)
   ver_cmd=$(  echo "$i" | cut -d";" -f4)
-  url=$(  echo "$i" | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g" )
+  url=$(  echo "$i"     | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g" )
   if [ "$name" = "" ] ; then continue ; fi
   state="☐"
   if [ -e /usr/local/bin/$name ] ; then
-    state="✔"
+    state="☑"
   fi
   version=""
   if [ "$ver_cmd" != "" ] ; then
     version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
     if [[ "$version" != "" && "$version" != "$ver" ]] ; then
       state="💡"
+      if [[ "$1" == "update" ]] ; then
+        _install "$name" "$url"
+      fi
     fi
   fi
   if [[ "$1" == "list" ]] ; then
     printf "%-1s %-15s %-8s %-8s %-20s\n" "$state" "$name" "$version" "$ver" "$bez" 
     #printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
-
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
-    _install "$name" "$url"
+    _install "$name" "$url" 
+    echo ""
     $0 list
     exit
   fi
@@ -108,6 +174,7 @@ echo "$list" | while read -r i ; do
     _install "$name" "$url"
     exit 0
   fi
+ 
   if [[ "$1" == "remove" && "$2" == "$name" ]] ; then
     _remove "$name"
     exit 0
@@ -118,6 +185,5 @@ echo "$list" | while read -r i ; do
       sed -i "/^${name};/s/$ver/$VERSION/g" ./addapps
     fi
   fi
-
 done
 
