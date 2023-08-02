@@ -94,12 +94,13 @@ _install() {
   sudo chown root:root /usr/local/bin/$name
   if [ "$name" = "addapps" ] ; then
     x=$( mktemp )
-    cat /usr/local/bin/$name | sed  -e '/addapps_spinner()/,/^}$/!d' > $x
+    cat /usr/local/bin/$name | sed  -e '/^addapps_spinner()/,/^}$/!d' > $x
     if [ ! -d  /usr/local/include ] ; then
       sudo mkdir -p /usr/local/include
     fi
     sudo cp $x /usr/local/include/addapps.funcs
     rm $x
+  fi
   rm $FI
 }
 
