@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.2.1"
+VERSION="0.2.2"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
@@ -99,6 +99,7 @@ _install() {
       sudo mkdir -p /usr/local/include
     fi
     sudo cp $x /usr/local/include/addapps.funcs
+    sudo chmod 644  /usr/local/include/addapps.funcs
     rm $x
   fi
   rm $FI
