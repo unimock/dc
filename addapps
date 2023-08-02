@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.2.0"
+VERSION="0.2.1"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
@@ -15,7 +15,7 @@ stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd6
 "
 
 
-_spinner() {
+addapps_spinner() {
   type=$1         # type 1..13
   interval=$2     # interval 0.25
   pid=$3
@@ -92,6 +92,14 @@ _install() {
   fi
   sudo chmod 755 /usr/local/bin/$name
   sudo chown root:root /usr/local/bin/$name
+  if [ "$name" = "addapps" ] ; then
+    x=$( mktemp )
+    cat /usr/local/bin/$name | sed  -e '/addapps_spinner()/,/^}$/!d' > $x
+    if [ ! -d  /usr/local/include ] ; then
+      sudo mkdir -p /usr/local/include
+    fi
+    sudo cp $x /usr/local/include/addapps.funcs
+    rm $x
   rm $FI
 }
 
@@ -166,7 +174,9 @@ echo "$list" | while read -r i ; do
     #printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
-    _install "$name" "$url" 
+    _install "$name" "$url"
+    # hier spinner function global bereitstellen
+     
     echo ""
     $0 list
     exit
