@@ -80,7 +80,7 @@ _install() {
   FI=$(mktemp)
   (wget -q -O $FI $url) &
   pid=$!
-  _spinner 1 0.25 $pid "installing $name"
+  addapps_spinner 1 0.25 $pid "installing $name"
   if [ -f /usr/local/bin/${name} ] ; then
     sudo rm -f /usr/local/bin/.addapps-${name}
     sudo mv /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
