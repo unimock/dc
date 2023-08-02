@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # remember to call "./addapps .getver" after version modifications!
-VERSION="1.0.3"
+VERSION="1.0.4"
 IAM="crypter"
+
+source /usr/local/include/addapps.funcs
 
 CFG_DIR="${HOME}/.config/addapps/${IAM}"
 mkdir -p $CFG_DIR
@@ -137,10 +139,12 @@ if [ "$CMD" = "mount" ] ; then
     echo "error: ${CRYPTER_CLEAR_DIR} still mounted!"
     exit 1
   fi
-  gocryptfs ${CRYPTER_OPT_MOUNT} ${GCONF_PARA} ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
+  gocryptfs -q ${CRYPTER_OPT_MOUNT} ${GCONF_PARA} ${CRYPTER_SECRET_DIR} ${CRYPTER_CLEAR_DIR}
   ret=$?
+  (sleep 0.1 ; exit $ret ) &
+  addapps_spinner 3 0.1 $! "mounting ${CRYPTER_SECRET_DIR} to ${CRYPTER_CLEAR_DIR}"
   if [ "$ret" != "0" ] ; then
-    echo "error: on mounting error=$ret"
+    #echo "error: on mounting error=$ret"
     exit 1
   fi
   if [ ! -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
@@ -156,7 +160,8 @@ if [ "$CMD" = "umount" ] ; then
   fi
   log="umount $( date +'%Y-%m-%d %H:%M:%S' ) ${USER}@$(hostname)"
   sed -i "1s/^/${log}\n/" ${CRYPTER_CLEAR_DIR}/${IAM}.log
-  fusermount -u ${CRYPTER_CLEAR_DIR}
+  (fusermount -u ${CRYPTER_CLEAR_DIR}) &
+  addapps_spinner 3 0.1 $! "unmounting ${CRYPTER_CLEAR_DIR}"
   if [ -f ${CRYPTER_CLEAR_DIR}/${IAM}.log ] ; then
     echo "error unmounting ${CRYPTER_CLEAR_DIR}"
     exit 1
