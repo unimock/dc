@@ -1,30 +1,54 @@
 #!/bin/bash
 
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.1"
+VERSION="0.0.2"
+IAM="2facli"
+####################################################################################
+check_dependencies() {
+  local missing=0
+  local addapps="crypter"
+  local aptpkg="oathtool gocryptfs"
+  local list="$addapps $aptpkg"
+  addapps=" $addapps "
+  for i in $list ; do
+    if ! command -v $i &> /dev/null ; then
+      missing=1  
+      if [[ $addapps == *" $i "* ]]; then
+         echo "error: $i could not be found. Install it with: addapps install $i"
+      else
+         echo "error: $i could not be found. Install it with: sudo apt-get install -y $i"
+      fi
+    fi
+  done
+  if [ "$missing" = "1" ] ; then
+    exit 1
+  fi
+}
+####################################################################################
+
 
 show_help()
 {
   echo ""
-  echo "usage: `basename $0` <content-directory> [selfextractor-file]"
+  echo "usage: $IAM init|list|create|read"
   echo ""
   echo "example:"
   echo ""
-  echo "`basename $0` ./hugo  # create directory and a template installer script."
+  echo "$IAM ./hugo  # create directory and a template installer script."
   echo ""
   echo "# copy desired content to the ./hugo directory and modify installer script:"
   echo "vi ./hugo/installer"
   echo ""
-  echo "`basename $0` ./hugo # re-create installable selfextractor file: ./hugo.sh"
+  echo "$IAM ./hugo # re-create installable selfextractor file: ./hugo.sh"
   echo "#or:"
-  echo "`basename $0` ./hugo /tmp/my-selfextractor.sh"
+  echo "$IAM ./hugo /tmp/my-selfextractor.sh"
   echo ""
 }
+####################################################################################
+# magic main
+####################################################################################
 
-if [ "$1" = "" ] ; then
-  show_help
-  exit 0
-fi
+check_dependencies
 
 options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
 eval set -- "$options"
@@ -49,74 +73,23 @@ while true ; do
   shift
 done
 
-if [ "$1" = "init" ] ; then
+if [ "$1" = "" ] ; then
+  show_help
+  exit 0
+fi
+CMD="$1"
+CRYPT_AREA="2facli"
 
-#sudo apt-get install oathtool
-#cd
-#mkdir -p ~/.config/2fas
+if [ ! -f ~/.config/addapps/crypter/${CRYPT_AREA}.conf ] ; then
+  echo "# error: crypter AREA=${CRYPT_AREA} does not exist, create it with:"
+  echo "crypter ${CRYPT_AREA} init"
+  exit 1
+fi
 #echo '2fas() { oathtool -b --totp $( gpg -q -d ~/.config/2fas/${1}) ; }' >> .bash_aliases
 #echo "<paste-paring-key-here>" | sed -e "s/ //g" | gpg -c > ~/.config/2fas/rda
-gpg -q -d ~/.config/2fas/rda
+#gpg -q -d ~/.config/2fas/rda
 
-fi
-
-
-
-#mkdir ~/GEHEIMTEXT ~/KLARTEXT ~/.config/gocryptfs 
-#gocryptfs -init -config ~/.config/gocryptfs/KONFDATEI.conf ~/GEHEIMTEXT
-#gocryptfs -config ~/.config/gocryptfs/KONFDATEI.conf ~/GEHEIMTEXT ~/KLARTEXT 
-#fusermount -u ~/KLARTEXT
 
 
 exit 0
 
-CDIR="$1" ; shift
-SEF="./${CDIR}.sh"
-if [ "$1" != "" ] ; then
-  SEF="$1"
-  if [ ! -d "$(dirname $SEF)" ] ; then
-    echo "error: directory <$(dirname $SEF)> does not exist!"
-    exit 1
-  fi
-fi
-TFILE=$( mktemp )
-if [ ! -d $CDIR ] ; then
-  echo "create content-directory: $CDIR ..."
-  mkdir -p $CDIR
-  echo "create content file: ${CDIR}/test.txt ..."
-  date > ${CDIR}/test.txt
-  echo "create installer file: ${CDIR}/installer ..."
-  cat <<'EOF' > ${CDIR}/installer
-#!/bin/bash
-echo "starting `basename $0` ..."
-pwd
-ls -la .
-cat test.txt
-exit 0
-EOF
-fi
-
-DECOMPRESS=${TFILE}
-cat <<'EOF' > ${DECOMPRESS}
-echo ""
-echo "Self Extracting Installer"
-echo ""
-export TDIR=$(mktemp -d)
-mkdir -p $TDIR
-chmod 700 $TDIR
-ARCHIVE=`awk '/^__ARCHIVE_BELOW__/ {print NR + 1; exit 0; }' $0`
-tail -n+$ARCHIVE $0 | tar -xzv -C $TDIR
-(cd $TDIR && chmod 755 ./installer && ./installer )
-rm -rf $TDIR
-echo "All done"
-exit 0
-__ARCHIVE_BELOW__
-EOF
-rm -f ${CDIR}/selfextractor.sh
-
-cp ${TFILE} ${SEF}
-tar -C ${CDIR} -czf - . >> ${SEF}
-chmod a+x ${SEF}
-rm -f ${TFILE}
-echo "${SEF}"
-exit 0
