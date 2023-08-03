@@ -107,14 +107,26 @@ _install() {
 ####################################################################################
 _remove() {
   name="$1"
-  sudo rm -f /usr/local/bin/.addapps-${name}
-  sudo mv    /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
+  if [ -f /usr/local/bin/${name} ] ; then
+    sudo rm -f /usr/local/bin/.addapps-${name}
+    sudo mv    /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
+    (sleep 0.1) &
+    addapps_spinner 1 0.1 $! "removing $name"
+  fi
 }
 ####################################################################################
 show_help() {
   if [ "$1" = "" ] ; then
     echo ""
-    echo "usage: $(basename $0) [-v|--version|-h|--help] refresh|update|list|install|remove <app_name>"
+    echo "usage: $(basename $0) [-v|--version|-h|--help] refresh|update|list|install|remove [<application>]"
+    echo ""
+    echo "examples:"
+    echo ""
+    echo "$IAM list              # list and show version of additional applications"
+    echo "$IAM refresh           # refresh application versions from addapp store"
+    echo "$IAM update            # update all outdeted applications"
+    echo "$IAM install <package> # installs or update an application"
+    echo "$IAM remove  <package> # uninstall an application"
     echo ""
     exit 0
   fi
@@ -152,7 +164,8 @@ while true ; do
   shift
 done
 
-echo "$list" | while read -r i ; do
+update_done="0"
+while read -r i ; do
   name=$( echo "$i"     | cut -d";" -f1)
   bez=$(  echo "$i"     | cut -d";" -f2)
   ver=$(  echo "$i"     | cut -d";" -f3)
@@ -161,15 +174,18 @@ echo "$list" | while read -r i ; do
   if [ "$name" = "" ] ; then continue ; fi
   state="☐"
   if [ -e /usr/local/bin/$name ] ; then
-    state="☑"
+    state="✅"
   fi
   version=""
   if [ "$ver_cmd" != "" ] ; then
     version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
-    if [[ "$version" != "" && "$version" != "$ver" ]] ; then
+    if [[ "$version" == "" ]] ; then
       state="💡"
+    elif [[ "$version" != "$ver" ]] ; then
+      state="☑"
       if [[ "$1" == "update" ]] ; then
         _install "$name" "$url"
+        update_done="1"
       fi
     fi
   fi
@@ -201,5 +217,10 @@ echo "$list" | while read -r i ; do
       sed -i "/^${name};/s/$ver/$VERSION/g" ./addapps
     fi
   fi
-done
+done <<< "$(echo "$list")"
+if [[ "$1" == "update" && "$update_done" == "1" ]] ; then
+  echo ""
+  $0 list
+fi
+
 exit 0
