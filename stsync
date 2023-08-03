@@ -1,19 +1,19 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.0"
+VERSION="0.0.1"
 IAM="stsync"
 
 ####################################################################################
 check_dependencies() {
   local missing=0
-  local addapps="crypter stc"
+  local addapps="stc"
   local aptpkg=""
   local list="$addapps $aptpkg"
   addapps=" $addapps "
   for i in $list ; do
     if ! command -v $i &> /dev/null ; then
       missing=1  
-      if [[ $addapps == *" $i "* ]]; then
+      if [[ $addapps == *" $i "* ]] ; then
          echo "error: $i could not be found. Install it with: addapps install $i"
       else
          echo "error: $i could not be found. Install it with: sudo apt-get install -y $i"
@@ -32,14 +32,8 @@ show_help()
   echo ""
   echo "example:"
   echo ""
-  echo "$IAM ./hugo  # create directory and a template installer script."
-  echo ""
-  echo "# copy desired content to the ./hugo directory and modify installer script:"
-  echo "vi ./hugo/installer"
-  echo ""
-  echo "$IAM ./hugo # re-create installable selfextractor file: ./hugo.sh"
-  echo "#or:"
-  echo "$IAM ./hugo /tmp/my-selfextractor.sh"
+  echo "$IAM stc [<stc-commands>] # call stc"
+  echo "$IAM stc help             # show stc-commands"
   echo ""
 }
 
@@ -82,16 +76,30 @@ source /usr/local/include/addapps.funcs
 
 # assign /Docker/...
 # para:
-# stc direkt
 # check syncting is running
 # rescan 
 # check peer host status und 100%
-ST
-STSYSYNC_HOST="vms.mok.intra"
-STSYSYNC_DIR="Micha"
+SYNC_PEER="vms.mok.intra"
+SYNC_DIR="Micha"
+SYNC_ST_OPT="--homedir /Docker/Services/syncthing/service"
 
-ST_OPT="--homedir /Docker/Services/syncthing/service"
+CMD="$1"
+if [ "$CMD" = "wait" ] ; then
+  if [ "$2" = "peer" ] ; then
+    echo "wait for peer OK"
+  elif [ "$2" = "host" ] ; then
+    echo "wait until syncthing is up"
+  fi
+fi
 
+if [ "$CMD" = "stc" ] ; then
+  if [ "$2" = "help" ] ; then
+    stc $SYNC_ST_OPT --help
+  else
+    stc $SYNC_ST_OPT
+  fi
+  exit 0
+fi
 
 exit 0
 

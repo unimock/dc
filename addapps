@@ -8,7 +8,7 @@ sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
 2facli;2FA CLI;0.0.2;--version;https://mde.gate-7.de/addapps/2facli
 crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
 print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
-stsync;syncting stc CLI;0.0.0;--version;https://mde.gate-7.de/addapps/stsync
+stsync;syncting stc CLI;0.0.1;--version;https://mde.gate-7.de/addapps/stsync
 difft;difftastic;0.49.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
 drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
@@ -173,19 +173,20 @@ while read -r i ; do
   url=$(  echo "$i"     | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g" )
   if [ "$name" = "" ] ; then continue ; fi
   state="☐"
+
+  version=""
   if [ -e /usr/local/bin/$name ] ; then
     state="✅"
-  fi
-  version=""
-  if [ "$ver_cmd" != "" ] ; then
-    version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
-    if [[ "$version" == "" ]] ; then
-      state="💡"
-    elif [[ "$version" != "$ver" ]] ; then
-      state="☑"
-      if [[ "$1" == "update" ]] ; then
-        _install "$name" "$url"
-        update_done="1"
+    if [ "$ver_cmd" != "" ] ; then
+      version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | grep -o '[0-9,.]*' )
+      if [[ "$version" == "" ]] ; then
+        state="💡"
+      elif [[ "$version" != "$ver" ]] ; then
+        state="☑"
+        if [[ "$1" == "update" ]] ; then
+          _install "$name" "$url"
+          update_done="1"
+        fi
       fi
     fi
   fi
