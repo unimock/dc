@@ -1,19 +1,35 @@
 #!/bin/bash
 
 # remember to call "./addapps .getver" after version modifications!
-VERSION="1.0.4"
+VERSION="1.0.5"
 IAM="crypter"
 
 source /usr/local/include/addapps.funcs
-
 CFG_DIR="${HOME}/.config/addapps/${IAM}"
 mkdir -p $CFG_DIR
 
-if ! command -v gocryptfs &> /dev/null ; then
-    echo "error: gocryptfs could not be found. Install it with: 'sudo apt-get install -y gocryptfs'"
+####################################################################################
+check_dependencies() {
+  local missing=0
+  local addapps=""
+  local aptpkg="gocryptfs"
+  local list="$addapps $aptpkg"
+  addapps=" $addapps "
+  for i in $list ; do
+    if ! command -v $i &> /dev/null ; then
+      missing=1  
+      if [[ $addapps == *" $i "* ]]; then
+         echo "error: $i could not be found. Install it with: addapps install $i"
+      else
+         echo "error: $i could not be found. Install it with: sudo apt-get install -y $i"
+      fi
+    fi
+  done
+  if [ "$missing" = "1" ] ; then
     exit 1
-fi
-
+  fi
+}
+####################################################################################
 show_help()
 {
   echo ""
@@ -35,6 +51,9 @@ show_help()
   echo ""
 }
 
+####################################################################################
+# magic main
+####################################################################################
 
 options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
 eval set -- "$options"
