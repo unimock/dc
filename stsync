@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.1"
+VERSION="0.0.2"
 IAM="stsync"
 
 ####################################################################################
@@ -84,6 +84,7 @@ SYNC_DIR="Micha"
 SYNC_ST_OPT="--homedir /Docker/Services/syncthing/service"
 
 CMD="$1"
+shift
 if [ "$CMD" = "wait" ] ; then
   if [ "$2" = "peer" ] ; then
     echo "wait for peer OK"
@@ -93,10 +94,10 @@ if [ "$CMD" = "wait" ] ; then
 fi
 
 if [ "$CMD" = "stc" ] ; then
-  if [ "$2" = "help" ] ; then
+  if [ "$1" = "help" ] ; then
     stc $SYNC_ST_OPT --help
   else
-    stc $SYNC_ST_OPT
+    stc $SYNC_ST_OPT $*
   fi
   exit 0
 fi
