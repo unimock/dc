@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.3"
+VERSION="0.0.4"
 IAM="stsync"
 
 ####################################################################################
@@ -34,6 +34,7 @@ show_help()
   echo ""
   echo "$IAM stc [<stc-commands>]   # call stc"
   echo "$IAM stc help               # show stc-commands"
+  echo "$IAM info                   # like stc"
   echo "$IAM device [<device-name>] #"
   echo "$IAM folder [<folder-name>] #"
   echo ""
@@ -76,18 +77,11 @@ check_dependencies
 
 source /usr/local/include/addapps.funcs
 
-# assign /Docker/...
-# para:
-# check syncting is running
-# rescan 
-# check peer host status und 100%
-SYNC_PEER="vms.mok.intra"
-SYNC_DIR="Micha"
 SYNC_ST_OPT="--homedir /Docker/Services/syncthing/service"
 
 CMD="$1"
 shift
-if [ "$CMD" = "stc" ] ; then
+if [[ "$CMD" == "stc"  || "$CMD" == "info" ]] ; then
   if [ "$1" = "help" ] ; then
     stc $SYNC_ST_OPT --help
     ret=$?
