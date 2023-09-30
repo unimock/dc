@@ -210,9 +210,9 @@ case "$CMD" in
     fi
 
     if [ "$opt_format" = "" ] ; then
-      MASK="%10s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-      printf "$MASK" "HOST" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "LAST_REACHABLE" "DESCRIPTION"
-      printf "$MASK" "----------" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
+      MASK="%10s|%-4s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
+      printf "$MASK" "HOST" "STAT" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "LAST_REACHABLE" "DESCRIPTION"
+      printf "$MASK" "----------" "----" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
     fi
     for i in $list ; do
       if [ "$opt_host" != "" -a "$opt_host" != "$i" ] ; then
@@ -233,14 +233,21 @@ case "$CMD" in
       monitor=""
       state=""
 
-      ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
-      ret=$?
-      if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
-        continue 
+      ping -W 0.5 -c 1 $i >/dev/null 2>&1
+      pret=$?
+      if [ "$pret" = "0" ] ; then
+        state="ping"
+        ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
+        ret=$?
+	if [ "$ret" = "0" ] ; then
+	  state="sshd"
+	fi
+        if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
+          continue 
+        fi
       fi
-      
-      if [ "$ret" = "0" ] ; then
-        state="up"
+
+      if [ "$state" = "sshd" ] ; then
         if [ "$os" = "ubuntu" ] ; then
           os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
           os_ver=${os_ver:0:8}
@@ -334,18 +341,22 @@ case "$CMD" in
       COL_GREEN='\e[1;92m'
       COL_ORANGE='\033[0;33m'
       COL_GRAY='\033[1;30m'
+      COL_LGRAY='\033[1;37m'
       COL_RED='\e[1;91m'         
-      if [ "$dc_host_state" = "up" ] ; then
-        #col_state=$COL_GREEN
-        col_state=$COL_DEFAULT
-        col_std=$COL_DEFAULT
-        col_size=$COL_DEFAULT
+      if [ "$dc_host_state" = "sshd" ] ; then
+        col_state=$COL_LGRAY
+        col_std=$COL_LGRAY
+        col_size=$COL_LGRAY
         if [ $size -gt 80 ] ; then
            col_size=$COL_ORANGE
         fi
         if [ $size -gt 90 ] ; then
            col_size=$COL_RED
         fi
+      elif [ "$state" = "ping" ] ; then
+	col_state=$COL_DEFAULT
+	col_std=$COL_DEFAULT
+	col_size=$COL_DEFAULT
       else
         col_state=$COL_GRAY
         col_std=$COL_GRAY
@@ -359,8 +370,8 @@ case "$CMD" in
         last_reachable=$(date -d @${dc_host_last_reachable} +"%Y-%m-%d_%H:%M" )
       fi
       if [ "$opt_format" = "" ] ; then
-        MASK="${col_state}%10s${col_std}|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-        printf "$MASK" "${dc_host_name}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${last_reachable}" "${dc_host_desc}"
+        MASK="${col_state}%10s${col_std}|%-4s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
+        printf "$MASK" "${dc_host_name}" "${state}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${last_reachable}" "${dc_host_desc}"
       elif [ "$opt_format" = "eval" ] ; then
         cat $host_data_file
       fi
