@@ -223,7 +223,7 @@ case "$CMD" in
       group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
       os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
       mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
-
+      hname=$( grep " HostName "  /root/.ssh/dc/config.$i | sed "s/.*HostName //g" )
       dver=""
       mver=""
       os_ver=""
@@ -232,16 +232,16 @@ case "$CMD" in
       serial=""
       monitor=""
       state=""
-
-      ping -W 0.5 -c 1 $i >/dev/null 2>&1
+      
+      ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
       pret=$?
       if [ "$pret" = "0" ] ; then
         state="ping"
         ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
         ret=$?
-	if [ "$ret" = "0" ] ; then
-	  state="sshd"
-	fi
+	      if [ "$ret" = "0" ] ; then
+	        state="sshd"
+	      fi
         if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
           continue 
         fi
