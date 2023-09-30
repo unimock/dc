@@ -160,7 +160,7 @@ EOF
     dc-list -y services -h $HOST
   fi
   ####################################################################################################################
-  if [ "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
+  if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
     list=$( dc-list -y services -h $HOST )
     for i in $list ; do
       dc -h $HOST -c $i $CMD
@@ -222,22 +222,13 @@ EOF
           echo "error connexting to $url !!!"
           exit 1
         fi
-        #dc -h ${host} docker login $url
-        #if [ "$?" != "0" ] ; then echo "login error!!!" ; exit 1 ; fi
       fi
       yml_list=$( dc list -y  -h $host services )
      for i in $yml_list ; do
        DIR=`dirname $i`
-       if [ -f $DIR/.env ] ; then
-          eval `grep -o '^[^#]*' $DIR/.env`
-       fi
-       image_list=$(grep -o '^[^#]*' $DIR/docker-compose.yml  | grep " image:" | awk '{ print $2 }')
-        for x in $image_list ; do
-          image=$( eval echo "$x" )
-          if [ "$image" = "" ] ; then
-            echo "error read image from $DIR/docker-compose.yml !!!"
-            exit 1
-          fi
+       image_list=$( dc compose -f $DIR/docker-compose.yml config | dc-yq '.services.*.image' )
+        for i in $image_list ; do
+          image="$i"
           if [[ $image == *"/"* ]] ; then
             rep="${image%/*}"
             nam="${image#*/}"
@@ -247,11 +238,11 @@ EOF
           fi
           target="${url}/${cluster}_${host}_${rep}_${nam}"
           target=${target%:}
-if [ "$2" = "config" ] ; then
-  echo "$image;$DIR;${host}"
-else
-          echo "$image -> $target"
-fi
+          if [ "$2" = "config" ] ; then
+            echo "$image;$DIR;${host}"
+          else
+            echo "$image -> $target"
+          fi
           if [ "$cmd" = "backup" ] ; then
               dc -h ${host} docker tag ${image} ${target}
               if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi
@@ -266,14 +257,6 @@ fi
               fi
               dc -h ${host} docker image rm -f     ${target}
               if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
-          fi
-          if [ "$cmd" = "reset" ] ; then
-# reset kann wieder raus, versehentlicher aufruf at atk
-target="${url}/vw_${host}_${rep}_${nam}"
-target=${target%:}
-
-            echo "dc -h ${host} docker image rm ${target}"
-            dc -h ${host} docker image rm ${target}
           fi
           if [ "$cmd" = "restore" ] ; then
             #dc -h ${host} docker image rm -f ${image} ${target}
