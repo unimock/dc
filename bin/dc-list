@@ -35,10 +35,7 @@ if [ "$CMD" = "" ] ; then
 fi
 
 if [ "$CMD" = "active_hosts" ] ; then
-  list=$( grep -h "^Host" /root/.ssh/dc/config.* | sed -e "s/^Host//g" | sort )
-  for i in $list ; do
-    echo "$i"
-  done	  
+  dc ls --group=d --short
   exit 0
 fi
 

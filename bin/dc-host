@@ -41,7 +41,7 @@ if [ "$CMD" = "" ] ; then
   echo "    large_files <size>  # find lage files, size=xG"
   echo "    dir_entries <count> # find directories with more then count entries"
   echo "    cmd <command>       # run commands on $H"
-  echo "    image [-v] ...      # list,backup,restore host images"
+  echo "    image [config] [-v] ...      # list,backup,restore host images"
   echo "    prune               # do volume pruen and system prune interactive"
   echo ""
   echo " service commands"
@@ -177,7 +177,10 @@ if [ "$CMD" = "image"   ] ; then
     cmd="$1"
     if [ "$cmd" = "" ] ; then
       echo ""
-      echo "usage: `basename $0` [-h <host>] [-v] list|backup|restore"
+      echo "usage: `basename $0` [-h <host>] [-v] list [config]|backup|restore"
+      echo ""
+      echo "`basename $0`  list        # print-format: <image> -> <remote-image-name>"
+      echo "`basename $0`  list config # print-format: <image>;<directory>;<host>"
       echo ""
       exit 0
     fi
@@ -244,7 +247,11 @@ EOF
           fi
           target="${url}/${cluster}_${host}_${rep}_${nam}"
           target=${target%:}
+if [ "$2" = "config" ] ; then
+  echo "$image;$DIR;${host}"
+else
           echo "$image -> $target"
+fi
           if [ "$cmd" = "backup" ] ; then
               dc -h ${host} docker tag ${image} ${target}
               if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi

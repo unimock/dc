@@ -105,19 +105,9 @@ for host in $hosts ; do
     echo "${host}_service_${service}_config=$yml"
     directory=$( dirname $yml )
     compose_file="${directory}/docker-compose.yml"
-    if [ -e ${directory}/.env ] ; then
-       # if some entries in docker-compose.yml contains variables
-       . ${directory}/.env
-    fi
-    img_list=$( dc-yml -c $compose_file | grep "_image=" )
-    for i in $img_list ; do
-      img=${i#*\"}
-      img=${img%\")*}
-      img=${img%)}
-      if [ "$img" != "" ] ; then
-	# use eval to expand variables in img
-	eval echo "${host}_service_${service}_image=$img"
-      fi
+    img_list=$( dc compose -f $compose_file config | dc-yq '.services.*.image' )
+    for img in $img_list ; do
+	    echo "${host}_service_${service}_image=$img"
     done
   done
   if [ "$check_runtime" = "1" ] ; then
