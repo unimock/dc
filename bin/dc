@@ -223,7 +223,10 @@ case "$CMD" in
       group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
       os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
       mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
-      hname=$( grep " HostName "  /root/.ssh/dc/config.$i | sed "s/.*HostName //g" )
+      hname=$( grep "HostName"  /root/.ssh/dc/config.$i | sed "s/HostName//g" | sed "s/ //g" )
+      if  [ "$hname" = "" ] ; then
+        hname="$i"
+      fi
       dver=""
       mver=""
       os_ver=""
