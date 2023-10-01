@@ -1,0 +1,56 @@
+#!/bin/bash
+
+. /opt/dc/etc/config
+
+flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
+
+dname_list=" "
+
+for i in $flist ; do
+  dname=$( dc-yq '.service.name' $i )
+  config_check=$( dc-yq '.service.config_check' $i )
+  c_yaml=$( dc-yq '.service.control.file' $i )
+  if [ "${c_yaml}" = "" ] ; then
+    echo " ❌ fehler 1"
+    exit 1
+  fi
+  c_yaml="`dirname $i`/${c_yaml}"
+  cname=$(docker compose -f ${c_yaml} config |  dc-yq '.name')
+  if [ "${dname}" != "${cname}" ] ; then
+    echo " 💡(1) diff-name:  ${dname} != ${cname}   ($i  ${c_yaml})"
+  fi
+  if [[ "$dname_list" == *" $dname "* ]] ; then
+    if [ "$config_check" != "false" ] ; then
+      echo " 💡(2) not-uniqu:  $dname   ($i)"
+    fi
+  fi
+  dname_list="$dname_list $dname "    
+
+  #echo "config_check=$config_check"
+  if [ "$config_check" != "false" ] ; then
+    vol_list=$(docker compose -f ${c_yaml} config | dc-yq '.services.*.volumes.[].source' | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/")
+    for vol in $vol_list ; do
+      if [[ "$vol" == "/Docker/Logs/$cname"         || \
+            "$vol" == "/Docker/Logs/$cname/"*       || \
+            "$vol" == "/Docker/Services/$cname"     || \
+            "$vol" == "/Docker/Services/$cname/"*   || \
+            "$vol" == "/Docker/Cache/$cname"        || \
+            "$vol" == "/Docker/Cache/$cname/"*      || \
+            "$vol" == "/Docker/Data/$cname"         || \
+            "$vol" == "/Docker/Data/$cname/"*          \
+         ]] ; then 
+        true
+      else 
+        echo " 💡(3) volconfig:  $vol ($cname)"
+      fi
+    done
+  fi
+  hosts=$( dc-yq '.service.hosts.[]' $i )
+  for h in $hosts ; do
+  if [ ! -f /root/.ssh/dc/config.$h ] ; then
+     echo " ❌ missing hos definition </root/.ssh/dc/config.$h>"
+  fi
+  done
+done
+exit 0
+
