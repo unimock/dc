@@ -50,7 +50,7 @@ if [ "$CMD" = "" ] ; then
   echo "    check               # check services on $H"
   echo "    check details       # check services on $H and show details"
   echo "    stop|start          # start or stop all services on $H"
-  echo "    rm|up               # start or stop all services on $H"
+  echo "    rm|up|rmup          # start or stop all services on $H"
   echo "    ps                  # show services on $H"
   echo ""
   exit 0
@@ -160,7 +160,7 @@ EOF
     dc-list -y services -h $HOST
   fi
   ####################################################################################################################
-  if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start"   ] ; then
+  if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "rmup"  ] ; then
     list=$( dc-list -y services -h $HOST )
     for i in $list ; do
       dc -h $HOST -c $i $CMD

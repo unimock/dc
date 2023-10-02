@@ -22,6 +22,7 @@ show_help() {
   echo "     install ...                   # dc installation and update functions"
   echo "     ls                            # list dc hosts"
   echo "     list ...                      # list hosts/services/.."
+  echo "     config                        # check dc configurations"
   echo "     host ...                      # manage hosts and services on host"
   echo "     mounts [umount] ...           # list/unmount all service mounts to hosts"
   echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
@@ -51,8 +52,6 @@ show_help() {
   echo "     cmd   [command]               # run a command within <$DCN> without terminal (cron jobes, ..)."
   echo "     supervisor                    # connect to supervisord (help|quit|start|stop|restart)"
   echo "     syslog                        # print last lines from syslog"
-  echo "     config                        # configure ispconfig (set server_name, passwords ...)"
-  echo "     migrate                       # migration tool (import and export data)"
   echo "     ovw push                      # push the content of </service/ovw> to </> within the container."
   echo "     ovw fetch                     # copy a file or directory from </> to </service/ovw/> within the container."
   echo "     ovw diff <file>               # compare a overwrite file"
@@ -85,7 +84,7 @@ if [ "$1" = "mounts" ] ; then
   exit 0 
 fi
 
-wrapper_list="inspect host install hcloud batch list manage"
+wrapper_list="inspect host install hcloud batch list manage config"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
@@ -466,50 +465,67 @@ case "$CMD" in
     done
     ;;
   ############
-  supervisor) docker compose exec ${service_name} supervisorctl ;;
-  syslog)     docker compose exec ${service_name} tail -n 200 /var/log/syslog ;;
-  login)      shift
-              if [ "$1" = "" ] ; then
-                cmd="bash"
-              else
-                cmd=$*
-              fi
-	      docker compose exec  ${service_name} $cmd
-              ;;
-  cmd)      shift
-            docker compose exec -T  ${service_name} $*
-            ret=$?
-            exit $ret
-            ;;
-  config|migrate)
-              FI=$1
-              shift
-              docker compose  exec ${service_name} /usr/local/bin/${FI} $*
-              ;;
-  ovw)        if [ "$2" = "push" ] ; then
-                docker compose  exec ${service_name} rsync -av /service/ovw/ /
-                exit 0
-              fi
-              if [ "$2" = "fetch" ] ; then
-                if [ "$3" = "" ] ; then
-                  echo "parameter error: no dir/file given (see usage)"
-                  exit 0
-                fi
-                echo "rsync -avR ${3} /service/ovw/"
-                docker compose  exec ${service_name} rsync -avR ${3} /service/ovw/
-                exit 0
-              fi
-              if [ "$2" = "fetch" ] ; then
-                docker compose exec ${service_name} diff /service/ovw/${3} ${3}
-                exit 0
-              fi
-              ;;
+  supervisor)
+    
+    docker compose exec ${service_name} supervisorctl
+    ;;
+  syslog)
+    docker compose exec ${service_name} tail -n 200 /var/log/syslog
+    ;;
+  login)
+    shift
+    if [ "$1" = "" ] ; then
+      cmd="bash"
+    else
+      cmd=$*
+    fi
+    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
+	  docker compose exec  ${first_in_compose} $cmd
+    ;;
+  cmd)
+    shift
+    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
+    docker compose exec -T  ${first_in_compose} $*
+    ret=$?
+    exit $ret
+    ;;
+  ovw)
+    if [ "$2" = "push" ] ; then
+    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
+      docker compose  exec ${first_in_compose} rsync -av /service/ovw/ /
+      exit 0
+    fi
+    if [ "$2" = "fetch" ] ; then
+      if [ "$3" = "" ] ; then
+        echo "parameter error: no dir/file given (see usage)"
+        exit 0
+      fi
+      echo "rsync -avR ${3} /service/ovw/"
+    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
+      docker compose  exec ${first_in_compose} rsync -avR ${3} /service/ovw/
+      exit 0
+    fi
+    if [ "$2" = "fetch" ] ; then
+       first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
+       docker compose exec ${first_in_compose} diff /service/ovw/${3} ${3}
+       exit 0
+    fi
+    ;;
   #############
-  docker)     shift ; docker $* ;;
-  compose|docker-compose)    shift ; docker compose $*  ;;
-  swarm)      echo "swarm command (have to be done)" ;;
-  *)          if [ "$CONF" != "" ] ; then
-                docker compose $* 
-              fi
-              ;;
+  docker)
+    shift
+    docker $*
+    ;;
+  compose|docker-compose)
+    shift
+    docker compose $*
+    ;;
+  swarm)
+    echo "swarm command (have to be done)"
+     ;;
+  *)
+     if [ "$CONF" != "" ] ; then
+       docker compose $* 
+     fi
+     ;;
 esac
