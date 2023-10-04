@@ -77,19 +77,19 @@ for HOST in $hlist ; do
     if [ "$CMD" = "large_files" ] ; then
     FI=/tmp/.dc-remote-cmd.lf
 cat <<EOF > $FI
-find /Docker /var /xxx /tmp /home /mnt/backup-volume -type f -size +${1} -exec ls -lh {} + 2>/dev/null | awk '{ print "${HOST} " \$5 " " \$9 }'
+find ${MDE_DC_DOCKER_VOL} /var /xxx /tmp /home /mnt/backup-volume -type f -size +${1} -exec ls -lh {} + 2>/dev/null | awk '{ print "${HOST} " \$5 " " \$9 }'
 EOF
     else
     FI=/tmp/.dc-remote-cmd.de
 cat <<EOF > $FI
-find /Docker /mnt/backup-volume -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '\$NF>=${1}'
+find ${MDE_DC_DOCKER_VOL} /mnt/backup-volume -type d -exec bash -c "echo -ne '{} '; ls '{}' | wc -l" \; | awk '\$NF>=${1}'
 EOF
     fi
     scp -q $FI ${HOST}:$FI
     ssh ${HOST} bash $FI
     ssh ${HOST} rm   $FI
     rm -f $FI
-    #ssh ${HOST} "find /Docker /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
+    #ssh ${HOST} "find ${MDE_DC_DOCKER_VOL} /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
   fi
   if [ "$CMD" = "prune" ] ; then
      ssh ${HOST} df -h / | grep -v "^Filesystem"

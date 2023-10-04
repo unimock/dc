@@ -31,8 +31,8 @@ if [ "$2" = "" ] ; then
   echo '  # do dist-upgrade, release-upgrade'
   echo '  dc -h ${ABBREV} create'
   echo '  dc -h ${ABBREV} docker info'
-  echo '  dc -h ${ABBREV} ssh mkdir /Docker'
-  echo '  dc -h ${ABBREV} ssh chmod a+rwx /Docker'
+  echo '  dc -h ${ABBREV} ssh mkdir ${MDE_DC_DOCKER_VOL}'
+  echo '  dc -h ${ABBREV} ssh chmod a+rwx ${MDE_DC_DOCKER_VOL}'
   echo ""
   exit 0
 fi

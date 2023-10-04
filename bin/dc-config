@@ -27,25 +27,32 @@ for i in $flist ; do
   dname_list="$dname_list $dname "    
 
   #echo "config_check=$config_check"
+  hosts=$( dc-yq '.service.hosts.[]' $i )
   if [ "$config_check" != "false" ] ; then
     vol_list=$(docker compose -f ${c_yaml} config | dc-yq '.services.*.volumes.[].source' | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/")
     for vol in $vol_list ; do
-      if [[ "$vol" == "/Docker/Logs/$cname"         || \
-            "$vol" == "/Docker/Logs/$cname/"*       || \
-            "$vol" == "/Docker/Services/$cname"     || \
-            "$vol" == "/Docker/Services/$cname/"*   || \
-            "$vol" == "/Docker/Cache/$cname"        || \
-            "$vol" == "/Docker/Cache/$cname/"*      || \
-            "$vol" == "/Docker/Data/$cname"         || \
-            "$vol" == "/Docker/Data/$cname/"*          \
-         ]] ; then 
-        true
+      if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$cname"         || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$cname/"*       || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$cname"     || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$cname/"*   || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$cname"        || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$cname/"*      || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$cname"         || \
+            "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$cname/"*          \
+         ]] ; then
+        #echo "check if $vol exists on host"
+        for h in $hosts ; do
+          ssh $h ls -d $vol >/dev/null 2>&1
+          if [ "$?" != "0" ] ; then
+            echo " ❌ missing volume directory <$vol> on host <$h> ($i)"
+          fi
+        done
+  
       else 
         echo " 💡(3) volconfig:  $vol ($cname)"
       fi
     done
   fi
-  hosts=$( dc-yq '.service.hosts.[]' $i )
   for h in $hosts ; do
   if [ ! -f /root/.ssh/dc/config.$h ] ; then
      echo " ❌ missing hos definition </root/.ssh/dc/config.$h>"

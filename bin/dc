@@ -63,6 +63,13 @@ show_help() {
 # magic main
 #
 ####################################################################################################################################
+
+if [ "${MDE_DC_DOCKER_VOL}" = "" ] ; then
+  echo " ❌ {MDE_DC_DOCKER_VOL not set in </opt/dc/bin/dc-config> "
+  exit 1
+fi
+
+
 HOST=""
 SERVICE=""
 CONF=""
@@ -75,7 +82,7 @@ if [ "$1" = "mounts" ] ; then
     exit 0
   fi
   if [ "$2" = "umount" ] ; then  
-    list=$( mount | grep fuse.sshfs | grep "/Docker"  | cut -d " " -f1 )
+    list=$( mount | grep fuse.sshfs | grep "${MDE_DC_DOCKER_VOL}"  | cut -d " " -f1 )
     for i in $list ; do
       umount $i
       echo unmounting: $i
@@ -422,7 +429,7 @@ case "$CMD" in
     scmd=$2
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      sshfs $HNAME:/Docker/Services/${service_name} ./data
+      sshfs $HNAME:/${MDE_DC_DOCKER_VOL}/Services/${service_name} ./data
       exit $?
     fi
     if [ "$scmd" = "umount" ] ; then
@@ -442,17 +449,17 @@ case "$CMD" in
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh ${HNAME}  mkdir -p /Docker/Services/${service_name}
+        ssh ${HNAME}  mkdir -p /${MDE_DC_DOCKER_VOL}/Services/${service_name}
         rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-               ${LDIR}/ ${HNAME}:/Docker/Services/${service_name}/$TYPE
-        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/Docker/Services/${service_name}/$TYPE>)"
+               ${LDIR}/ ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE
+        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
-        ssh ${HNAME} ls -d /Docker/Services/${service_name}/$TYPE >/dev/null 2>&1
+        ssh ${HNAME} ls -d /${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
           rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-                  ${HNAME}:/Docker/Services/${service_name}/$TYPE/ ${LDIR}
-          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/Docker/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
+                  ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE/ ${LDIR}
+          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
             echo "WARNING ./${TYPE} only exists locally!"  
