@@ -29,7 +29,6 @@ show_help() {
   echo "     hcloud ...                    # create and manage Hezner-Cloud hosts"
   echo "     batch ...                     # manage job batches"
   echo "     docker|compose|swarm          # delegate command to standard tools"
-  #echo "     create|test|remove|enable|disable"
   echo "     ssh                           # login into a host"                          
   echo "     manage ...                    # sync,.. services between hosts"
   echo ""
@@ -68,7 +67,10 @@ if [ "${MDE_DC_DOCKER_VOL}" = "" ] ; then
   echo " ❌ {MDE_DC_DOCKER_VOL not set in </opt/dc/bin/dc-config> "
   exit 1
 fi
-
+if [ "$1" = "completion" ] ; then
+  cat /opt/dc/etc/dc-bash-completion
+  exit 0
+fi
 
 HOST=""
 SERVICE=""
