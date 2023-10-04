@@ -68,7 +68,7 @@ if [ "${MDE_DC_DOCKER_VOL}" = "" ] ; then
   exit 1
 fi
 if [ "$1" = "completion" ] ; then
-  cat /opt/dc/etc/dc-bash-completion
+  cat /opt/dc/funcs/bash-completion
   exit 0
 fi
 
