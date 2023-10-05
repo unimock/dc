@@ -2,62 +2,115 @@
 
 . /opt/dc/etc/config
 
-flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
+if [ "$1" = "" ] ; then
+  if [ $(ps -o comm= $PPID) = "dc" ] ; then
+    IAM="dc config"
+  else
+    IAM="dc-config"
+  fi
+  echo ""
+  echo "usage: $IAM check"
+  echo "usage: $IAM create project <host> <project-name> <main-service-name> <project-directory>"
+  echo ""
+  echo "examples:"
+  echo ""
+  echo "$IAM show     # show dc configuration"
+  echo "$IAM check    # check configuration"
+  echo "$IAM create project apps0 test-project filebrowser /root/Services/test-project"
+  echo ""
+  exit 0
+fi
 
-dname_list=" "
+if [ "$1" = "create" -a "$2" = "project" ] ; then
+  shift ; shift
+  host="$1"
+  project_name="$2"    # must be unique
+  main_service="$3"         # keep it simple, like git,...
+  project_dir="$4"
 
-for i in $flist ; do
-  dname=$( dc-yq '.service.name' $i )
-  config_check=$( dc-yq '.service.config_check' $i )
-  c_yaml=$( dc-yq '.service.control.file' $i )
-  if [ "${c_yaml}" = "" ] ; then
-    echo " ❌ fehler 1"
+  traefik_net="traefik_default"
+  image="filebrowser/filebrowser:v2.25.0"
+
+  if [ -d ${project_dir} ] ; then
+    echo "error: ${project_dir} exists!"
     exit 1
   fi
-  c_yaml="`dirname $i`/${c_yaml}"
-  cname=$(docker compose -f ${c_yaml} config |  dc-yq '.name')
-  if [ "${dname}" != "${cname}" ] ; then
-    echo " 💡(1) diff-name:  ${dname} != ${cname}   ($i  ${c_yaml})"
-  fi
-  if [[ "$dname_list" == *" $dname "* ]] ; then
-    if [ "$config_check" != "false" ] ; then
-      echo " 💡(2) not-uniqu:  $dname   ($i)"
-    fi
-  fi
-  dname_list="$dname_list $dname "    
+  mkdir -p ${project_dir}
+  echo "${project_dir} created"
+  cp -r /opt/dc/templates/create-project/.         ${project_dir}/
+  flist=$( find  ${project_dir} -type f)
+  for i in $flist ; do
+    sed -i "s|<project_name>|${project_name}|g"   $i
+    sed -i "s|<main_service>|${main_service}|g"   $i
+    sed -i "s|<host>|${host}|g"                   $i
+    sed -i "s|<image>|${image}|g"                 $i
+    sed -i "s|<traefik_net>|${traefik_net}|g"     $i
+    echo "$i"
+  done
+  cd ${project_dir}
+  dc up
+  dc login ls /
+  dc rm
+  exit 0
+fi
 
-  #echo "config_check=$config_check"
-  hosts=$( dc-yq '.service.hosts.[]' $i )
-  if [ "$config_check" != "false" ] ; then
-    vol_list=$(docker compose -f ${c_yaml} config | dc-yq '.services.*.volumes.[].source' | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/")
-    for vol in $vol_list ; do
-      if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$cname"         || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$cname/"*       || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$cname"     || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$cname/"*   || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$cname"        || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$cname/"*      || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$cname"         || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$cname/"*          \
-         ]] ; then
-        #echo "check if $vol exists on host"
-        for h in $hosts ; do
-          ssh $h ls -d $vol >/dev/null 2>&1
-          if [ "$?" != "0" ] ; then
-            echo " ❌ missing volume directory <$vol> on host <$h> ($i)"
-          fi
-        done
-  
-      else 
-        echo " 💡(3) volconfig:  $vol ($cname)"
+
+
+
+if [ "$1" = "check" -o "show"  ] ; then
+  flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
+
+  cname_list=" "
+
+  for i in $flist ; do
+    config_check=$( dc-yq '.service.config_check' $i )
+    c_yaml=$( dc-yq '.service.control.file' $i )
+    if [ "${c_yaml}" = "" ] ; then
+      echo " ❌ fehler 1"
+      exit 1
+    fi
+    c_yaml="`dirname $i`/${c_yaml}"
+    cname=$(docker compose -f ${c_yaml} config |  dc-yq '.name')
+    if [[ "$cname_list" == *" $cname "* ]] ; then
+      if [ "$config_check" != "false" ] ; then
+        echo " 💡(2) not-uniqu:  $cname   ($i)"
+      fi
+    fi
+    cname_list="$cname_list $cname "    
+    hosts=$( dc-yq '.service.hosts.[]' $i )
+    if [ "$config_check" != "false" ] ; then
+      vol_list=$(docker compose -f ${c_yaml} config | dc-yq '.services.*.volumes.[].source' | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/")
+      for vol in $vol_list ; do
+        if [ "$1" = "show" ] ; then
+          echo "volume: $vol"
+        fi
+        if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$cname"         || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$cname/"*       || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$cname"     || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$cname/"*   || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$cname"        || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$cname/"*      || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$cname"         || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$cname/"*          \
+           ]] ; then
+          #echo "check if $vol exists on host"
+          for h in $hosts ; do
+            ssh $h ls -d $vol >/dev/null 2>&1
+            if [ "$?" != "0" ] ; then
+              echo " ❌ missing volume directory <$vol> on host <$h> ($i)"
+            fi
+          done
+        else 
+          echo " 💡(3) volconfig:  $vol ($cname)"
+        fi
+      done
+    fi
+    for h in $hosts ; do
+      if [ ! -f /root/.ssh/dc/config.$h ] ; then
+        echo " ❌ missing host definition </root/.ssh/dc/config.$h>"
       fi
     done
-  fi
-  for h in $hosts ; do
-  if [ ! -f /root/.ssh/dc/config.$h ] ; then
-     echo " ❌ missing hos definition </root/.ssh/dc/config.$h>"
-  fi
   done
-done
+fi
 exit 0
 

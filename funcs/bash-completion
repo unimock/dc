@@ -24,6 +24,8 @@ _dc() {
 
   if [[ "$COMP_CWORD" == "1" ]] ; then
     COMPREPLY=( $(compgen -W "inspect host install hcloud batch list manage config ls mount umount login" -- "$2") )
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "config" ]] ; then
+    COMPREPLY=( $(compgen -W "show check create" -- "$2") )
   fi
   # q devl
   #if [[  "$COMP_CWORD" == "2" && "$3" == "devl" ]] ; then

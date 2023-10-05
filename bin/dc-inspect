@@ -88,7 +88,9 @@ for host in $hosts ; do
   fi
   yml_list=$( dc-list -y services -h $host )
   for yml in $yml_list ; do
-    service=$(dc-yml -c $yml service_name)
+    directory=$( dirname $yml )
+    compose_file="${directory}/docker-compose.yml"
+    service=$(docker compose -f $compose_file config | dc-yq '.name')
     if [ "$check_runtime" = "1" ] ; then
       if [ $host_up = 1 ] ; then
         service_stat=$( dc -h $host -s $service check )
@@ -103,8 +105,6 @@ for host in $hosts ; do
       fi
     fi
     echo "${host}_service_${service}_config=$yml"
-    directory=$( dirname $yml )
-    compose_file="${directory}/docker-compose.yml"
     img_list=$( dc compose -f $compose_file config | dc-yq '.services.*.image' )
     for img in $img_list ; do
 	    echo "${host}_service_${service}_image=$img"

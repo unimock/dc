@@ -431,9 +431,11 @@ case "$CMD" in
     scmd=$2
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      sshfs $HNAME:/${MDE_DC_DOCKER_VOL}/Services/${service_name} ./data
+      project_name=$(docker compose config | dc-yq '.name')
+      sshfs $HNAME:/${MDE_DC_DOCKER_VOL}/Services/${project_name} ./data
       exit $?
     fi
+    project_name=$( docker compose -f `dirname $CONF`/docker-compose.yml config | dc-yq '.name' )
     if [ "$scmd" = "umount" ] ; then
       umount ./data
       rmdir ./data
@@ -451,17 +453,17 @@ case "$CMD" in
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh ${HNAME}  mkdir -p /${MDE_DC_DOCKER_VOL}/Services/${service_name}
+        ssh ${HNAME}  mkdir -p /${MDE_DC_DOCKER_VOL}/Services/${project_name}
         rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-               ${LDIR}/ ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE
-        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE>)"
+               ${LDIR}/ ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE
+        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
-        ssh ${HNAME} ls -d /${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE >/dev/null 2>&1
+        ssh ${HNAME} ls -d /${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
           rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-                  ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE/ ${LDIR}
-          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${service_name}/$TYPE>) TO <./${TYPE}> done." 
+                  ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE/ ${LDIR}
+          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
             echo "WARNING ./${TYPE} only exists locally!"  
@@ -488,20 +490,17 @@ case "$CMD" in
     else
       cmd=$*
     fi
-    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
-	  docker compose exec  ${first_in_compose} $cmd
+	  docker compose exec  ${service_name} $cmd
     ;;
   cmd)
     shift
-    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
-    docker compose exec -T  ${first_in_compose} $*
+    docker compose exec -T  ${service_name} $*
     ret=$?
     exit $ret
     ;;
   ovw)
     if [ "$2" = "push" ] ; then
-    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
-      docker compose  exec ${first_in_compose} rsync -av /service/ovw/ /
+      docker compose  exec ${service_name} rsync -av /service/ovw/ /
       exit 0
     fi
     if [ "$2" = "fetch" ] ; then
@@ -510,13 +509,11 @@ case "$CMD" in
         exit 0
       fi
       echo "rsync -avR ${3} /service/ovw/"
-    first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
-      docker compose  exec ${first_in_compose} rsync -avR ${3} /service/ovw/
+      docker compose  exec ${service_name} rsync -avR ${3} /service/ovw/
       exit 0
     fi
     if [ "$2" = "fetch" ] ; then
-       first_in_compose=$(docker compose config  | dc-yq '.services.* | path | .[-1]')
-       docker compose exec ${first_in_compose} diff /service/ovw/${3} ${3}
+       docker compose exec ${service_name} diff /service/ovw/${3} ${3}
        exit 0
     fi
     ;;

@@ -98,8 +98,7 @@ for yml in $yml_list ; do
      echo "error: <$yml> missing."
      continue
   fi
-  SERVICE=$(dc-yml -c $yml service_name)
-
+  SERVICE=$( docker compose -f `dirname $yml`/docker-compose.yml config | dc-yq '.name' )
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
     unset service_hosts
     unset service_state

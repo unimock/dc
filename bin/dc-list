@@ -69,7 +69,7 @@ if [ "$CMD" = "services" ] ; then
   result=()
   flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
   for s in $flist ; do
-    name=$(dc-yml -c $s service_name)
+    name=$( docker compose -f `dirname $s`/docker-compose.yml config | dc-yq '.name'  )
     if [ "$service" != "" -a "$service" != "$name" ] ; then
       continue
     fi

@@ -1,0 +1,12 @@
+version: "1"
+service:
+  state: 
+    - active
+  name: <main_service>
+#  group:
+#    - 
+  control:
+    type: compose
+    file: docker-compose.yml
+  hosts:
+    - <host>
