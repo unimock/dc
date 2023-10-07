@@ -72,6 +72,11 @@ if [ "$1" = "completion" ] ; then
   exit 0
 fi
 
+if [[ $(ps -o comm= $PPID) != "dc-"* || $(ps -o comm= $PPID) != "dc"  ]] ; then
+  echo "cache refresh in dc"
+  dc-yml-cache refresh     # refresh yml cache only if calling pid is not a dc command
+fi
+
 HOST=""
 SERVICE=""
 CONF=""

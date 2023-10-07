@@ -167,9 +167,9 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     eval $( dc-yml -c $MDE_DC_CONFIG_DIR/dc_cluster.yml )
     eval $( dc-yml -c $MDE_DC_BATCH_DIR/global.yml   )
     if [ "$errors" = "0" ] ; then
-      subject="report: ${JOB_NAME}@${cluster_name}"
+      subject="✅ report: ${JOB_NAME}@${cluster_name}"
     else
-      subject="ERROR-report: ${JOB_NAME}@${cluster_name}"
+      subject="❌ ERROR-report: ${JOB_NAME}@${cluster_name}"
     fi
     param=""
     if [ "$batch_mail_smtp_user" != "" ] ; then
