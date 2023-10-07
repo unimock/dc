@@ -39,7 +39,7 @@ if [ "$1" = "refresh" -o "$1" = "rebuild" ] ; then
     if [ -f ${VARDIR}/${relPath}/modified.${stamp} ] ; then
       continue
     else
-      echo "create ${VARDIR}/${relPath}/modified.${stamp}"
+      #echo "create ${VARDIR}/${relPath}/modified.${stamp}"
       rm -rf ${VARDIR}/${relPath}
       mkdir -p ${VARDIR}/${relPath}
       echo "$last" | awk '{ print $2 }' > ${VARDIR}/${relPath}/modified.${stamp}

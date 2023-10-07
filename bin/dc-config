@@ -6,7 +6,6 @@ if [ $(ps -o comm= $PPID) = "dc" ] ; then
   IAM="dc config"
 else
   IAM="dc-config"
-  echo "cache refresh in $IAM"
   dc-yml-cache refresh
 fi
 
@@ -78,12 +77,12 @@ if [ "$1" = "check" ] ; then
     #
     # check for not unique projects
     #
-    if [[ "$doubles" == *" $p "* ]] ; then
-      if [ "$config_check" != "false" ] ; then
+    if [ "$config_check" != "false" ] ; then
+      if [[ "$doubles" == *" $p "* ]] ; then
         echo " 💡(1) not-uniqu:  $p"
+      else
+        doubles="$doubles $p "
       fi
-    else
-      doubles="$doubles $p"
     fi
     vol_list=$(dc-yq '.'$p'.compose.services.*.volumes.[].source' /var/dc/dc.yml | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/"  )
     for vol in $vol_list ; do
