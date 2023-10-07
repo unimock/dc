@@ -62,7 +62,7 @@ if [ "$1" = "show"  ] ; then
 fi  
 
 if [ "$1" = "check" ] ; then
-  hosts=$(yq  '.*.dc.hosts.[]'   /var/dc/dc.yml | sort | uniq)
+  hosts=$(dc-yq  '.*.dc.hosts.[]'   /var/dc/dc.yml | sort | uniq)
   for h in $host ; do
     if [ ! -f /root/.ssh/dc/config.$h ] ; then
       echo " ❌ missing host definition </root/.ssh/dc/config.$h>"
