@@ -68,48 +68,44 @@ if [ "$1" = "check" ] ; then
     fi
   done
 
-  projects=$(dc-yq  '.* | path | .[-1]' /var/dc/dc.yml | sort)
-  doubles=" "
+  projects=$( grep -v "^ " /var/dc/dc.yml | sed "s/://g" | sort )
   for p in $projects ; do
     config_check=$( dc-yq '.'$p'.dc.config_check' /var/dc/dc.yml )
     p_on_hosts=$( dc-yq '.'$p'.dc.hosts.[]' /var/dc/dc.yml )
-    #echo "$p $config_check ($p_on_hosts)"
     #
     # check for not unique projects
     #
     if [ "$config_check" != "false" ] ; then
-      if [[ "$doubles" == *" $p "* ]] ; then
-        echo " 💡(1) not-uniqu:  $p"
-      else
-        doubles="$doubles $p "
+      anz=$(grep "^${p}:" /var/dc/dc.yml  | wc -l)
+      if [ "$anz" != "1" ] ; then
+        echo " ❌ project name <$p> not unique"
       fi
+    
+      vol_list=$(dc-yq '.'$p'.compose.services.*.volumes.[].source' /var/dc/dc.yml | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/"  )
+      cfg=$( dc-yq '.'$p'.compose_yml' /var/dc/dc.yml )
+      for vol in $vol_list ; do
+        #echo "  $vol" 
+        if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p/"*       || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p"     || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p/"*   || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p"        || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p/"*      || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p"         || \
+              "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p/"*          \
+           ]] ; then
+          # check if $vol exists on host
+          for h in $p_on_hosts ; do
+            ssh $h ls -d $vol >/dev/null 2>&1
+            if [ "$?" != "0" ] ; then
+              echo " ❌ missing volume directory <$vol> on host <$h>"
+            fi
+          done
+        else
+          echo " 💡 volume config <$vol> in $cfg" 
+        fi
+      done
     fi
-    vol_list=$(dc-yq '.'$p'.compose.services.*.volumes.[].source' /var/dc/dc.yml | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/"  )
-    for vol in $vol_list ; do
-      if [ "$config_check" = "false" ] ; then
-        continue
-      fi
-      #echo "  $vol" 
-      if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p/"*       || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p"     || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p/"*   || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p"        || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p/"*      || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p"         || \
-            "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p/"*          \
-         ]] ; then
-        #echo "check if $vol exists on host"
-        for h in $p_on_hosts ; do
-          ssh $h ls -d $vol >/dev/null 2>&1
-          if [ "$?" != "0" ] ; then
-            echo " ❌ missing volume directory <$vol> on host <$h>"
-          fi
-        done
-      else
-        echo " 💡(2) volconfig:  $vol"
-      fi
-    done
   done
 fi 
 exit 0
