@@ -1,6 +1,7 @@
 #!/bin/bash
 
 . /opt/dc/etc/config
+. /opt/dc/funcs/config-refresh
 
 _ask()
 {
@@ -92,16 +93,14 @@ EOF
     #ssh ${HOST} "find ${MDE_DC_DOCKER_VOL} /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
   fi
   if [ "$CMD" = "prune" ] ; then
-     ssh ${HOST} df -h / | grep -v "^Filesystem"
-     ssh ${HOST} apt-get autoremove
-     dc inspect -h $HOST runtime | grep "_state="
-     echo "ret from dc inspect =$?  TBD: break if != 0 "
+     ssh   ${HOST} df -h / | grep -v "^Filesystem"
+     ssh   ${HOST} apt-get autoremove
      dc -h ${HOST} docker volume prune
-     ssh ${HOST} df -h / | grep -v "^Filesystem"
+     ssh   ${HOST} df -h / | grep -v "^Filesystem"
      dc -h ${HOST} docker system prune -a
-     ssh ${HOST} df -h / | grep -v "^Filesystem"
-     ssh ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
-     ssh ${HOST} df -h / | grep -v "^Filesystem"
+     ssh   ${HOST} df -h / | grep -v "^Filesystem"
+     ssh   ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+     ssh   ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
     ssh $HOST docker ps -q | wc -l 
@@ -152,7 +151,7 @@ EOF
     if [ "$1" = "details" ] ; then
       dc inspect -h $HOST runtime
     else
-      dc inspect -h $HOST runtime | grep "_state="
+      dc inspect -h $HOST runtime | grep " state:"
     fi
   fi
 

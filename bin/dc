@@ -1,6 +1,7 @@
 #!/bin/bash
 
 . /opt/dc/etc/config
+. /opt/dc/funcs/config-refresh
 
 ####################################################################################################################################
 show_help() {
@@ -70,10 +71,6 @@ fi
 if [ "$1" = "completion" ] ; then
   cat /opt/dc/funcs/bash-completion
   exit 0
-fi
-
-if [[ $(ps -o comm= $PPID) != "dc-"* || $(ps -o comm= $PPID) != "dc"  ]] ; then
-  dc-config refresh     # refresh yml cache only if calling pid is not a dc command
 fi
 
 HOST=""

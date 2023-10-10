@@ -1,5 +1,7 @@
 #!/bin/bash
+
 . /opt/dc/etc/config
+. /opt/dc/funcs/config-refresh
 
 print_yml="0"
 
@@ -40,69 +42,39 @@ if [ "$CMD" = "active_hosts" ] ; then
 fi
 
 if [ "$CMD" = "used_hosts" ] ; then
-  result=()
-  flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
-  for s in $flist ; do
-    i=0 
-    while true ; do
-      h=$(dc-yml  -c $s service_hosts[$i])
-      [[ "$h" = "" ]] && break
-      i=$((i + 1))
-      # check if host exists in result array
-      found=0 
-      for item in "${result[@]}"; do
-        if [ "$h" = "$item" ] ; then
-          found=1
-          break
-        fi
-      done
-      [[ $found = 0 ]] && result+=("$h")
-    done
-  done
-  echo  ${result[*]}  |tr " " "\n"|sort|tr "\n" " "
-  echo ""
+  dc-yq '.*.dc.hosts[]'   /var/dc/dc.yml | sort | uniq
 fi
 
 if [ "$CMD" = "services" ] ; then
   shift
-
-  result=()
-  flist=$( find $MDE_DC_SERV_DIR/ -name dc-service.yml )
-  for s in $flist ; do
-    name=$( docker compose -f `dirname $s`/docker-compose.yml config | dc-yq '.name'  )
-    if [ "$service" != "" -a "$service" != "$name" ] ; then
+  if [ "$on_host" != "" ] ; then
+    project_list=$( dc-yq  '(( .* | select(.dc.hosts[] == "'$on_host'" ) | path ) [] )' /var/dc/dc.yml )
+  else
+    project_list=$(dc-yq '(.[] | path )  []'   /var/dc/dc.yml)
+  fi
+  for p in $project_list ; do
+    if [ "$service" != "" -a "$service" != "$p" ] ; then
       continue
     fi
     if [ "$group" != "" ] ; then
-      g=$(dc-yml -c $s service_group) 
-      if [ "$g" != "$group" ] ; then
+      groups=$( dc-yq '.'$p'.dc.group[]'  /var/dc/dc.yml  )
+      found_in_group="0"
+      for g in $groups ; do
+        if [ "$g" = "$group" ] ; then
+          found_in_group="1"
+        fi
+      done
+      if [ "$found_in_group" = "0" ] ; then
         continue
       fi
-    fi  
-    if [ "$on_host" != "" ] ; then
-      i=0 
-      while true ; do
-        h=$(dc-yml  -c $s service_hosts[$i])
-        [[ "$h" = "" ]] && break
-        if [ "$h" = "$on_host" ] ; then
-          if [ "$print_yml" = "1" ] ; then
-             result+=("$s")
-          else
-             result+=("$name")
-          fi
-          break
-        fi
-        i=$((i + 1))
-      done
+    fi
+    if [ "$print_yml" = "1" ] ; then
+      cfg=$( dc-yq '.'$p'.dc_yml' /var/dc/dc.yml )
+      echo "$cfg"
     else
-      if [ "$print_yml" = "1" ] ; then
-        result+=("$s")
-      else
-        result+=("$name")
-      fi
+      echo "$p"
     fi
   done
-  printf '%s\n' "${result[@]}" 
 fi
 exit 0
 

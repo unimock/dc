@@ -1,6 +1,7 @@
 #!/bin/bash
 . /opt/dc/etc/config
 . /opt/dc/funcs/script_funcs
+. /opt/dc/funcs/config-refresh
 
 DISK_USAGE_LIMIT=90 # error if >40%
 
@@ -42,10 +43,15 @@ fi
 
 host_error_marker=0
 for host in $hosts ; do
+  
+  echo "#"	
+  echo "# checking host $host ..."
+  echo "#"
+  echo "$host:"
+
+
+
   if [ "$check_runtime" = "1" ] ; then 	
-    echo "#"	
-    echo "# checking host $host ..."
-    echo "#"
     host_error_marker=0
     H_STATE="inactive"
     if [ -f /root/.ssh/dc/config.$host ] ; then
@@ -68,10 +74,10 @@ for host in $hosts ; do
       state=$H_STATE
       host_up=0
     fi
-    echo "${host}_state=$state"
+    echo "  state: $state"
     if [ $host_up = 1 ] ; then
       os=$( dc -h $host ssh "lsb_release -s -r" )
-      echo "${host}_os=$os"
+      echo "  os: $os"
       proc=$( dc -h $host ssh df ${MDE_DC_DOCKER_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
       size=${proc%\%}
       size_text=""
@@ -81,16 +87,14 @@ for host in $hosts ; do
         host_error_marker=1
         error=1
       fi
-      echo "${host}_disk=$proc $size_text"
+      echo "  disk: $proc $size_text"
       version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
-      echo "${host}_version=$version"
+      echo "  version: $version"
     fi
   fi
-  yml_list=$( dc-list -y services -h $host )
-  for yml in $yml_list ; do
-    directory=$( dirname $yml )
-    compose_file="${directory}/docker-compose.yml"
-    service=$(docker compose -f $compose_file config | dc-yq '.name')
+  projects_on_host=$( dc-yq  '( .* | select(.dc.hosts[] == "'$host'" ) | .compose.name  )' /var/dc/dc.yml  )
+  for service in $projects_on_host ; do
+    echo "  $service:"
     if [ "$check_runtime" = "1" ] ; then
       if [ $host_up = 1 ] ; then
         service_stat=$( dc -h $host -s $service check )
@@ -99,23 +103,23 @@ for host in $hosts ; do
           error_list="$error_list $host:$service"
           error=1
         fi
-        echo "${host}_service_${service}_state=$service_stat"
+        echo "    state: $service_stat"
       else
-        echo "${host}_service_${service}_state=?"
+        echo "    state: UNKOWN"
       fi
     fi
-    echo "${host}_service_${service}_config=$yml"
-    img_list=$( dc compose -f $compose_file config | dc-yq '.services.*.image' )
+    img_list=$( dc-yq '.'$service'.compose.services.*.image' /var/dc/dc.yml )
+    echo "    image:"
     for img in $img_list ; do
-	    echo "${host}_service_${service}_image=$img"
+	    echo "      - $img"
     done
   done
   if [ "$check_runtime" = "1" ] ; then
     # print result for this host  
     if [ $host_error_marker = 0 ] ; then
-      echo "${host}_checkresult=OK"
+      echo "  checkresult: OK"
     else
-      echo "${host}_checkresult=ERR/WARN"
+      echo "  checkresult: ERROR"
     fi
   fi
 done

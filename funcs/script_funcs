@@ -32,7 +32,6 @@ sf_end()
   else
     echo "#result=ERROR $tim"
   fi
-  #exit ${_sf_error}
 }
 
 
