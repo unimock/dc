@@ -222,7 +222,7 @@ EOF
           exit 1
         fi
       fi
-      image_list=$( dc-yq  '( .projects.* | select(.dc.hosts[] == "'$on_host'" ) .compose.services.*.image )' /var/dc/dc.yml | sort | uniq)
+      image_list=$( dc-yq  '( .projects.* | select(.dc.hosts[] == "'$on_host'" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
       for i in $image_list ; do
         image="$i"
         if [[ $image == *"/"* ]] ; then

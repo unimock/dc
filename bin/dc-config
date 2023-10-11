@@ -51,22 +51,23 @@ _config_refresh()
     fi
   done
   if [ "$config_change" = "1" ] ; then
-    echo "re-create: /var/dc/dc.yml"
-    rm -f /var/dc/dc.yml
+    mkdir -p `dirname ${MDE_DC_YAML}`
+    echo "re-create: ${MDE_DC_YAML}"
+    rm -f ${MDE_DC_YAML}
     list=$( find $VARDIR -name "modified.*" )
-    echo "projects:"                                                              >> /var/dc/dc.yml
+    echo "projects:"                                                              >> ${MDE_DC_YAML}
     for i in $list ; do
       relPath=${i%/modified.*}
       relPath=${relPath#${VARDIR}/}
       compose_yml=$(dc-yq '.service.control.file' $VARDIR/${relPath}/dc-service.yml)
       compose_project=$(dc-yq '.name' $VARDIR/${relPath}/compose.yml)
-      echo "  ${compose_project}:"                                                >> /var/dc/dc.yml
-      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/dc-service.yml"                >> /var/dc/dc.yml
-      echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"           >> /var/dc/dc.yml
+      echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
+      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/dc-service.yml"                >> ${MDE_DC_YAML}
+      echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"           >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
-      cat $VARDIR/${relPath}/dc-service.yml | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^service:/dc:/g" -e "s/^/    /g" >> /var/dc/dc.yml
-      echo "    compose:"                                                         >> /var/dc/dc.yml
-      cat $VARDIR/${relPath}/compose.yml | sed -e "s/^/      /g"                  >> /var/dc/dc.yml
+      cat $VARDIR/${relPath}/dc-service.yml | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^service:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
+      echo "    compose:"                                                         >> ${MDE_DC_YAML}
+      cat $VARDIR/${relPath}/compose.yml | sed -e "s/^/      /g"                  >> ${MDE_DC_YAML}
     done
   fi
 }
@@ -80,8 +81,8 @@ if [ "$1" = "" ] ; then
   echo ""
   echo "$IAM show     # show dc configuration"
   echo "$IAM show     # show dc configuration"
-  echo "$IAM refresh  # refresh dc config environment (/var/dc/dc.yml)"
-  echo "$IAM rebuild  # rebuild dc config environment (/var/dc/dc.yml)"
+  echo "$IAM refresh  # refresh dc config environment (${MDE_DC_YAML})"
+  echo "$IAM rebuild  # rebuild dc config environment (${MDE_DC_YAML})"
   echo "$IAM create project apps0 test-project filebrowser /root/Services/test-project"
   echo ""
   exit 0
@@ -132,40 +133,40 @@ if [ "$1" = "create" -a "$2" = "project" ] ; then
 fi
 
 if [ "$1" = "show"  ] ; then
-  cat /var/dc/dc.yml
+  cat ${MDE_DC_YAML}
 fi  
 
 if [ "$1" = "check" ] ; then
-  echo " ✅ last modification of /var/dc/dc.yml <$(date -r /var/dc/dc.yml "+%Y-%m-%d %H:%M:%S")>"
-  hosts=$(dc-yq  '.projects.*.dc.hosts.[]'   /var/dc/dc.yml | sort | uniq)
+  echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
+  hosts=$(dc-yq  '.projects.*.dc.hosts.[]'   ${MDE_DC_YAML} | sort | uniq)
   for h in $host ; do
     if [ ! -f /root/.ssh/dc/config.$h ] ; then
       echo " ❌ missing host definition </root/.ssh/dc/config.$h>"
     fi
   done
 
-  #projects=$( grep -v "^ " /var/dc/dc.yml | sed "s/://g" | sort )
-  projects=$( dc-yq '(.projects.* | path )  [-1]'  /var/dc/dc.yml | sort )
+  #projects=$( grep -v "^ " ${MDE_DC_YAML} | sed "s/://g" | sort )
+  projects=$( dc-yq '(.projects.* | path )  [-1]'  ${MDE_DC_YAML} | sort )
   for p in $projects ; do
-    config_check=$( dc-yq '.projects.'$p'.dc.config_check' /var/dc/dc.yml )
-    p_on_hosts=$( dc-yq '.projects.'$p'.dc.hosts.[]' /var/dc/dc.yml )
-    cfg=$( dc-yq '.projects.'$p'.compose_yml' /var/dc/dc.yml )
+    config_check=$( dc-yq '.projects.'$p'.dc.config_check' ${MDE_DC_YAML} )
+    p_on_hosts=$( dc-yq '.projects.'$p'.dc.hosts.[]' ${MDE_DC_YAML} )
+    cfg=$( dc-yq '.projects.'$p'.compose_yml' ${MDE_DC_YAML} )
     #
     # check for not unique projects
     #
-    anz=$(grep "^  ${p}:" /var/dc/dc.yml  | wc -l)
+    anz=$(grep "^  ${p}:" ${MDE_DC_YAML}  | wc -l)
     if [ "$anz" != "1" ] ; then
       echo " ❌ project name <$p> not unique"
     fi
     #
     # check if project name overrules (mailcowdockerized)
     #
-    project_name=$( dc-yq '.projects.'$p'.dc.project_name' /var/dc/dc.yml )
+    project_name=$( dc-yq '.projects.'$p'.dc.project_name' ${MDE_DC_YAML} )
     if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
       echo " 💡 project name overrule <project_name: $project_name> in $cfg"
     fi
     if [ "$config_check" != "false" ] ; then
-      vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' /var/dc/dc.yml | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
+      vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
       for vol in $vol_list ; do
         #echo "  $vol" 
         if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
