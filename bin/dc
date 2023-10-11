@@ -20,6 +20,7 @@ show_help() {
   echo ""
   echo "   cluster-commands:"
   echo ""
+  echo "     readme                        # show README.md"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls                            # list dc hosts"
   echo "     list ...                      # list hosts/services/.."
@@ -63,7 +64,13 @@ show_help() {
 # magic main
 #
 ####################################################################################################################################
-
+if [ "${1}" = "readme" ] ; then
+  if [ "${2}" = "" ] ; then
+    cat /opt/dc/README.md
+  else
+    vi /opt/dc/README.md
+  fi
+fi
 if [ "${MDE_DC_DOCKER_VOL}" = "" ] ; then
   echo " ❌ {MDE_DC_DOCKER_VOL not set in </opt/dc/bin/dc-config> "
   exit 1

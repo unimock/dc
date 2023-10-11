@@ -2,10 +2,13 @@
 
 ## Description
 
-dc environment contains a couple of bash scripts to manage generic docker machines (slaves) 
-from a central host and directory (master).
+dc environment contains a couple of bash scripts to manage docker compose projects for different docker hosts (slaves).
+from a central host (master).
 
-It only works as a wrapper for the docker-machine, docker and docker-compose commands for convenient usage.
+It only works as a wrapper for the docker and docker compose commands for convenient usage.
+
+The management on the master includes ssh definitions for accessing the slaves and the definition of the docker compose projects.
+
 
 ## Requirements for master and slaves
  * ubuntu-server >= 20.04
@@ -14,16 +17,22 @@ It only works as a wrapper for the docker-machine, docker and docker-compose com
 ## Installation (master)
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
-/opt/dc/bin/dc install init    # initialize dc environment
-/opt/dc/bin/dc install docker  # install docker-ce (stable)
-/opt/dc/bin/dc install tools   # install additional tools (pv, tree, compose, machine, ..)
-/opt/dc/bin/dc install hcloud  # optional: manage hetzner cloud hosts
+# TBD:/opt/dc/bin/dc install init    # initialize dc environment
+# TBD: /opt/dc/bin/dc install docker  # install docker-ce (stable)
+# TBD:/opt/dc/bin/dc install tools   # install additional tools (pv, tree, compose, machine, ..)
+# TBD:/opt/dc/bin/dc install hcloud  # optional: manage hetzner cloud hosts
 . /etc/profile
 ```
 
+# TBD:
+
+
 ## Usage
-### Slave machines
+
+### slave machines
+
 #### Installation
+
 ```
   #
   # static ip address
