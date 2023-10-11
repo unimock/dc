@@ -99,7 +99,8 @@ for yml in $yml_list ; do
      echo "error: <$yml> missing."
      continue
   fi
-  SERVICE=$( dc-yq '(( .* | select(.dc_yml == "'$yml'" ) | path ) [] )' /var/dc/dc.yml ) # get dc project name from dc_yml entry
+  #SERVICE=$( dc-yq '(( .* | select(.dc_yml == "'$yml'" ) | path ) [] )' /var/dc/dc.yml ) # get dc project name from dc_yml entry
+  SERVICE=$( dc-yq '(( .projects.* | select(.dc_yml == "'$yml'" ) | path ) [-1] )' /var/dc/dc.yml )
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
     unset service_hosts
     unset service_state

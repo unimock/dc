@@ -42,22 +42,22 @@ if [ "$CMD" = "active_hosts" ] ; then
 fi
 
 if [ "$CMD" = "used_hosts" ] ; then
-  dc-yq '.*.dc.hosts[]'   /var/dc/dc.yml | sort | uniq
+  dc-yq '.projects.*.dc.hosts[]'   /var/dc/dc.yml | sort | uniq
 fi
 
 if [ "$CMD" = "services" ] ; then
   shift
   if [ "$on_host" != "" ] ; then
-    project_list=$( dc-yq  '(( .* | select(.dc.hosts[] == "'$on_host'" ) | path ) [] )' /var/dc/dc.yml )
+    project_list=$( dc-yq  '(( .projects.* | select(.dc.hosts[] == "'$on_host'" ) | path ) [-1] )' /var/dc/dc.yml )
   else
-    project_list=$(dc-yq '(.[] | path )  []'   /var/dc/dc.yml)
+    project_list=$(dc-yq '(.projects.[] | path ) [-1]'   /var/dc/dc.yml)
   fi
   for p in $project_list ; do
     if [ "$service" != "" -a "$service" != "$p" ] ; then
       continue
     fi
     if [ "$group" != "" ] ; then
-      groups=$( dc-yq '.'$p'.dc.group[]'  /var/dc/dc.yml  )
+      groups=$( dc-yq '.projects.'$p'.dc.group[]'  /var/dc/dc.yml  )
       found_in_group="0"
       for g in $groups ; do
         if [ "$g" = "$group" ] ; then
@@ -69,7 +69,7 @@ if [ "$CMD" = "services" ] ; then
       fi
     fi
     if [ "$print_yml" = "1" ] ; then
-      cfg=$( dc-yq '.'$p'.dc_yml' /var/dc/dc.yml )
+      cfg=$( dc-yq '.projects.'$p'.dc_yml' /var/dc/dc.yml )
       echo "$cfg"
     else
       echo "$p"

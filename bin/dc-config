@@ -54,17 +54,19 @@ _config_refresh()
     echo "re-create: /var/dc/dc.yml"
     rm -f /var/dc/dc.yml
     list=$( find $VARDIR -name "modified.*" )
+    echo "projects:"                                                              >> /var/dc/dc.yml
     for i in $list ; do
       relPath=${i%/modified.*}
       relPath=${relPath#${VARDIR}/}
       compose_yml=$(dc-yq '.service.control.file' $VARDIR/${relPath}/dc-service.yml)
       compose_project=$(dc-yq '.name' $VARDIR/${relPath}/compose.yml)
-      echo "${compose_project}:"                                                >> /var/dc/dc.yml
-      echo "  dc_yml: $MDE_DC_SERV_DIR/${relPath}/dc-service.yml"                >> /var/dc/dc.yml
-      echo "  compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"           >> /var/dc/dc.yml
-      cat $VARDIR/${relPath}/dc-service.yml | sed -e "/^version:/d" -e "s/^service:/dc:/g" -e "s/^/  /g" >> /var/dc/dc.yml
-      echo "  compose:"                                                         >> /var/dc/dc.yml
-      cat $VARDIR/${relPath}/compose.yml | sed -e "s/^/    /g"                  >> /var/dc/dc.yml
+      echo "  ${compose_project}:"                                                >> /var/dc/dc.yml
+      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/dc-service.yml"                >> /var/dc/dc.yml
+      echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"           >> /var/dc/dc.yml
+      #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
+      cat $VARDIR/${relPath}/dc-service.yml | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^service:/dc:/g" -e "s/^/    /g" >> /var/dc/dc.yml
+      echo "    compose:"                                                         >> /var/dc/dc.yml
+      cat $VARDIR/${relPath}/compose.yml | sed -e "s/^/      /g"                  >> /var/dc/dc.yml
     done
   fi
 }
@@ -100,7 +102,7 @@ if [ "$1" = "create" -a "$2" = "project" ] ; then
   shift ; shift
   host="$1"
   project_name="$2"    # must be unique
-  main_service="$3"         # keep it simple, like git,...
+  main_service="$3"    # keep it simple, like git,...
   project_dir="$4"
 
   traefik_net="traefik_default"
@@ -135,34 +137,35 @@ fi
 
 if [ "$1" = "check" ] ; then
   echo " ✅ last modification of /var/dc/dc.yml <$(date -r /var/dc/dc.yml "+%Y-%m-%d %H:%M:%S")>"
-  hosts=$(dc-yq  '.*.dc.hosts.[]'   /var/dc/dc.yml | sort | uniq)
+  hosts=$(dc-yq  '.projects.*.dc.hosts.[]'   /var/dc/dc.yml | sort | uniq)
   for h in $host ; do
     if [ ! -f /root/.ssh/dc/config.$h ] ; then
       echo " ❌ missing host definition </root/.ssh/dc/config.$h>"
     fi
   done
 
-  projects=$( grep -v "^ " /var/dc/dc.yml | sed "s/://g" | sort )
+  #projects=$( grep -v "^ " /var/dc/dc.yml | sed "s/://g" | sort )
+  projects=$( dc-yq '(.projects.* | path )  [-1]'  /var/dc/dc.yml | sort )
   for p in $projects ; do
-    config_check=$( dc-yq '.'$p'.dc.config_check' /var/dc/dc.yml )
-    p_on_hosts=$( dc-yq '.'$p'.dc.hosts.[]' /var/dc/dc.yml )
-    cfg=$( dc-yq '.'$p'.compose_yml' /var/dc/dc.yml )
+    config_check=$( dc-yq '.projects.'$p'.dc.config_check' /var/dc/dc.yml )
+    p_on_hosts=$( dc-yq '.projects.'$p'.dc.hosts.[]' /var/dc/dc.yml )
+    cfg=$( dc-yq '.projects.'$p'.compose_yml' /var/dc/dc.yml )
     #
     # check for not unique projects
     #
-    anz=$(grep "^${p}:" /var/dc/dc.yml  | wc -l)
+    anz=$(grep "^  ${p}:" /var/dc/dc.yml  | wc -l)
     if [ "$anz" != "1" ] ; then
       echo " ❌ project name <$p> not unique"
     fi
     #
     # check if project name overrules (mailcowdockerized)
     #
-    project_name=$( dc-yq '.'$p'.dc.project_name' /var/dc/dc.yml )
+    project_name=$( dc-yq '.projects.'$p'.dc.project_name' /var/dc/dc.yml )
     if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
       echo " 💡 project name overrule <project_name: $project_name> in $cfg"
     fi
     if [ "$config_check" != "false" ] ; then
-      vol_list=$(dc-yq '.'$p'.compose.services.*.volumes.[].source' /var/dc/dc.yml | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/"  )
+      vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' /var/dc/dc.yml | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
       for vol in $vol_list ; do
         #echo "  $vol" 
         if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
