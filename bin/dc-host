@@ -216,55 +216,50 @@ EOF
       echo "###########################################################################"
       if [ "$cmd" = "backup" ] ; then
         echo "try to connect to $url"   
-        ping -c5 -W5  ${url%:*} >/dev/null
+        ping -c1 -W5  ${url%:*} >/dev/null
         if [ "$?" != "0" ] ; then
           echo "error connexting to $url !!!"
           exit 1
         fi
       fi
-      yml_list=$( dc list -y  -h $host services )
-     for i in $yml_list ; do
-       DIR=`dirname $i`
-       image_list=$( dc compose -f $DIR/docker-compose.yml config | dc-yq '.services.*.image' )
-        for i in $image_list ; do
-          image="$i"
-          if [[ $image == *"/"* ]] ; then
-            rep="${image%/*}"
-            nam="${image#*/}"
+      image_list=$( dc-yq  '( .* | select(.dc.hosts[] == "'$on_host'" ) .compose.services.*.image )' /var/dc/dc.yml  )
+      for i in $image_list ; do
+        image="$i"
+        if [[ $image == *"/"* ]] ; then
+          rep="${image%/*}"
+          nam="${image#*/}"
+        else
+          rep=""
+          nam="$image"
+        fi
+        target="${url}/${cluster}_${host}_${rep}_${nam}"
+        target=${target%:}
+        if [ "$2" = "config" ] ; then
+          echo "$image;$DIR;${host}"
+        else
+          echo "$image -> $target"
+        fi
+        if [ "$cmd" = "backup" ] ; then
+          dc -h ${host} docker tag ${image} ${target}
+          if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi
+          if [ "$verbose" = "1" ] ; then
+            dc -h ${host} docker push          ${target}
           else
-            rep=""
-            nam="$image"
+            dc -h ${host} docker push          ${target} >/dev/null
           fi
-          target="${url}/${cluster}_${host}_${rep}_${nam}"
-          target=${target%:}
-          if [ "$2" = "config" ] ; then
-            echo "$image;$DIR;${host}"
-          else
-            echo "$image -> $target"
+          if [ "$?" != "0" ] ; then
+            echo "error: push image <${target}> to host <${host}>"
+            exit 1
           fi
-          if [ "$cmd" = "backup" ] ; then
-              dc -h ${host} docker tag ${image} ${target}
-              if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi
-              if [ "$verbose" = "1" ] ; then
-                dc -h ${host} docker push          ${target}
-              else
-                dc -h ${host} docker push          ${target} >/dev/null
-              fi
-              if [ "$?" != "0" ] ; then
-                echo "error: push image <${target}> to host <${host}>"
-                exit 1
-              fi
-              dc -h ${host} docker image rm -f     ${target}
-              if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
-          fi
-          if [ "$cmd" = "restore" ] ; then
-            #dc -h ${host} docker image rm -f ${image} ${target}
-            dc -h ${host} docker pull     ${target}
-            dc -h ${host} docker tag      ${target}  ${image}
-            dc -h ${host} docker image rm ${target}
-          fi
-        done
+          dc -h ${host} docker image rm -f     ${target}
+          if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
+        fi
+        if [ "$cmd" = "restore" ] ; then
+          dc -h ${host} docker pull     ${target}
+          dc -h ${host} docker tag      ${target}  ${image}
+          dc -h ${host} docker image rm ${target}
+        fi
       done
     done
-fi
+  fi
 exit 0

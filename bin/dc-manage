@@ -1,5 +1,6 @@
 #!/bin/bash
 . /opt/dc/etc/config
+. /opt/dc/funcs/config-refresh
 
 error_detect=0
 with_images=1
@@ -9,7 +10,7 @@ SHST=""  ; THST=""
 _help()
 {
   echo ""
-  echo " usage: `basename $0` [--images] [-c <yml-file>] [-i <source>:<target>] [-h <source>:<target>] <command>"
+  echo " usage: `basename $0` [--images] [-i <source>:<target>] [-h <source>:<target>] <command>"
   echo ""
   echo "    commands:"
   echo ""
@@ -58,11 +59,11 @@ dc_command()
 # magic main
 #
 
-YML="./dc-service.yml"
+YML="`pwd`/dc-service.yml"
+
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -c)  YML="$2" ;                   shift 2 ;;
     -i) SIDX=${2%:*} ; TIDX=${2#*:} ; shift 2 ;;
     -h) SHST=${2%:*} ; THST=${2#*:} ; shift 2 ;;
     --images) with_images=1;          shift 1 ;;
@@ -98,7 +99,7 @@ for yml in $yml_list ; do
      echo "error: <$yml> missing."
      continue
   fi
-  SERVICE=$( docker compose -f `dirname $yml`/docker-compose.yml config | dc-yq '.name' )
+  SERVICE=$( dc-yq '(( .* | select(.dc_yml == "'$yml'" ) | path ) [] )' /var/dc/dc.yml ) # get dc project name from dc_yml entry
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
     unset service_hosts
     unset service_state
