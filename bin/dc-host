@@ -216,13 +216,13 @@ EOF
       echo "###########################################################################"
       if [ "$cmd" = "backup" ] ; then
         echo "try to connect to $url"   
-        ping -c1 -W5  ${url%:*} >/dev/null
+        ping -c3 -W5  ${url%:*} >/dev/null
         if [ "$?" != "0" ] ; then
           echo "error connexting to $url !!!"
           exit 1
         fi
       fi
-      image_list=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$on_host'" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
+      image_list=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
       for i in $image_list ; do
         image="$i"
         if [[ $image == *"/"* ]] ; then
