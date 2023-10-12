@@ -1,15 +1,22 @@
 version: "1"
-service:
-#  project_name: <enter a unique project name, if you can not use COMPOSE_PROJECT_NAME in .env
-#  config_check: false  # set to false, if the service don not fit into the dc environment. This will not cover all dc commands.
-  state: 
-    - active
-  # enter the main service name of the compose project to jump into the system with dc login or to copy files.
-  name: <main_service>
-#  group:
-#    - 
+project:
+  desc: description of the dc project
+
+# enter a unique project name, if you can not use COMPOSE_PROJECT_NAME in .env
+  overrule_compose_name: 
+
+# set to true, if the service do not really fit into the dc environment. This will skip volume checks.
+  ignore_volume_check: false
+
+# enter the main service name of the compose project to jump into the container with dc login or to copy files.
+  main_service: <main_service>
+  group:
+    - http-web
   control:
     type: compose
     file: docker-compose.yml
-  hosts:
-    - <host>
+  home:
+    - type: default
+      state: active
+      host: <host>
+

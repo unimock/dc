@@ -145,7 +145,9 @@ if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then
 fi
 
 if [ "$CONF" != "" ] ; then
-  eval "$(dc-yml -c $CONF)"
+  abs_path="$( cd `dirname $CONF` ; pwd)/`basename $CONF`"
+  service_name=$( dc-yq '(( .projects.* | select( .dc_yml == "'$abs_path'") ) .dc.main_service )' ${MDE_DC_YAML}  )
+  service_hosts=( `dc-yq '.projects.'$service_name'.dc.home.[].host' ${MDE_DC_YAML} `)
   HNAME=${service_hosts[${HIDX}]}
 fi
 

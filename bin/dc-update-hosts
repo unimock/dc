@@ -1,0 +1,37 @@
+#!/bin/bash
+
+all_cfg=$( ls /root/.ssh/dc/config.* 2>/dev/null )
+list=""
+for i in $all_cfg ; do
+
+  FI=`dirname $i` 
+
+  host=$( grep -h "^Host" $i | sed -e "s/^Host//g" -e "s/ //g" )
+  echo "host:"
+  echo "  state: active"
+  desc=$(  grep "^#desc: "  $i | sed -e "s/#desc: //g" | awk '{$1=$1};1' )
+  prov=$(  grep "^#prov: "  $i | sed "s/#prov: //g"    | awk '{$1=$1};1' )
+  os=$(    grep "^#os: "    $i | sed "s/#os: //g"      | awk '{$1=$1};1' )
+  mid=$(   grep "^#id: "    $i | sed "s/#id: //g"      | awk '{$1=$1};1' )
+  hname=$( grep "HostName"  $i | sed "s/HostName//g"   | awk '{$1=$1};1' )
+  if [ "$prov" = "-"  ] ; then
+    prov=""
+  fi
+  echo "  ssh_config: $i"
+  echo "  hostname: $hname"
+  echo "  desc: \"$desc\""
+  echo "  info: \"$prov\""
+  echo "  os: $os"
+  echo "  machine_id: $mid" 
+
+  group=$( grep "^#group: " $i | sed "s/#group: //g" )
+  echo "  groups:"
+  for (( k=0; k<${#group}; k++ )); do
+    x="${group:$k:1}"
+    if [ "$x" = "d" ] ; then
+      x="dc"
+    fi
+    echo "    - $x"
+  done
+done
+

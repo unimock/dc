@@ -99,24 +99,20 @@ for yml in $yml_list ; do
      echo "error: <$yml> missing."
      continue
   fi
-  #SERVICE=$( dc-yq '(( .* | select(.dc_yml == "'$yml'" ) | path ) [] )' ${MDE_DC_YAML} ) # get dc project name from dc_yml entry
   SERVICE=$( dc-yq '(( .projects.* | select(.dc_yml == "'$yml'" ) | path ) [-1] )' ${MDE_DC_YAML} )
+
+  service_hosts=( `dc-yq '.projects.'$SERVICE'.dc.home.[].host' ${MDE_DC_YAML} `)
+  service_state=( `dc-yq '.projects.'$SERVICE'.dc.home.[].state' ${MDE_DC_YAML} `)
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
-    unset service_hosts
-    unset service_state
-    eval $( dc-yml -c $yml )
     for i in "${!service_hosts[@]}"; do
       if [[ "${service_hosts[$i]}" = "${SHST}" ]]; then SIDX="$i" ; fi
       if [[ "${service_hosts[$i]}" = "${THST}" ]]; then TIDX="$i" ; fi
     done
   fi
-
-  S_HOST=$( dc-yml -c $yml service_hosts[${SIDX}])
-  T_HOST=$( dc-yml -c $yml service_hosts[${TIDX}])
-
-  S_STATE=$(dc-yml -c $yml service_state[0])   # state of primary service: active|standby
-  T_STATE=$(dc-yml -c $yml service_state[1])   # state of secondary service: active|standby
-
+  S_HOST="${service_hosts[${SIDX}]}"
+  T_HOST="${service_hosts[${TIDX}]}"
+  S_STATE="${service_state[0]}"        # state of primary service: active|standby
+  T_STATE="${service_state[1]}"        # state of secondary service: active|standby
   if [ "$T_HOST" = "" ] ; then
     echo "error: target host (second) in <$yml> missing."
     exit 1
@@ -140,6 +136,9 @@ for yml in $yml_list ; do
     # check images
     image_mismatch=0
     images=$( dc -c $yml -h $S_HOST compose ps -q  )
+
+
+
     for C in $images ; do
       N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
       [[ $N != *:* ]] && N=$N:latest
