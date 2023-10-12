@@ -12,9 +12,9 @@ show_help() {
   echo ""
   echo "   options:"
   echo ""
-  echo "     -i <host-index>  ........... work with host from dc-service.yml  0|1|2|.."
-  echo "     -c <path>/dc-service.yml ... work with service of the according service"
-  echo "     -h <host> .................. work with this host, instead of the one which is defined in the service dc-service.yml file. "
+  echo "     -i <host-index>  ........... work with host from ${MDE_DC_YAML_FILE}  0|1|2|.."
+  echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with service of the according service"
+  echo "     -h <host> .................. work with this host, instead of the one which is defined in the service ${MDE_DC_YAML_FILE} file. "
   echo "     -s <service> ............... work with this service."
   echo "     -v ......................... verbose"
   echo ""
@@ -133,7 +133,7 @@ if [ "$CONF" != "" ] ; then
      exit 1
    fi
 else
-  if [ -f ./dc-service.yml ] ; then CONF="./dc-service.yml" ; fi
+  if [ -f ./${MDE_DC_YAML_FILE} ] ; then CONF="./${MDE_DC_YAML_FILE}" ; fi
 fi
 
 if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then

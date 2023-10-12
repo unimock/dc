@@ -59,7 +59,7 @@ dc_command()
 # magic main
 #
 
-YML="`pwd`/dc-service.yml"
+YML="`pwd`/${MDE_DC_YAML_FILE}"
 
 CURROPT=""
 while [ "$#" -gt 0 ]; do

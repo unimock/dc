@@ -14,7 +14,7 @@ _config_refresh()
   for i in $list ; do
     relPath=${i%/modified.*}
     relPath=${relPath#${VARDIR}/}
-    if [ -f $MDE_DC_SERV_DIR/${relPath}/dc-service.yml ] ; then
+    if [ -f $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE} ] ; then
       continue
     else
       echo "remove $VARDIR/${relPath}"
@@ -23,12 +23,12 @@ _config_refresh()
     fi
   done
 
-  list=$( find $MDE_DC_SERV_DIR -name dc-service.yml )
+  list=$( find $MDE_DC_SERV_DIR -name ${MDE_DC_YAML_FILE} )
   for i in $list ; do
-    relPath=${i%/dc-service.yml}
+    relPath=${i%/${MDE_DC_YAML_FILE}}
     relPath=${relPath#$MDE_DC_SERV_DIR/}
     VAR="${VARDIR}/${i#${MDE_DC_SERV_DIR}/}"
-    DIR="${i%/dc-service.yml}"
+    DIR="${i%/${MDE_DC_YAML_FILE}}"
     last=$( find $MDE_DC_SERV_DIR/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
     stamp=${last% *}
     #echo "$last"
@@ -59,13 +59,13 @@ _config_refresh()
     for i in $list ; do
       relPath=${i%/modified.*}
       relPath=${relPath#${VARDIR}/}
-      compose_yml=$(dc-yq '.service.control.file' $VARDIR/${relPath}/dc-service.yml)
+      compose_yml=$(dc-yq '.service.control.file' $VARDIR/${relPath}/${MDE_DC_YAML_FILE})
       compose_project=$(dc-yq '.name' $VARDIR/${relPath}/compose.yml)
       echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
-      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/dc-service.yml"                >> ${MDE_DC_YAML}
+      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE}"                >> ${MDE_DC_YAML}
       echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"           >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
-      cat $VARDIR/${relPath}/dc-service.yml | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^service:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
+      cat $VARDIR/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^service:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
       echo "    compose:"                                                         >> ${MDE_DC_YAML}
       cat $VARDIR/${relPath}/compose.yml | sed -e "s/^/      /g"                  >> ${MDE_DC_YAML}
     done
