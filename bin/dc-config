@@ -80,7 +80,6 @@ if [ "$1" = "" ] ; then
   echo "examples:"
   echo ""
   echo "$IAM show     # show dc configuration"
-  echo "$IAM show     # show dc configuration"
   echo "$IAM refresh  # refresh dc config environment (${MDE_DC_YAML})"
   echo "$IAM rebuild  # rebuild dc config environment (${MDE_DC_YAML})"
   echo "$IAM create project apps0 test-project filebrowser /root/Services/test-project"
@@ -138,18 +137,17 @@ fi
 
 if [ "$1" = "check" ] ; then
   echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
-  hosts=$(dc-yq  '.projects.*.dc.hosts.[]'   ${MDE_DC_YAML} | sort | uniq)
+  hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $host ; do
     if [ ! -f /root/.ssh/dc/config.$h ] ; then
       echo " ❌ missing host definition </root/.ssh/dc/config.$h>"
     fi
   done
 
-  #projects=$( grep -v "^ " ${MDE_DC_YAML} | sed "s/://g" | sort )
   projects=$( dc-yq '(.projects.* | path )  [-1]'  ${MDE_DC_YAML} | sort )
   for p in $projects ; do
     ignore_vol_check=$( dc-yq '.projects.'$p'.dc.ignore_volume_check' ${MDE_DC_YAML} )
-    p_on_hosts=$( dc-yq '.projects.'$p'.dc.hosts.[]' ${MDE_DC_YAML} )
+    p_on_hosts=$( dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML} )
     cfg=$( dc-yq '.projects.'$p'.compose_yml' ${MDE_DC_YAML} )
     #
     # check for not unique projects

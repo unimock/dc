@@ -92,7 +92,7 @@ for host in $hosts ; do
       echo "  version: $version"
     fi
   fi
-  projects_on_host=$( dc-yq  '( .projects.* | select(.dc.hosts[] == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
+  projects_on_host=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
   for service in $projects_on_host ; do
     echo "  $service:"
     if [ "$check_runtime" = "1" ] ; then

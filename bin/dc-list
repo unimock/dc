@@ -42,13 +42,13 @@ if [ "$CMD" = "active_hosts" ] ; then
 fi
 
 if [ "$CMD" = "used_hosts" ] ; then
-  dc-yq '.projects.*.dc.hosts[]'   ${MDE_DC_YAML} | sort | uniq
+  dc-yq '.projects.*.dc.home.[].host'   ${MDE_DC_YAML} | sort | uniq
 fi
 
 if [ "$CMD" = "services" ] ; then
   shift
   if [ "$on_host" != "" ] ; then
-    project_list=$( dc-yq  '(( .projects.* | select(.dc.hosts[] == "'$on_host'" ) | path ) [-1] )' ${MDE_DC_YAML} )
+    project_list=$( dc-yq  '(( .projects.* | select(.dc.home.[].host == "'$on_host'" ) | path ) [-1] )' ${MDE_DC_YAML} )
   else
     project_list=$(dc-yq '(.projects.[] | path ) [-1]'   ${MDE_DC_YAML})
   fi

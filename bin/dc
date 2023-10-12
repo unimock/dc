@@ -148,6 +148,7 @@ if [ "$CONF" != "" ] ; then
   abs_path="$( cd `dirname $CONF` ; pwd)/`basename $CONF`"
   service_name=$( dc-yq '(( .projects.* | select( .dc_yml == "'$abs_path'") ) .dc.main_service )' ${MDE_DC_YAML}  )
   service_hosts=( `dc-yq '.projects.'$service_name'.dc.home.[].host' ${MDE_DC_YAML} `)
+  service_state=( `dc-yq '.projects.'$service_name'.dc.home.[].state' ${MDE_DC_YAML} `)
   HNAME=${service_hosts[${HIDX}]}
 fi
 
@@ -375,9 +376,9 @@ case "$CMD" in
            col_size=$COL_RED
         fi
       elif [ "$state" = "ping" ] ; then
-	col_state=$COL_DEFAULT
-	col_std=$COL_DEFAULT
-	col_size=$COL_DEFAULT
+	      col_state=$COL_DEFAULT
+	      col_std=$COL_DEFAULT
+	      col_size=$COL_DEFAULT
       else
         col_state=$COL_GRAY
         col_std=$COL_GRAY
@@ -398,37 +399,50 @@ case "$CMD" in
       fi
     done
     ;;
-  ssh)     shift
-           ssh ${HNAME} $*
-           exit $?
-           ;;
-  up)      docker compose up -d ;;
-  rm)      docker compose stop ; docker compose rm -f  ;;
-  down)    docker compose down  ;;
-  rmup)    docker compose stop ; docker compose rm -f ; docker compose up -d ;;
-  info)    ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"' ;;
-  check)   for i in "${!service_hosts[@]}"; do
-             if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
-             if [ "${service_state[${i}]}" != "active" ] ; then
-               echo "${service_state[${i}]}"
-               exit 0
-             fi
-             container_list=$(dc -c $CONF compose ps -q)
-             if [ "$container_list" = "" ] ; then
-               echo "error_no_containers"
-               exit 1
-             fi
-             stat_list=$( echo "$container_list" | xargs dc -c $CONF docker inspect --format '{{.State.Status}}')
-             for stat in $stat_list ; do
-               if [ "$stat" != "running" ] ; then
-                 echo "error_incomplete_containers"
-                 exit 1
-               fi
-             done
-             echo "Up"
-             exit 0
-           done
-           ;; 
+  ssh)
+    shift
+    ssh ${HNAME} $*
+    exit $?
+    ;;
+  up)
+    docker compose up -d
+    ;;
+  rm)
+    docker compose stop ; docker compose rm -f
+    ;;
+  down)
+    docker compose down
+    ;;
+  rmup)
+    docker compose stop ; docker compose rm -f ; docker compose up -d
+    ;;
+  info)
+    ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"'
+    ;;
+  check)
+    #echo ${service_hosts[0]} ${service_state[0]}
+    for i in "${!service_hosts[@]}"; do
+      if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
+      if [ "${service_state[${i}]}" != "active" ] ; then
+        echo "${service_state[${i}]}"
+        exit 0
+      fi
+      container_list=$(dc -c $CONF compose ps -q)
+      if [ "$container_list" = "" ] ; then
+        echo "error_no_containers"
+        exit 1
+      fi
+      stat_list=$( echo "$container_list" | xargs dc -c $CONF docker inspect --format '{{.State.Status}}')
+      for stat in $stat_list ; do
+        if [ "$stat" != "running" ] ; then
+          echo "error_incomplete_containers"
+          exit 1
+        fi
+      done
+      echo "Up"
+      exit 0
+    done
+    ;; 
   pull)
     docker compose pull
     exit 0
