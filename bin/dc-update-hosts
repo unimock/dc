@@ -24,7 +24,7 @@ for i in $all_cfg ; do
   echo "  os: $os"
   echo "  machine_id: $mid" 
 
-  group=$( grep "^#group: " $i | sed "s/#group: //g" )
+  group=$( grep "^#group: " $i | sed "s/#group: //g" | awk '{$1=$1};1')
   echo "  groups:"
   for (( k=0; k<${#group}; k++ )); do
     x="${group:$k:1}"

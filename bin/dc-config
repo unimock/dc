@@ -132,7 +132,7 @@ if [ "$1" = "create" -a "$2" = "project" ] ; then
 fi
 
 if [ "$1" = "show"  ] ; then
-  cat ${MDE_DC_YAML}
+  dc-yq ${MDE_DC_YAML}
 fi  
 
 if [ "$1" = "check" ] ; then
@@ -147,7 +147,8 @@ if [ "$1" = "check" ] ; then
   projects=$( dc-yq '(.projects.* | path )  [-1]'  ${MDE_DC_YAML} | sort )
   for p in $projects ; do
     ignore_vol_check=$( dc-yq '.projects.'$p'.dc.ignore_volume_check' ${MDE_DC_YAML} )
-    p_on_hosts=$( dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML} )
+    p_on_hosts=( `dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML}` )   # Array
+    s_on_hosts=( `dc-yq '.projects.'$p'.dc.home.[].state' ${MDE_DC_YAML}` )  # Array
     cfg=$( dc-yq '.projects.'$p'.compose_yml' ${MDE_DC_YAML} )
     #
     # check for not unique projects
@@ -177,10 +178,13 @@ if [ "$1" = "check" ] ; then
               "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p/"*          \
            ]] ; then
           # check if $vol exists on host
-          for h in $p_on_hosts ; do
-            ssh $h ls -d $vol >/dev/null 2>&1
+          for h in "${!p_on_hosts[@]}"; do
+            if [ "${s_on_hosts[$h]}" != "active" ] ; then
+              echo " 💡 home.[$h].state: ${s_on_hosts[$h]} != active in $cfg"
+            fi
+            ssh ${p_on_hosts[$h]} ls -d $vol >/dev/null 2>&1
             if [ "$?" != "0" ] ; then
-              echo " ❌ missing volume directory <$vol> on host <$h>"
+              echo " ❌ missing volume directory <$vol> on host <${p_on_hosts[$h]}>"
             fi
           done
         else

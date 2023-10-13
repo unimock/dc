@@ -46,8 +46,7 @@ if [ "$1" = "modify" ] ; then
     echo "  home:"  >> $i.version2
     for h in "${!service_hosts[@]}"; do
       if [ "${service_state[$h]}" != "active" ] ; then
-        echo "error: ${service_state[$h]} != active"
-        exit 1
+        echo "warning: ${service_state[$h]} != active"
       fi
       echo "    - type: default"  >> $i.version2
       echo "      state: ${service_state[$h]}" >> $i.version2
