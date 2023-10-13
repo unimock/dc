@@ -7,6 +7,7 @@ if [ "$1" = "" ] ; then
   echo "  show        # print dc-service.yml.version2 content"
   echo "  activate    # activate dc-service.yml.version2 as dc-service.yml"
   echo "  reset       # activate dc-service.yml.origin as dc-service.yml"
+  echo "  cleanup     # remove dc-service.yml.origin and dc-service.yml.version2"
   exit 0
 fi
 
@@ -20,6 +21,13 @@ if [ "$1" = "show" ] ; then
   done
   exit 0
 fi  
+
+if [ "$1" = "cleanup" ] ; then
+  for i in $list ; do
+    rm -f $i.version2 $i.origin
+  done
+  exit 0
+fi
 
 if [ "$1" = "modify" ] ; then
   for i in $list ; do

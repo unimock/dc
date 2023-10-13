@@ -151,7 +151,7 @@ if [ "$1" = "check" ] ; then
     s_on_hosts=( `dc-yq '.projects.'$p'.dc.home.[].state' ${MDE_DC_YAML}` )  # Array
     cfg=$( dc-yq '.projects.'$p'.compose_yml' ${MDE_DC_YAML} )
     #
-    # check for not unique projects
+    # check for not unique project names
     #
     anz=$(grep "^  ${p}:" ${MDE_DC_YAML}  | wc -l)
     if [ "$anz" != "1" ] ; then
@@ -164,36 +164,44 @@ if [ "$1" = "check" ] ; then
     if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
       echo " 💡 project name overrule <project_name: $project_name> in $cfg"
     fi
-    if [ "$ignore_vol_check" != "true" ] ; then
-      vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
-      for vol in $vol_list ; do
-        #echo "  $vol" 
-        if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p/"*       || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p"     || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p/"*   || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p"        || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p/"*      || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p"         || \
-              "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p/"*          \
-           ]] ; then
-          # check if $vol exists on host
-          for h in "${!p_on_hosts[@]}"; do
-            if [ "${s_on_hosts[$h]}" != "active" ] ; then
-              echo " 💡 home.[$h].state: ${s_on_hosts[$h]} != active in $cfg"
-            fi
-            ssh ${p_on_hosts[$h]} ls -d $vol >/dev/null 2>&1
-            if [ "$?" != "0" ] ; then
-              echo " ❌ missing volume directory <$vol> on host <${p_on_hosts[$h]}>"
+
+    vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
+
+    for h in "${!p_on_hosts[@]}"; do
+      if [ "${s_on_hosts[$h]}" != "active" ] ; then
+         echo " 💡 home.[$h].state: ${s_on_hosts[$h]} != active in $cfg"
+      fi
+      ssh ${p_on_hosts[$h]} exit 0 >/dev/null 2>&1
+      if [ "$?" != "0" ] ; then
+        echo " ❌ error host <${p_on_hosts[$h]}> not reachable, so volume check not possible"
+      else
+        # do volume check
+        if [ "$ignore_vol_check" != "true" ] ; then
+          for vol in $vol_list ; do
+            #echo "  $vol" 
+            if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p/"*       || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p"     || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p/"*   || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p"        || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p/"*      || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p"         || \
+                  "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p/"*          \
+               ]] ; then
+              # check if $vol exists on host
+              ssh ${p_on_hosts[$h]} ls -d $vol >/dev/null 2>&1
+              if [ "$?" != "0" ] ; then
+                echo " ❌ missing volume directory <$vol> on host <${p_on_hosts[$h]}>"
+              fi
+            else
+              echo " 💡 volume config <$vol> in $cfg" 
             fi
           done
         else
-          echo " 💡 volume config <$vol> in $cfg" 
+          echo " 💡 ignore volume check <ignore_volume_check: true> in $cfg"
         fi
-      done
-    else
-      echo " 💡 ignore volume check <ignore_volume_check: true> in $cfg"
-    fi
+      fi
+    done
   done
 fi 
 exit 0
