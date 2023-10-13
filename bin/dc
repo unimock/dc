@@ -146,7 +146,7 @@ fi
 
 if [ "$CONF" != "" ] ; then
   abs_path="$( cd `dirname $CONF` ; pwd)/`basename $CONF`"
-  project_name=$(  dc-yq '(( .projects.* | select( .dc_yml == "'$abs_path'") ) .dc.main_service )' ${MDE_DC_YAML} )
+  project_name=$(  dc-yq '(( .projects.* | select(.dc_yml == "'$abs_path'" ) | path ) [-1] )' ${MDE_DC_YAML} )
   main_service=$(  dc-yq '.projects.'$project_name'.dc.main_service' ${MDE_DC_YAML})
   service_hosts=( `dc-yq '.projects.'$project_name'.dc.home.[].host' ${MDE_DC_YAML}`)   # Array
   service_state=( `dc-yq '.projects.'$project_name'.dc.home.[].state' ${MDE_DC_YAML}`)  # Array

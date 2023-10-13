@@ -88,21 +88,22 @@
       monitor=""
       state=""
       
-      ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
-      pret=$?
-      if [ "$pret" = "0" ] ; then
-        state="ping"
-        ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
-        ret=$?
-	      if [ "$ret" = "0" ] ; then
-	        state="sshd"
-	      fi
-        if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
-          continue 
-        fi
-      fi
+      state=$( dc-host -h ${i} state )
+      #ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
+      #pret=$?
+      #if [ "$pret" = "0" ] ; then
+      #  state="ping"
+      #  ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
+      #  ret=$?
+	    #  if [ "$ret" = "0" ] ; then
+	    #    state="sshd"
+	    #  fi
+      #  if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
+      #    continue 
+      #  fi
+      #fi
 
-      if [ "$state" = "sshd" ] ; then
+      if [ "$state" = "sshd" -o "$state" = "dock" ] ; then
         if [ "$os" = "ubuntu" ] ; then
           os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
           os_ver=${os_ver:0:8}
@@ -111,10 +112,10 @@
           eval $( ssh $i "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
           os_ver="$VERSION_ID"
           os_ver=${os_ver%_*}
-        fi 
-        dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
-        if [ "$dver" = "" ] ; then
-          dver=""
+        fi
+        dver=""
+        if [ "$state" = "dock" ] ; then
+          dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
         fi
         # get mde-wg patch number
         patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
@@ -198,7 +199,7 @@
       COL_GRAY='\033[1;30m'
       COL_LGRAY='\033[1;37m'
       COL_RED='\e[1;91m'         
-      if [ "$dc_host_state" = "sshd" ] ; then
+      if [ "$dc_host_state" = "sshd" -o "$dc_host_state" = "dock" ] ; then
         col_state=$COL_LGRAY
         col_std=$COL_LGRAY
         col_size=$COL_LGRAY

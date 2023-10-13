@@ -34,7 +34,7 @@ if [ "$CMD" = "" ] ; then
   echo " usage: `basename $0` [-h <host>] <command>  # manage hosts and/or services on hosts"
   echo ""
   echo " host commands:"
-  echo ""
+  echo "    state               # state of a host. returns: ||ping|sshd|dock| "
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
   echo "    nrc                 # number of running containers"
@@ -57,11 +57,40 @@ if [ "$CMD" = "" ] ; then
   exit 0
 fi
 
+
 if [ "$on_host" = "" ] ; then
-  hlist=$( dc-list active_hosts )
+  if [ "$CMD" = "state" ] ; then
+    hlist=$( dc-list all_hosts )
+  else
+    hlist=$( dc-list active_hosts )
+  fi
 else
   hlist="$on_host"
 fi
+
+
+if [ "$CMD" = "state" ] ; then
+  for HOST in $hlist ; do
+    state=""
+    hname=$( grep "HostName" /root/.ssh/dc/config.$HOST | sed "s/HostName//g"   | awk '{$1=$1};1' )
+    ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
+    if [ "$?" = "0" ] ; then
+      state="ping"
+      ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST true >/dev/null 2>&1
+      if [ "$?" = "0" ] ; then
+        state="sshd"
+        ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST pidof dockerd >/dev/null 2>&1
+        if [ "$?" = "0" ] ; then
+          state="dock"
+        fi
+      fi
+    fi
+    echo "$state"
+    
+  done
+  exit 0
+fi
+
 
 dc mounts umount
 

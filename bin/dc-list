@@ -30,14 +30,21 @@ if [ "$CMD" = "" ] ; then
   echo ""
   echo "    commands:"
   echo ""
-  echo "       active_hosts ......... list all hosts, which are configured as active in ndc-host.yml"
+  echo "       all_hosts ............ list all hosts, which are defined in .ssh/dc"
+  echo "       active_hosts ......... list all hosts, which are defined in .ssh/dc and configured as docker"
   echo "       used_hosts ........... list all hosts, which are used in services"
   echo "       services [-h|-g] ..... list services"
   exit 0
 fi
 
+
+if [ "$CMD" = "all_hosts" ] ; then
+  dc-ls --short
+  exit 0
+fi
+
 if [ "$CMD" = "active_hosts" ] ; then
-  dc ls --group=d --short
+  dc-ls --group=d --short
   exit 0
 fi
 
