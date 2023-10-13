@@ -155,25 +155,25 @@ if [ "$1" = "check" ] ; then
     #
     anz=$(grep "^  ${p}:" ${MDE_DC_YAML}  | wc -l)
     if [ "$anz" != "1" ] ; then
-      echo " ❌ project name <$p> not unique"
+      echo " ❌ project name [$p] not unique"
     fi
     #
     # check if project name overrules (mailcowdockerized)
     #
     project_name=$( dc-yq '.projects.'$p'.dc.project_name' ${MDE_DC_YAML} )
     if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
-      echo " 💡 project name overrule <project_name: $project_name> in $cfg"
+      echo " 💡 [$p] project name overrule <project_name: $project_name> in $cfg"
     fi
 
     vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
 
     for h in "${!p_on_hosts[@]}"; do
       if [ "${s_on_hosts[$h]}" != "active" ] ; then
-         echo " 💡 home.[$h].state: ${s_on_hosts[$h]} != active in $cfg"
+         echo " 💡 [$p] home.[$h].state: ${s_on_hosts[$h]} != active in $cfg"
       fi
       ssh ${p_on_hosts[$h]} exit 0 >/dev/null 2>&1
       if [ "$?" != "0" ] ; then
-        echo " ❌ error host <${p_on_hosts[$h]}> not reachable, so volume check not possible"
+        echo " ❌ [$p] error host <${p_on_hosts[$h]}> not reachable, so volume check not possible"
       else
         # do volume check
         if [ "$ignore_vol_check" != "true" ] ; then
@@ -191,14 +191,14 @@ if [ "$1" = "check" ] ; then
               # check if $vol exists on host
               ssh ${p_on_hosts[$h]} ls -d $vol >/dev/null 2>&1
               if [ "$?" != "0" ] ; then
-                echo " ❌ missing volume directory <$vol> on host <${p_on_hosts[$h]}>"
+                echo " ❌ [$p] missing volume directory <$vol> on host <${p_on_hosts[$h]}>"
               fi
             else
-              echo " 💡 volume config <$vol> in $cfg" 
+              echo " 💡 [$p] volume config <$vol> in $cfg" 
             fi
           done
         else
-          echo " 💡 ignore volume check <ignore_volume_check: true> in $cfg"
+          echo " 💡 [$p] ignore volume check <ignore_volume_check: true> in $cfg"
         fi
       fi
     done
