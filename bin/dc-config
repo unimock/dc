@@ -186,7 +186,8 @@ if [ "$1" = "check" ] ; then
     #
     # check for not unique project names
     #
-    anz=$(grep "^  ${p}:" ${MDE_DC_YAML}  | wc -l)
+    
+    anz=$( dc-yq '.projects' ${MDE_DC_YAML} | grep "^${p}:"  | wc -l)
     if [ "$anz" != "1" ] ; then
       echo " ❌ project name [$p] not unique"
     fi
