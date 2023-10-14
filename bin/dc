@@ -22,7 +22,7 @@ show_help() {
   echo ""
   echo "     readme                        # show README.md"
   echo "     install ...                   # dc installation and update functions"
-  echo "     ls                            # list dc hosts"
+  echo "     ls [--help]                   # list hosts"
   echo "     list ...                      # list hosts/services/.."
   echo "     config                        # check dc configurations"
   echo "     host ...                      # manage hosts and services on host"
@@ -169,11 +169,7 @@ if [ "$HNAME" != "" ] ; then
 fi
 case "$CMD" in
   reset)
-    list=$( dc-list active_hosts )
-    for i in $list ; do
-      scntl=$(grep ControlPath /root/.ssh/dc/config.$i | awk -F " " '{ print $2 }' | cut -d "%" -f1 | sed -e "s|~|$HOME|g" )
-      rm -vf ${scntl}${i}
-    done
+    rm -f /root/.ssh/dc/control/*
     ;;
   ssh)
     shift

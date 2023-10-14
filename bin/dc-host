@@ -60,9 +60,9 @@ fi
 
 if [ "$on_host" = "" ] ; then
   if [ "$CMD" = "state" ] ; then
-    hlist=$( dc-list all_hosts )
+    hlist=$( dc-list hosts all )
   else
-    hlist=$( dc-list active_hosts )
+    hlist=$( dc-list hosts dc )
   fi
 else
   hlist="$on_host"
@@ -72,7 +72,7 @@ fi
 if [ "$CMD" = "state" ] ; then
   for HOST in $hlist ; do
     state=""
-    hname=$( grep "HostName" /root/.ssh/dc/config.$HOST | sed "s/HostName//g"   | awk '{$1=$1};1' )
+    hname=$( dc-yq '.hosts.'$HOST'.hostname' ${MDE_DC_YAML} ) 
     ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
     if [ "$?" = "0" ] ; then
       state="ping"
@@ -178,9 +178,9 @@ EOF
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
     if [ "$1" = "details" ] ; then
-      dc inspect -h $HOST runtime
+      dc-inspect -h $HOST runtime
     else
-      dc inspect -h $HOST runtime | grep " state:"
+      dc-inspect -h $HOST runtime | grep " state:"
     fi
   fi
 

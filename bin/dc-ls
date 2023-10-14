@@ -3,6 +3,21 @@
 . /opt/dc/etc/config
 . /opt/dc/funcs/config-refresh
 
+_help() {
+  echo ""
+  echo "usage: dc-ls <options>"
+  echo ""
+  echo " options:"
+  echo ""
+  echo "  dc-ls --help             # show this help"
+  echo "  dc-ls --activev          # "
+  echo "  dc-ls --host=<host_name> # show only this host"
+  echo "  dc-ls --short            # list only host names"
+  echo "  dc-ls --group=<group>    # show only hosts of group=<group>. see /root/.ssh/dc/config/*.yml"
+  echo ""
+}
+
+
 ####################################################################################################################################
 #
 # magic main
@@ -12,44 +27,29 @@
     opt_active="0"
     opt_short="0"
     opt_group=""
-    opt_format=""
     opt_host=""
     COPT=""
     while [ "$#" -gt 0 ]; do
       case "$1" in
         --active)   opt_active="1"              ; shift ;;
-        --help)     echo "TBD ..."    ; exit 0  ; shift ;;
+        --help)     _help ; exit 0              ; shift ;;
         --short)    opt_short="1"               ; shift ;;
         --group=*)  opt_group=${1#"--group="}   ; shift ;;
         --host=*)   opt_host=${1#"--host="}     ; shift ;;
-        --format=*) opt_format=${1#"--format="} ; shift ;;
         *)  COPT="$COPT \"$1\""                 ; shift ;;
       esac
     done
     eval set -- $COPT
 
-    all_cfg=$( ls /root/.ssh/dc/config.* 2>/dev/null )
-    list=""
-    for i in $all_cfg ; do
-      host=$( grep -h "^Host" $i | sed -e "s/^Host//g" )
-      if [ "$opt_group" != "" ] ; then
-        group=$(  grep "^#group: "  $i | sed "s/#group: //g"  )
-        for (( k=0; k<${#opt_group}; k++ )); do
-          opt_group_char="${opt_group:$k:1}"
-          if [[ (${group} != "") && ( ${group} == *${opt_group_char}* ) ]]; then
-            list="$list $host"
-            break
-          fi
-        done
-      else
-        list="$list $host"
-      fi
-    done
-    
+    if [ "$opt_group" != "" ] ; then
+      list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} )
+    else
+      list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} )
+    fi
     if [ "$opt_short" = "1" ] ; then
       for i in $list ; do     
         if [ "$opt_active" = "1" ] ; then
-          ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
+          ssh -o BatchMode=yes -o ConnectTimeout=1 $i true >/dev/null 2>&1
           ret=$?
           if [ "$ret" = "0" ] ; then
             echo "$i"
@@ -60,22 +60,21 @@
       done 
       exit 0
     fi
-
-    if [ "$opt_format" = "" ] ; then
-      MASK="%10s|%-4s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-      printf "$MASK" "HOST" "STAT" "GRP" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "LAST_REACHABLE" "DESCRIPTION"
-      printf "$MASK" "----------" "----" "---" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
-    fi
+    MASK="%10s|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
+    printf "$MASK" "HOST" "STAT" "GROUPS" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "LAST_REACHABLE" "DESCRIPTION"
+    printf "$MASK" "----------" "----" "------" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
     for i in $list ; do
       if [ "$opt_host" != "" -a "$opt_host" != "$i" ] ; then
          continue
       fi
-      desc=$(  grep "^#desc: "  /root/.ssh/dc/config.$i | sed "s/#desc: //g"  )
-      prov=$(  grep "^#prov: "  /root/.ssh/dc/config.$i | sed "s/#prov: //g"  )
-      group=$( grep "^#group: " /root/.ssh/dc/config.$i | sed "s/#group: //g" )
-      os=$(    grep "^#os: "    /root/.ssh/dc/config.$i | sed "s/#os: //g" )
-      mid=$(   grep "^#id: "    /root/.ssh/dc/config.$i | sed "s/#id: //g" )
-      hname=$( grep "HostName"  /root/.ssh/dc/config.$i | sed "s/HostName//g" | sed "s/ //g" )
+      desc=$(  dc-yq '.hosts.'$i'.desc'       ${MDE_DC_YAML} )
+      prov=$(  dc-yq '.hosts.'$i'.info'       ${MDE_DC_YAML} )
+      group=$( dc-yq '.hosts.'$i'.groups.[]'  ${MDE_DC_YAML} | tr '\r\n' ',' )
+      group=${group%,}
+      os=$(    dc-yq '.hosts.'$i'.os'         ${MDE_DC_YAML} )
+      mid=$(   dc-yq '.hosts.'$i'.machine_id' ${MDE_DC_YAML} )
+      hname=$( dc-yq '.hosts.'$i'.hostname  ' ${MDE_DC_YAML} )
+
       if  [ "$hname" = "" ] ; then
         hname="$i"
       fi
@@ -89,19 +88,6 @@
       state=""
       
       state=$( dc-host -h ${i} state )
-      #ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
-      #pret=$?
-      #if [ "$pret" = "0" ] ; then
-      #  state="ping"
-      #  ssh -o BatchMode=yes -o ConnectTimeout=1 $i hostname >/dev/null 2>&1
-      #  ret=$?
-	    #  if [ "$ret" = "0" ] ; then
-	    #    state="sshd"
-	    #  fi
-      #  if [ "$ret" != 0 -a "$opt_active" = "1" ] ; then # host nicht aktiv und nur aktive anzeigen
-      #    continue 
-      #  fi
-      #fi
 
       if [ "$state" = "sshd" -o "$state" = "dock" ] ; then
         if [ "$os" = "ubuntu" ] ; then
@@ -225,10 +211,6 @@
       if [ "${dc_host_last_reachable}" != "-" ] ; then
         last_reachable=$(date -d @${dc_host_last_reachable} +"%Y-%m-%d_%H:%M" )
       fi
-      if [ "$opt_format" = "" ] ; then
-        MASK="${col_state}%10s${col_std}|%-4s|%-3s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-        printf "$MASK" "${dc_host_name}" "${state}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${last_reachable}" "${dc_host_desc}"
-      elif [ "$opt_format" = "eval" ] ; then
-        cat $host_data_file
-      fi
+      MASK="${col_state}%10s${col_std}|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
+      printf "$MASK" "${dc_host_name}" "${state}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${last_reachable}" "${dc_host_desc}"
     done

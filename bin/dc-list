@@ -30,26 +30,23 @@ if [ "$CMD" = "" ] ; then
   echo ""
   echo "    commands:"
   echo ""
-  echo "       all_hosts ............ list all hosts, which are defined in .ssh/dc"
-  echo "       active_hosts ......... list all hosts, which are defined in .ssh/dc and configured as docker"
-  echo "       used_hosts ........... list all hosts, which are used in services"
+  echo "       hosts all ............ list all hosts, which are defined in .ssh/dc/config/*.yml as state=active|standby"
+  echo "       hosts dc ............. list all hosts, which are defined in .ssh/dc/config/*.yml and groups=dc (dc host"
+  echo "       hosts used ........... list all hosts, which are used in services"
   echo "       services [-h|-g] ..... list services"
+  echo ""
   exit 0
 fi
 
-
-if [ "$CMD" = "all_hosts" ] ; then
-  dc-ls --short
+if [ "$CMD" = "hosts" ] ; then
+  if [ "$2" = "" -o  "$2" = "all" ] ; then
+    dc-ls --short | sort
+  elif [ "$2" = "dc" ] ; then
+    dc-ls --group=dc --short | sort
+  elif [ "$2" = "used" ] ; then
+    dc-yq '.projects.*.dc.home.[].host'   ${MDE_DC_YAML} | sort | uniq
+  fi
   exit 0
-fi
-
-if [ "$CMD" = "active_hosts" ] ; then
-  dc-ls --group=d --short
-  exit 0
-fi
-
-if [ "$CMD" = "used_hosts" ] ; then
-  dc-yq '.projects.*.dc.home.[].host'   ${MDE_DC_YAML} | sort | uniq
 fi
 
 if [ "$CMD" = "services" ] ; then

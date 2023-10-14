@@ -2,72 +2,102 @@
 
 . /opt/dc/etc/config
 . /opt/dc/funcs/config-refresh
-
 VARDIR="/var/cache/dc"
+
+project_dir="$VARDIR/projects"
+hosts_dir="$VARDIR/hosts"
 
 _config_refresh()
 {
   config_change="0"
-  mkdir -p $VARDIR
-
-  list=$( find $VARDIR -name "modified.*" )
+  mkdir -p $project_dir
+  #
+  # remove projects from cache, which do not exits in /root/Services anymore
+  #
+  list=$( find $project_dir -name "modified.*" )
   for i in $list ; do
     relPath=${i%/modified.*}
-    relPath=${relPath#${VARDIR}/}
+    relPath=${relPath#${project_dir}/}
     if [ -f $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE} ] ; then
       continue
     else
-      echo "remove $VARDIR/${relPath}"
-      rm -rf $VARDIR/${relPath}
+      echo "remove $project_dir/${relPath}"
+      rm -rf $project_dir/${relPath}
       config_change="1"
     fi
   done
-
+  #
+  # check for changed hosts configurations
+  #
+  last=$( find /root/.ssh/dc/config  -maxdepth 1 -name "*.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  stamp=${last% *}
+  if [ ! -f ${hosts_dir}/modified.${stamp} ] ; then
+    rm -rf ${hosts_dir}
+    mkdir ${hosts_dir}
+    echo "$last" | awk '{ print $2 }' > ${hosts_dir}/modified.${stamp}
+    list=$( find /root/.ssh/dc/config -name "*.yml" )
+    echo "hosts:" > ${hosts_dir}/hosts.yml
+    for i in $list ; do
+      name=`basename $i`
+      name=${name%.yml}
+      sed "s|^host:|${name}:|g" $i | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' >> ${hosts_dir}/hosts.yml
+    done
+    config_change="1"
+  fi
+  #
+  # check for changed project configurations
+  #
   list=$( find $MDE_DC_SERV_DIR -name ${MDE_DC_YAML_FILE} )
   for i in $list ; do
     relPath=${i%/${MDE_DC_YAML_FILE}}
     relPath=${relPath#$MDE_DC_SERV_DIR/}
-    VAR="${VARDIR}/${i#${MDE_DC_SERV_DIR}/}"
+    VAR="${project_dir}/${i#${MDE_DC_SERV_DIR}/}"
     DIR="${i%/${MDE_DC_YAML_FILE}}"
     last=$( find $MDE_DC_SERV_DIR/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
     stamp=${last% *}
     #echo "$last"
-    if [ -f ${VARDIR}/${relPath}/modified.${stamp} ] ; then
+    if [ -f ${project_dir}/${relPath}/modified.${stamp} ] ; then
       continue
     else
-      rm -rf ${VARDIR}/${relPath}
-      mkdir -p ${VARDIR}/${relPath}
-      echo "$last" | awk '{ print $2 }' > ${VARDIR}/${relPath}/modified.${stamp}
+      rm -rf ${project_dir}/${relPath}
+      mkdir -p ${project_dir}/${relPath}
+      echo "$last" | awk '{ print $2 }' > ${project_dir}/${relPath}/modified.${stamp}
       compose_yml=$(dc-yq '.project.control.file' $i)
       echo "rebuild dc project for $i"
-      cp $i ${VARDIR}/${relPath}/
-      docker compose -f $MDE_DC_SERV_DIR/${relPath}/${compose_yml} config > ${VARDIR}/${relPath}/compose.yml
+      cp $i ${project_dir}/${relPath}/
+      docker compose -f $MDE_DC_SERV_DIR/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
       # overrule project name, if host is mailcowdockerized
       project_name=$(dc-yq '.project.overrule_compose_name'  $i)
       if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
-        dc-yq -i '.name = "'$project_name'"' ${VARDIR}/${relPath}/compose.yml
+        dc-yq -i '.name = "'$project_name'"' ${project_dir}/${relPath}/compose.yml
       fi
       config_change="1"
     fi
   done
+
+
+
   if [ "$config_change" = "1" ] ; then
     mkdir -p `dirname ${MDE_DC_YAML}`
     echo "re-create: ${MDE_DC_YAML}"
-    rm -f ${MDE_DC_YAML}
-    list=$( find $VARDIR -name "modified.*" )
+    cp $hosts_dir/hosts.yml ${MDE_DC_YAML}
+    #
+    # projects
+    #
     echo "projects:"                                                              >> ${MDE_DC_YAML}
+    list=$( find $project_dir -name "modified.*" )
     for i in $list ; do
       relPath=${i%/modified.*}
-      relPath=${relPath#${VARDIR}/}
-      compose_yml=$(dc-yq '.project.control.file' $VARDIR/${relPath}/${MDE_DC_YAML_FILE})
-      compose_project=$(dc-yq '.name' $VARDIR/${relPath}/compose.yml)
+      relPath=${relPath#${project_dir}/}
+      compose_yml=$(dc-yq '.project.control.file' $project_dir/${relPath}/${MDE_DC_YAML_FILE})
+      compose_project=$(dc-yq '.name' $project_dir/${relPath}/compose.yml)
       echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
-      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE}"                >> ${MDE_DC_YAML}
-      echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"           >> ${MDE_DC_YAML}
+      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
+      echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
-      cat $VARDIR/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^project:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
+      cat $project_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^project:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
       echo "    compose:"                                                         >> ${MDE_DC_YAML}
-      cat $VARDIR/${relPath}/compose.yml | sed -e "s/^/      /g"                  >> ${MDE_DC_YAML}
+      cat $project_dir/${relPath}/compose.yml | sed -e "s/^/      /g"             >> ${MDE_DC_YAML}
     done
   fi
 }
@@ -138,9 +168,12 @@ fi
 if [ "$1" = "check" ] ; then
   echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
   hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
-  for h in $host ; do
-    if [ ! -f /root/.ssh/dc/config.$h ] ; then
-      echo " ❌ missing host definition </root/.ssh/dc/config.$h>"
+  for h in $hosts ; do
+    res=$(  dc-yq '.hosts.'$h'.state' $MDE_DC_YAML ) 
+    if [ "$res" = "null" ] ; then
+      echo " ❌ missing host definition \".hosts.$h.state:\" in <$MDE_DC_YAM>"
+    elif [ "$res" != "active" ] ; then
+      echo " 💡 \".hosts.$h.state:\" != active"
     fi
   done
 

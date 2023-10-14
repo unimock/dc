@@ -1,14 +1,35 @@
 #!/bin/bash
 
-all_cfg=$( ls /root/.ssh/dc/config.* 2>/dev/null )
+cd /root
+
+mkdir -p /root/.ssh/dc/config
+mkdir -p /root/.ssh/dc/control
+
+rm  -r /root/.ssh/dc/control.* /root/.ssh/dc/config/*
+
+list=$( ls /root/.ssh/dc/config.* )
+for i in $list ; do
+  name=`basename $i`
+  cp $i -v /root/.ssh/dc/config/${name#config.}.ssh
+  sed -i 's|/control.%n|/control/%n|g' /root/.ssh/dc/config/${name#config.}.ssh
+done
+
+
+echo 'Include dc/config/*.ssh'  > .ssh/config
+
+
+
+all_cfg=$( ls /root/.ssh/dc/config/*.ssh 2>/dev/null )
 list=""
 for i in $all_cfg ; do
 
   FI=`dirname $i` 
-
+  name=`basename $i`
+  name=${name%.ssh}
+  NEW=$FI/$name.yml
   host=$( grep -h "^Host" $i | sed -e "s/^Host//g" -e "s/ //g" )
-  echo "host:"
-  echo "  state: active"
+  echo "host:"  > $NEW
+  echo "  state: active" >>$NEW
   desc=$(  grep "^#desc: "  $i | sed -e "s/#desc: //g" | awk '{$1=$1};1' )
   prov=$(  grep "^#prov: "  $i | sed "s/#prov: //g"    | awk '{$1=$1};1' )
   os=$(    grep "^#os: "    $i | sed "s/#os: //g"      | awk '{$1=$1};1' )
@@ -17,21 +38,23 @@ for i in $all_cfg ; do
   if [ "$prov" = "-"  ] ; then
     prov=""
   fi
-  echo "  ssh_config: $i"
-  echo "  hostname: $hname"
-  echo "  desc: \"$desc\""
-  echo "  info: \"$prov\""
-  echo "  os: $os"
-  echo "  machine_id: $mid" 
+  echo "  hostname: $hname"            >>$NEW
+  echo "  desc: \"$desc\""             >>$NEW
+  echo "  info: \"$prov\""             >>$NEW
+  echo "  os: $os"                     >>$NEW
+  echo "  machine_id: $mid"            >>$NEW
 
   group=$( grep "^#group: " $i | sed "s/#group: //g" | awk '{$1=$1};1')
-  echo "  groups:"
+  echo "  groups:"                     >>$NEW
   for (( k=0; k<${#group}; k++ )); do
     x="${group:$k:1}"
     if [ "$x" = "d" ] ; then
       x="dc"
     fi
-    echo "    - $x"
+    echo "    - $x"                    >>$NEW
   done
+  sed -i '/^[[:blank:]]*#/d;s/#.*//'  $i
+
+dc-yq $NEW
 done
 
