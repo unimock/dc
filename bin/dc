@@ -64,6 +64,10 @@ show_help() {
 # magic main
 #
 ####################################################################################################################################
+if [ "${1}" = "update" ] ; then
+  (cd /opt/dc && git pull && dc config rebuild)
+  exit 0
+fi
 if [ "${1}" = "readme" ] ; then
   if [ "${2}" = "" ] ; then
     cat /opt/dc/README.md
