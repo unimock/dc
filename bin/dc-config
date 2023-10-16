@@ -12,7 +12,7 @@ _config_refresh()
   config_change="0"
   mkdir -p $project_dir
   #
-  # remove projects from cache, which do not exits in /root/Services anymore
+  # remove projects from cache, which do not exits in ${MDE_DC_SERV_DIR} anymore
   #
   list=$( find $project_dir -name "modified.*" )
   for i in $list ; do
@@ -112,7 +112,7 @@ if [ "$1" = "" ] ; then
   echo "$IAM show     # show dc configuration"
   echo "$IAM refresh  # refresh dc config environment (${MDE_DC_YAML})"
   echo "$IAM rebuild  # rebuild dc config environment (${MDE_DC_YAML})"
-  echo "$IAM create project apps0 test-project filebrowser /root/Services/test-project"
+  echo "$IAM create project apps0 test-project filebrowser ${MDE_DC_SERV_DIR}/test-project"
   echo ""
   exit 0
 fi
