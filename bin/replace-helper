@@ -6,7 +6,7 @@ if [ "$1" = "" ] ; then
   echo ""
   echo "usage:"
   echo ""
-  echo "`basename` /root '/root/Services' '"'${MDE_DC_SERV_DIR}'"'"
+  echo "`basename $0` /root '/root/Services' '"'${MDE_DC_SERV_DIR}'"'"
   echo ""
   exit 0
 fi
