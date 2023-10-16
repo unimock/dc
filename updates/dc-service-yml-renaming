@@ -1,38 +1,77 @@
 #!/bin/bash
 
 
-exit 0
-
-
-
 if [ "$1" = "" ] ; then
   echo "usage: "
   echo ""
-  echo "  modify      # store dc-service.yml as dc-service.yml.origin and create dc-service.yml.version2"
-  echo "  show        # print dc-service.yml.version2 content"
-  echo "  activate    # activate dc-service.yml.version2 as dc-service.yml"
-  echo "  reset       # activate dc-service.yml.origin as dc-service.yml"
+  echo "  modify      # "
+  echo "  show        # print dc-service.yml files"
+  echo "  activate    # "
+  echo "  reset       # "
   echo "  cleanup     # remove dc-service.yml.origin and dc-service.yml.version2"
   exit 0
 fi
 
 
-list=$(find /root/Services -name dc-service.yml)
+list=$(find /root/Services -name "*dc-service.yml*" )
 
 if [ "$1" = "show" ] ; then
   for i in $list ; do
-    echo "###################################################################"
-    cat $i.version2
+    
+    echo " - $i"
   done
   exit 0
 fi  
 
 if [ "$1" = "cleanup" ] ; then
+  list=$(find /root/Services -name "dc-service.yml" )
   for i in $list ; do
-    rm -f $i.version2 $i.origin
+    rm -f $i.version2
+    rm -f $i.origin
   done
   exit 0
 fi
+
+if [ "$1" = "modify" ] ; then
+  list=$(find /root/Services -name "dc-service.yml" )
+  for i in $list ; do
+    verz=$( dirname $i )
+    cp $i $verz/dc-project.yml
+    rm $i 
+  done
+
+  sed -i "s/dc-service.yml/dc-project.yml/g" /opt/dc/etc/config    
+
+
+  
+  echo ""
+  echo "TDOD:"
+  echo ""
+  echo " - check and fix:"
+  echo '   find    config batch cron scripts utils hc-scripts  -name "*dc-service.yml*" 2>/dev/null'
+  echo '   grep -r "dc-service.yml"  config batch cron scripts utils hc-scripts 2>/dev/null'
+  echo ""
+  echo "   i=<file>"
+  echo '   sed -i "s|dc-service.yml|dc-project.yml|g" $i'
+  echo ""
+  echo "/opt/dc/updates/dc-service-yml-renaming show"
+  echo "re-login"
+  echo "dc-config rebuild"
+  echo "dc-config check"
+  echo "dc-inspect runtime"
+  echo ""
+  echo ""
+  exit 0
+fi
+
+exit 0
+
+
+
+
+
+
+
 
 if [ "$1" = "modify" ] ; then
   for i in $list ; do
