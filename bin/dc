@@ -132,16 +132,19 @@ done
 eval set -- $CURROPT
 
 if [ "$CONF" != "" ] ; then
+   # conf-file given as parameter
    if [ ! -f $CONF ] ; then
      echo "error: <$CONF> missing."
      exit 1
    fi
 else
+  # check if we sit in a dc-project directory, the use this conf-file 
   if [ -f ./${MDE_DC_YAML_FILE} ] ; then CONF="./${MDE_DC_YAML_FILE}" ; fi
 fi
 
 if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then
-  CONF=$(dc-list -y services -h $HOST -s $SERVICE)
+  # if HOST and SERVICE is given as parameters, then fetch conf-file from ${MDE_DC_YAML}
+  CONF=$( dc-yq '.projects.'$SERVICE'.dc_yml' ${MDE_DC_YAML} )
   if [ "$CONF" = "" ] ; then
     echo "error: service=<$SERVICE> not defined for host=<$HOST>"
     exit 1
@@ -202,12 +205,12 @@ case "$CMD" in
         echo "${service_state[${i}]}"
         exit 0
       fi
-      container_list=$(dc -c $CONF compose ps -q)
+      container_list=$(dc -h ${service_hosts[${i}]}  -c $CONF compose ps -q)
       if [ "$container_list" = "" ] ; then
         echo "error_no_containers"
         exit 1
       fi
-      stat_list=$( echo "$container_list" | xargs dc -c $CONF docker inspect --format '{{.State.Status}}')
+      stat_list=$( echo "$container_list" | xargs dc -h ${service_hosts[${i}]} -c $CONF docker inspect --format '{{.State.Status}}')
       for stat in $stat_list ; do
         if [ "$stat" != "running" ] ; then
           echo "error_incomplete_containers"

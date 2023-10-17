@@ -44,8 +44,8 @@ copy_data()
 
 dc_command()
 {
-  yml=$1 ; cmd=$2 ; service=$3 ; host=$4  
-  dc -c $yml -h $host $cmd
+  cmd=$1 ; service=$2 ; host=$3  
+  dc -s $service -h $host $cmd
   ret=$?
   echo -e "#\n# $cmd $service at $host (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
@@ -58,8 +58,6 @@ dc_command()
 #
 # magic main
 #
-
-YML="`pwd`/${MDE_DC_YAML_FILE}"
 
 CURROPT=""
 while [ "$#" -gt 0 ]; do
@@ -87,20 +85,17 @@ if [ "$CMD" = "backup" ] ; then
   exit $?
 fi
 
+project_list=""
 if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
-  yml_list=$YML
+  YML="`pwd`/${MDE_DC_YAML_FILE}"
+  if [ -f $YAML ] ; then
+    project_list=$( dc-yq '(( .projects.* | select(.dc_yml == "'$YML'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
+  fi
 elif [ "$CMD" = "sync_group" ] ; then
-  yml_list=$( dc-list -y services -g $2 )
+  project_list=$( dc-list services -g $2 )
 fi
 
-for yml in $yml_list ; do
-  if [ ! -f $yml ] ; then
-     error_detect=1
-     echo "error: <$yml> missing."
-     continue
-  fi
-  SERVICE=$( dc-yq '(( .projects.* | select(.dc_yml == "'$yml'" ) | path ) [-1] )' ${MDE_DC_YAML} )
-
+for SERVICE in $project_list ; do
   service_hosts=( `dc-yq '.projects.'$SERVICE'.dc.home.[].host' ${MDE_DC_YAML} `)
   service_state=( `dc-yq '.projects.'$SERVICE'.dc.home.[].state' ${MDE_DC_YAML} `)
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
@@ -114,7 +109,7 @@ for yml in $yml_list ; do
   S_STATE="${service_state[0]}"        # state of primary service: active|standby
   T_STATE="${service_state[1]}"        # state of secondary service: active|standby
   if [ "$T_HOST" = "" ] ; then
-    echo "error: target host (second) in <$yml> missing."
+    echo "error: target host (second) definition missing."
     exit 1
   fi
 
@@ -135,15 +130,15 @@ for yml in $yml_list ; do
     fi
     # check images
     image_mismatch=0
-    images=$( dc -c $yml -h $S_HOST compose ps -q  )
+    images=$( dc -s $SERVICE -h $S_HOST compose ps -q  )
 
 
 
     for C in $images ; do
-      N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+      N=$( dc -s $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
       [[ $N != *:* ]] && N=$N:latest
-      S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
-      T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
+      S_ID=$( dc -s $SERVICE -h $S_HOST docker image ls -q $N )
+      T_ID=$( dc -s $SERVICE -h $T_HOST docker image ls -q $N )
       if [ "$S_ID" != "$T_ID" ] ; then
         image_mismatch=1
         echo "detect image mismatch for service: <$SERVICE> !!!!!"
@@ -153,27 +148,27 @@ for yml in $yml_list ; do
     if [ "$image_mismatch" = "1" -a "$with_images" = "0" ] ; then
       echo "#ERROR: found different images for <$SERVICE>."
       echo "#       Sync service with images manually with:"
-      echo "#       dc-manage --images -c $yml sync"
+      echo "#       dc-manage --images -s $SERVICE sync"
       error_detect=1
       continue
     fi  
     if [ "$T_STATE" = "active" ] ; then
-      dc_command $yml stop    $SERVICE $T_HOST  
+      dc_command stop    $SERVICE $T_HOST  
     fi
-    dc_command   $yml pause   $SERVICE $S_HOST
+    dc_command   pause   $SERVICE $S_HOST
     copy_data                 $SERVICE $S_HOST $T_HOST
-    dc_command   $yml unpause $SERVICE $S_HOST
+    dc_command   unpause $SERVICE $S_HOST
     # copy remove taget containers
     # copy images
     # create target containers
     if [ "$image_mismatch" = "1" -a "$with_images" = "1" ] ; then
-      dc_command $yml rm      $SERVICE $T_HOST
-      images=$( dc -c $yml -h $S_HOST compose ps -q  )
+      dc_command  rm      $SERVICE $T_HOST
+      images=$( dc -s $SERVICE -h $S_HOST compose ps -q  )
       for C in $images ; do
-        N=$( dc -c $yml -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+        N=$( dc -s $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
         [[ $N != *:* ]] && N=$N:latest
-        S_ID=$( dc -c $yml -h $S_HOST docker image ls -q $N )
-        T_ID=$( dc -c $yml -h $T_HOST docker image ls -q $N )
+        S_ID=$( dc -s $SERVICE -h $S_HOST docker image ls -q $N )
+        T_ID=$( dc -s $SERVICE -h $T_HOST docker image ls -q $N )
         if [ "$S_ID" != "$T_ID" ] ; then
           echo "##################"
           echo "# image to sync:"
@@ -181,17 +176,17 @@ for yml in $yml_list ; do
           echo "#  Source-ID=<$S_ID>"
           echo "#  Target-ID=<$T_ID>"
           if [ "$T_ID" != "" ] ; then
-            dc -c $yml -h $T_HOST docker image rm $N
+            dc -s $SERVICE -h $T_HOST docker image rm $N
           fi
           if [ `which pv` != "" ] ; then # show progress if pv exists
-            dc -c $yml -h $S_HOST docker save $N | pv | dc -c $yml -h $T_HOST docker load
+            dc -s $SERVICE -h $S_HOST docker save $N | pv | dc -s $SERVICE -h $T_HOST docker load
           else
-            dc -c $yml -h $S_HOST docker save $N | dc -c $yml -h $T_HOST docker load
+            dc -s $SERVICE -h $S_HOST docker save $N | dc -s $SERVICE -h $T_HOST docker load
           fi
         fi
       done
       if [ "$T_STATE" = "active" ] ; then
-        dc_command $yml up     $SERVICE $T_HOST
+        dc_command up     $SERVICE $T_HOST
       else
         echo "#ERROR: Service: <$SERVICE> is not acitivated on <$T_HOST>."
         echo "#       Please create the containers manually with:"
@@ -201,7 +196,7 @@ for yml in $yml_list ; do
     fi
 
     if [ "$T_STATE" = "active" ] ; then
-      dc_command $yml start   $SERVICE $T_HOST
+      dc_command start   $SERVICE $T_HOST
     fi
   fi
 

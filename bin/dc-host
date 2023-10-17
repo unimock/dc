@@ -185,13 +185,13 @@ EOF
   fi
 
   if [ "$CMD" = "list" ] ; then
-    dc-list -y services -h $HOST
+    dc-list services -h $HOST
   fi
   ####################################################################################################################
   if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "rmup"  ] ; then
-    list=$( dc-list -y services -h $HOST )
+    list=$( dc-list services -h $HOST )
     for i in $list ; do
-      dc -h $HOST -c $i $CMD
+      dc -h $HOST -s $i $CMD
     done
   fi
 

@@ -3,12 +3,9 @@
 . /opt/dc/etc/config
 . /opt/dc/funcs/config-refresh
 
-print_yml="0"
-
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -y) print_yml="1" ; shift 1 ;;
     -s) service="$2" ; shift 2 ;;
     -h) on_host="$2" ; shift 2 ;;
     -g) group="$2"   ; shift 2 ;;
@@ -24,7 +21,6 @@ if [ "$CMD" = "" ] ; then
   echo " usage: `basename $0` [<optinons>] <command>"
   echo "   options:"
   echo""
-  echo "       -y ................... print yml-config-file instaed of name"
   echo "       -g ................... print services for a group"
   echo "       -h ................... print services defined for a host"
   echo ""
@@ -72,12 +68,7 @@ if [ "$CMD" = "services" ] ; then
         continue
       fi
     fi
-    if [ "$print_yml" = "1" ] ; then
-      cfg=$( dc-yq '.projects.'$p'.dc_yml' ${MDE_DC_YAML} )
-      echo "$cfg"
-    else
-      echo "$p"
-    fi
+    echo "$p"
   done
 fi
 exit 0

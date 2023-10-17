@@ -87,6 +87,8 @@ for host in $hosts ; do
       echo "  version: $version"
     fi
   fi
+
+if [ "$check_runtime" = "0" -o "$host_up" = "1" ] ; then
   projects_on_host=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
   for service in $projects_on_host ; do
     echo "  $service:"
@@ -109,6 +111,9 @@ for host in $hosts ; do
 	    echo "      - $img"
     done
   done
+
+fi
+
   if [ "$check_runtime" = "1" ] ; then
     # print result for this host  
     if [ $host_error_marker = 0 ] ; then
