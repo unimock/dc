@@ -1,7 +1,6 @@
 #!/bin/bash
-. /opt/dc/etc/config
+. /opt/dc/funcs/global
 . /opt/dc/funcs/script_funcs
-. /opt/dc/funcs/config-refresh
 
 DISK_USAGE_LIMIT=90 # error if >40%
 

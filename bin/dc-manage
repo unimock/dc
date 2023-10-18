@@ -1,6 +1,6 @@
 #!/bin/bash
-. /opt/dc/etc/config
-. /opt/dc/funcs/config-refresh
+
+. /opt/dc/funcs/global
 
 error_detect=0
 with_images=1

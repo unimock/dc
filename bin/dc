@@ -1,22 +1,20 @@
 #!/bin/bash
 
-. /opt/dc/etc/config
-. /opt/dc/funcs/config-refresh
+. /opt/dc/funcs/global
 
 ####################################################################################################################################
 show_help() {
   echo ""
   echo "docker cluster management"
   echo ""
-  echo " usage: `basename $0` [<options>] [<cluster-command>|<service-command>|<container-command>] ..."
+  echo " usage: `basename $0` [<options>] [<cluster-command>|<project-command>|<container-command>] ..."
   echo ""
   echo "   options:"
   echo ""
   echo "     -i <host-index>  ........... work with host from ${MDE_DC_YAML_FILE}  0|1|2|.."
-  echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with service of the according service"
-  echo "     -d <path> .................. project directory"
-  echo "     -h <host> .................. work with this host, instead of the one which is defined in the service ${MDE_DC_YAML_FILE} file. "
-  echo "     -s <service> ............... work with this service."
+  echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with project (can also be a directory)"
+  echo "     -h <host> .................. work with this host, instead of the one which is defined in the project ${MDE_DC_YAML_FILE} file"
+  echo "     -s <project> ............... work with this project"
   echo "     -v ......................... verbose"
   echo ""
   echo "   cluster-commands:"
@@ -26,14 +24,14 @@ show_help() {
   echo "     ls [--help]                   # list hosts"
   echo "     list ...                      # list hosts/projects"
   echo "     config                        # check dc configurations"
-  echo "     host ...                      # manage hosts and services on host"
-  echo "     mounts [umount] ...           # list/unmount all service mounts to hosts"
+  echo "     host ...                      # manage hosts and projects on host"
+  echo "     mounts [umount] ...           # list/unmount all projects mounts to hosts"
   echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
   echo "     hcloud ...                    # create and manage Hezner-Cloud hosts"
   echo "     batch ...                     # manage job batches"
   echo "     docker|compose|swarm          # delegate command to standard tools"
   echo "     ssh                           # login into a host"                          
-  echo "     manage ...                    # sync,.. services between hosts"
+  echo "     manage ...                    # sync projects between hosts"
   echo ""
   echo "  build and deploy images on host:"
   echo ""
@@ -41,12 +39,12 @@ show_help() {
   echo "     docker login                  # auth for dockerhub"
   echo "     docker push <image-name>      # push image from target host to dockerhub"
   echo ""
-  echo "   service-commands"
+  echo "   project-commands"
   echo ""
-  echo "     rmup|up|rm|down|ps|start|stop # control services"
+  echo "     rmup|up|rm|down|ps|start|stop # control projects"
   echo "     logs [-f]|stop|start          # print logs from service console"
   echo "     data pull|push service|s|persistent|p|sp [real|r] # sync service and persistent data"
-  echo "     data mount|umount             # mount service and persistent data to ./data"
+  echo "     data mount|umount             # mount project and persistent data to ./data"
   echo ""
   echo "   container-commands:"
   echo ""
@@ -168,14 +166,14 @@ if [[ "$CONF" != "" ]] ; then
     project_dir="$( cd $CONF ; pwd)"
   fi
   if [ "${SERVICE}" != "" ] ; then
-    echo "error: it is not allowed to enter project file and service"
+    echo "error: it is not allowed to enter project file and project"
     exit 1
   fi
 fi
 if [ "${SERVICE}" != "" ] ; then
   project_dir=$( dc-yq '.projects.'$SERVICE'.project_dir' ${MDE_DC_YAML} )
   if [ "$project_dir" = "null"  ] ; then
-    echo "error: unkown service given."
+    echo "error: unkown project given."
     exit 1
   fi
 fi

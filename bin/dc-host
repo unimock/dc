@@ -1,7 +1,6 @@
 #!/bin/bash
 
-. /opt/dc/etc/config
-. /opt/dc/funcs/config-refresh
+. /opt/dc/funcs/global
 
 _ask()
 {

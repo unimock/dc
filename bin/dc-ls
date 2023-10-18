@@ -1,16 +1,26 @@
 #!/bin/bash
 
-. /opt/dc/etc/config
-. /opt/dc/funcs/config-refresh
+. /opt/dc/funcs/global
+
+#
+# Farben fuer Ausgabe definieren
+#
+COL_DEFAULT='\e[m'
+COL_GREEN='\e[1;92m'
+COL_ORANGE='\033[0;33m'
+COL_GRAY='\033[1;30m'
+COL_LGRAY='\033[1;37m'
+COL_RED='\e[1;91m'
+LINE="--------------------------------------------------------------------------------------------------------------"
 
 _help() {
   echo ""
-  echo "usage: dc-ls <options>"
+  echo "usage: dc-ls <options> [hosts|h|projects|p]"
   echo ""
   echo " options:"
   echo ""
   echo "  dc-ls --help             # show this help"
-  echo "  dc-ls --activev          # "
+  echo "  dc-ls --active           # "
   echo "  dc-ls --host=<host_name> # show only this host"
   echo "  dc-ls --short            # list only host names"
   echo "  dc-ls --group=<group>    # show only hosts of group=<group>. see /root/.ssh/dc/config/*.yml"
@@ -24,37 +34,68 @@ _help() {
 #
 ####################################################################################################################################
 
-    opt_active="0"
-    opt_short="0"
-    opt_group=""
-    opt_host=""
-    COPT=""
-    while [ "$#" -gt 0 ]; do
-      case "$1" in
-        --active)   opt_active="1"              ; shift ;;
-        --help)     _help ; exit 0              ; shift ;;
-        --short)    opt_short="1"               ; shift ;;
-        --group=*)  opt_group=${1#"--group="}   ; shift ;;
-        --host=*)   opt_host=${1#"--host="}     ; shift ;;
-        *)  COPT="$COPT \"$1\""                 ; shift ;;
-      esac
-    done
-    eval set -- $COPT
+opt_active="0"
+opt_short="0"
+opt_inspect="0"
+opt_group=""
+opt_host=""
+COPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --active)   opt_active="1"              ; shift ;;
+    --help)     _help ; exit 0              ; shift ;;
+    --short)    opt_short="1"               ; shift ;;
+    --group=*)  opt_group=${1#"--group="}   ; shift ;;
+    --host=*)   opt_host=${1#"--host="}     ; shift ;;
+    --inspect)  opt_inspect="1"             ; shift ;; 
+    *)  COPT="$COPT \"$1\""                 ; shift ;;
+  esac
+done
+eval set -- $COPT
 
-if [ "$1" = "projects" ] ; then
+####################################################################################################################################
+if [ "$1" = "projects" -o "$1" = "p"  ] ; then
   project_list=$( dc-list projects)
+  printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "PROJECT" "CO" "HOSTS" "GROUPS" "DESCRIPTION" "MAIN_IMAGE" "PROJECT_DIRECTORY"
+  printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
   for p in $project_list ; do
-    p_host=$(   dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML} | tr '\n' ',' )
-    p_host=${p_host%,}
-    p_desc=$(   dc-yq '.projects.'$p'.dc.desc'         ${MDE_DC_YAML} )
-    p_dir=$(    dc-yq '.projects.'$p'.project_dir'     ${MDE_DC_YAML} )
-    p_groups=$( dc-yq '.projects.'$p'.dc.group.[]'    ${MDE_DC_YAML} | tr '\n' ',' )
+    p_hosts=$(   dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML} )
+    p_desc=$(    dc-yq '.projects.'$p'.dc.desc'         ${MDE_DC_YAML} )
+    p_dir=$(     dc-yq '.projects.'$p'.project_dir'     ${MDE_DC_YAML} )
+    p_groups=$(  dc-yq '.projects.'$p'.dc.group.[]'     ${MDE_DC_YAML} | tr '\n' ',' )
     p_groups=${p_groups%,}
-    printf "%15s|%-15s|%-20s|%-40s|%-50s|\n" "$p" "  ${p_host}" "$p_groups" "$p_desc" "$p_dir" 
+    main_service=$( dc-yq '.projects.'$p'.dc.main_service'    ${MDE_DC_YAML} )
+    p_image=$( dc-yq '.projects.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
+
+    xxx=""
+    yyy=""
+    ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' $MDE_DC_YAML | wc -l )
+    for h in $p_hosts ; do
+      if [ "$opt_inspect" = "1" ]  ; then
+        nrc=$(dc -s $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
+        if [ "$ndc" = "$nrc" ] ; then
+          xxx="$xxx $h"
+          yyy="$yyy $h"
+        else
+          xxx="$xxx $h"
+          yyy="$yyy ${COL_RED}${h}${COL_DEFAULT}"
+        fi
+      else
+        xxx="$xxx $h"
+        yyy="$yyy $h"
+      fi
+    done
+    xxx=${xxx# }
+    yyy=${yyy# }
+    len=$((15+${#yyy}-${#xxx}))
+    yyy="$yyy                               "
+    yyy=${yyy:0:$len}
+    printf "%15s|%2s|%b|%-20s|%-35s|%-35s|%s\n" "$p" "${ndc}" "${yyy}" "$p_groups" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
   done
   exit 0
 fi
 
+####################################################################################################################################
 
     if [ "$opt_group" != "" ] ; then
       list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
@@ -191,15 +232,6 @@ fi
       fi
       eval `cat $host_data_file`
       dc_host_state="${state}"
-      #
-      # Farben fuer Ausgabe definieren
-      #
-      COL_DEFAULT='\e[m'
-      COL_GREEN='\e[1;92m'
-      COL_ORANGE='\033[0;33m'
-      COL_GRAY='\033[1;30m'
-      COL_LGRAY='\033[1;37m'
-      COL_RED='\e[1;91m'         
       if [ "$dc_host_state" = "sshd" -o "$dc_host_state" = "dock" ] ; then
         col_state=$COL_LGRAY
         col_std=$COL_LGRAY

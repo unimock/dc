@@ -1,8 +1,8 @@
 #!/bin/bash
 
-. /opt/dc/etc/config
-. /opt/dc/funcs/config-refresh
-VARDIR="/var/cache/dc"
+. /opt/dc/funcs/global
+
+VARDIR="/opt/dc/var/cache"
 
 project_dir="$VARDIR/projects"
 hosts_dir="$VARDIR/hosts"

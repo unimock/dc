@@ -1,4 +1,0 @@
-if [ "${mde_dc_config_refresh}" != "1" ] ; then
-  export mde_dc_config_refresh="1"
-  dc-config refresh >/dev/null
-fi

@@ -18,15 +18,105 @@
 #fi
 #  prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-
-
 _dc() {
 
   if [[ "$COMP_CWORD" == "1" ]] ; then
     COMPREPLY=( $(compgen -W "inspect host install hcloud batch list manage config ls mount umount login" -- "$2") )
+
   elif [[  "$COMP_CWORD" == "2" && "$3" == "config" ]] ; then
-    COMPREPLY=( $(compgen -W "show check create" -- "$2") )
+    COMPREPLY=( $(compgen -W "show refresh rebuild create" -- "$2") )
+
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
+    COMPREPLY=( $(compgen -W "projects hosts" -- "$2") )
+
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "host" ]] ; then
+    COMPREPLY=( $(compgen -W "state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
+
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
+    COMPREPLY=( $(compgen -W "hosts projects" -- "$2") )
+
   fi
+}
+complete -F _dc dc
+
+
+
+  # q devl
+  #if [[  "$COMP_CWORD" == "2" && "$3" == "devl" ]] ; then
+  #  COMPREPLY=( $(compgen -W "build create delete on off up down snapshot copy login cmd" -- "$2") )
+  #fi
+  #if [[ "${COMP_WORDS[1]}" == "devl" ]] ; then
+  #  if [[ "${COMP_WORDS[2]}" == "build" && "${COMP_WORDS[3]}" == "deb" ]] ; then
+  #    if [[ "$COMP_CWORD" == "5" ]] ; then
+  #      COMPREPLY=( $(compgen -W "$packages" -- "$2") )
+  #    else
+  #      COMPREPLY=( $(compgen -W "$systems" -- "$2") )
+  #    fi
+  #  elif [[ "${COMP_WORDS[2]}" == "build" ]] ; then
+  #    COMPREPLY=( $(compgen -W "deb" -- "$2") )
+  #  fi
+  #fi
+
+  #if [[ "$COMP_CWORD" == "2"  && ( " $systems " =~ .*\ ${3}\ .* ) ]] ; then
+  #    # q xp
+  #    COMPREPLY=( $(compgen -W "log dump create delete on off atf up down log snapshot copy login cmd install dump migration" -- "$2") )
+  # q devl
+  #if [[  "$COMP_CWORD" == "2" && "$3" == "devl" ]] ; then
+  #  COMPREPLY=( $(compgen -W "build create delete on off up down snapshot copy login cmd" -- "$2") )
+  #fi
+  #if [[ "${COMP_WORDS[1]}" == "devl" ]] ; then
+  #  if [[ "${COMP_WORDS[2]}" == "build" && "${COMP_WORDS[3]}" == "deb" ]] ; then
+  #    if [[ "$COMP_CWORD" == "5" ]] ; then
+  #      COMPREPLY=( $(compgen -W "$packages" -- "$2") )
+  #    else
+  #      COMPREPLY=( $(compgen -W "$systems" -- "$2") )
+  #    fi
+  #  elif [[ "${COMP_WORDS[2]}" == "build" ]] ; then
+  #    COMPREPLY=( $(compgen -W "deb" -- "$2") )
+  #  fi
+  #fi
+
+  #if [[ "$COMP_CWORD" == "2"  && ( " $systems " =~ .*\ ${3}\ .* ) ]] ; then
+  #    # q xp
+  #    COMPREPLY=( $(compgen -W "log dump create delete on off atf up down log snapshot copy login cmd install dump migration" -- "$2") )
+  # q devl
+  #if [[  "$COMP_CWORD" == "2" && "$3" == "devl" ]] ; then
+  #  COMPREPLY=( $(compgen -W "build create delete on off up down snapshot copy login cmd" -- "$2") )
+  #fi
+  #if [[ "${COMP_WORDS[1]}" == "devl" ]] ; then
+  #  if [[ "${COMP_WORDS[2]}" == "build" && "${COMP_WORDS[3]}" == "deb" ]] ; then
+  #    if [[ "$COMP_CWORD" == "5" ]] ; then
+  #      COMPREPLY=( $(compgen -W "$packages" -- "$2") )
+  #    else
+  #      COMPREPLY=( $(compgen -W "$systems" -- "$2") )
+  #    fi
+  #  elif [[ "${COMP_WORDS[2]}" == "build" ]] ; then
+  #    COMPREPLY=( $(compgen -W "deb" -- "$2") )
+  #  fi
+  #fi
+
+  #if [[ "$COMP_CWORD" == "2"  && ( " $systems " =~ .*\ ${3}\ .* ) ]] ; then
+  #    # q xp
+  #    COMPREPLY=( $(compgen -W "log dump create delete on off atf up down log snapshot copy login cmd install dump migration" -- "$2") )
+  # q devl
+  #if [[  "$COMP_CWORD" == "2" && "$3" == "devl" ]] ; then
+  #  COMPREPLY=( $(compgen -W "build create delete on off up down snapshot copy login cmd" -- "$2") )
+  #fi
+  #if [[ "${COMP_WORDS[1]}" == "devl" ]] ; then
+  #  if [[ "${COMP_WORDS[2]}" == "build" && "${COMP_WORDS[3]}" == "deb" ]] ; then
+  #    if [[ "$COMP_CWORD" == "5" ]] ; then
+  #      COMPREPLY=( $(compgen -W "$packages" -- "$2") )
+  #    else
+  #      COMPREPLY=( $(compgen -W "$systems" -- "$2") )
+  #    fi
+  #  elif [[ "${COMP_WORDS[2]}" == "build" ]] ; then
+  #    COMPREPLY=( $(compgen -W "deb" -- "$2") )
+  #  fi
+  #fi
+
+  #if [[ "$COMP_CWORD" == "2"  && ( " $systems " =~ .*\ ${3}\ .* ) ]] ; then
+  #    # q xp
+  #    COMPREPLY=( $(compgen -W "log dump create delete on off atf up down log snapshot copy login cmd install dump migration" -- "$2") )
   # q devl
   #if [[  "$COMP_CWORD" == "2" && "$3" == "devl" ]] ; then
   #  COMPREPLY=( $(compgen -W "build create delete on off up down snapshot copy login cmd" -- "$2") )
@@ -89,11 +179,8 @@ _dc() {
   #    list=$( find ./macros/ -maxdepth 1  -type f | sed -e "s|./macros/||g" )
   #    COMPREPLY=( $(compgen -W "$list" -- "$2") )
   #fi
-  # q vpn
   #if [[ "${COMP_WORDS[1]}" == "vpn" && "$COMP_CWORD" == "2"  ]] ; then
   #      COMPREPLY=( $(compgen -W "stop" -- "$2") )
  #fi
-}
 
-complete -F _dc dc
 

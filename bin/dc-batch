@@ -1,6 +1,6 @@
 #!/bin/bash
+. /opt/dc/funcs/global
 . /opt/dc/funcs/script_funcs
-. /opt/dc/etc/config
 
 if [ "$MDE_DC_BATCH_DIR" = "" ] ; then echo "MDE_DC_BATCH_DIR not set in /opt/dc/etc/config" ; exit 0 ; fi
 if [ "$MDE_DC_LOG_DIR" = "" ]   ; then echo "MDE_DC_LOG_DIR not set in /opt/dc/etc/config"   ; exit 0 ; fi
