@@ -128,12 +128,16 @@ for SERVICE in $project_list ; do
       echo " $SERVICE not active. Skipping!"
       continue ;
     fi
+    target_host_state=$( dc-host -h $T_HOST state )
+    if [ "$target_host_state" = "off" ] ; then
+      echo " target host defined as state=standby in host definition and is not reachable"
+      error_detect="1"
+      continue
+    fi      
+
     # check images
     image_mismatch=0
     images=$( dc -s $SERVICE -h $S_HOST compose ps -q  )
-
-
-
     for C in $images ; do
       N=$( dc -s $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
       [[ $N != *:* ]] && N=$N:latest
