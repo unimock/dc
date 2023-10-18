@@ -113,7 +113,6 @@ cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 ```
 dc -h ${ABBREV} create
 dc ls
-dc -h ${ABBREV} docker info
 dc -h ${ABBREV} ssh mkdir -p /Docker/Backup  /Docker/Cache  /Docker/Data  /Docker/Logs  /Docker/Services
 dc -h ${ABBREV} ssh chmod -R a+rwx /Docker
 ```

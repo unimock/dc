@@ -1,5 +1,5 @@
 version: '3'
-services:
+project:
   <main_service>:
     image: ${DC_ENV_IMAGE}
     restart: unless-stopped

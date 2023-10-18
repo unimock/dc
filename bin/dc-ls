@@ -41,6 +41,21 @@ _help() {
     done
     eval set -- $COPT
 
+if [ "$1" = "projects" ] ; then
+  project_list=$( dc-list projects)
+  for p in $project_list ; do
+    p_host=$(   dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML} | tr '\n' ',' )
+    p_host=${p_host%,}
+    p_desc=$(   dc-yq '.projects.'$p'.dc.desc'         ${MDE_DC_YAML} )
+    p_dir=$(    dc-yq '.projects.'$p'.project_dir'     ${MDE_DC_YAML} )
+    p_groups=$( dc-yq '.projects.'$p'.dc.group.[]'    ${MDE_DC_YAML} | tr '\n' ',' )
+    p_groups=${p_groups%,}
+    printf "%15s|%-15s|%-20s|%-40s|%-50s|\n" "$p" "  ${p_host}" "$p_groups" "$p_desc" "$p_dir" 
+  done
+  exit 0
+fi
+
+
     if [ "$opt_group" != "" ] ; then
       list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
     else

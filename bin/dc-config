@@ -92,6 +92,7 @@ _config_refresh()
       compose_yml=$(dc-yq '.project.control.file' $project_dir/${relPath}/${MDE_DC_YAML_FILE})
       compose_project=$(dc-yq '.name' $project_dir/${relPath}/compose.yml)
       echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
+      echo "    project_dir: $MDE_DC_SERV_DIR/${relPath}"                         >> ${MDE_DC_YAML}
       echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
       echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent

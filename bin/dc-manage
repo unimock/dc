@@ -92,7 +92,7 @@ if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
     project_list=$( dc-yq '(( .projects.* | select(.dc_yml == "'$YML'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
   fi
 elif [ "$CMD" = "sync_group" ] ; then
-  project_list=$( dc-list services -g $2 )
+  project_list=$( dc-list projects -g $2 )
 fi
 
 for SERVICE in $project_list ; do

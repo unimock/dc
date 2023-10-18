@@ -31,7 +31,7 @@ shift
 
 if [ "$CMD" = "" ] ; then
   echo ""
-  echo " usage: `basename $0` [-h <host>] <command>  # manage hosts and/or services on hosts"
+  echo " usage: `basename $0` [-h <host>] <command>  # manage hosts and/or projects on hosts"
   echo ""
   echo " host commands:"
   echo "    state               # state of a host. returns: ||ping|sshd|dock| "
@@ -47,12 +47,12 @@ if [ "$CMD" = "" ] ; then
   echo ""
   echo " service commands"
   echo ""
-  echo "    list                # list services on $H"
-  echo "    check               # check services on $H"
-  echo "    check details       # check services on $H and show details"
-  echo "    stop|start          # start or stop all services on $H"
-  echo "    rm|up|rmup          # start or stop all services on $H"
-  echo "    ps                  # show services on $H"
+  echo "    list                # list projects on $H"
+  echo "    check               # check projects on $H"
+  echo "    check details       # check projects on $H and show details"
+  echo "    stop|start          # start or stop all projects on $H"
+  echo "    rm|up|rmup          # start or stop all projects on $H"
+  echo "    ps                  # show project containers on $H"
   echo ""
   exit 0
 fi
@@ -185,11 +185,11 @@ EOF
   fi
 
   if [ "$CMD" = "list" ] ; then
-    dc-list services -h $HOST
+    dc-list projects -h $HOST
   fi
   ####################################################################################################################
   if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "rmup"  ] ; then
-    list=$( dc-list services -h $HOST )
+    list=$( dc-list projects -h $HOST )
     for i in $list ; do
       dc -h $HOST -s $i $CMD
     done

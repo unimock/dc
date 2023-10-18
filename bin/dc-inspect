@@ -49,8 +49,6 @@ for host in $hosts ; do
   echo "#"
   echo "$host:"
 
-
-
   if [ "$check_runtime" = "1" ] ; then 	
     host_error_marker=0
     H_STATE=$( dc-yq '.hosts.'$host'.state' ${MDE_DC_YAML} )
@@ -88,31 +86,41 @@ for host in $hosts ; do
     fi
   fi
 
-if [ "$check_runtime" = "0" -o "$host_up" = "1" ] ; then
-  projects_on_host=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
-  for service in $projects_on_host ; do
-    echo "  $service:"
-    if [ "$check_runtime" = "1" ] ; then
-      if [ $host_up = 1 ] ; then
-        service_stat=$( dc -h $host -s $service check )
-        if [ "$?" != "0" ] ; then
-          host_error_marker=1
-          error_list="$error_list $host:$service"
-          error=1
+  if [ "$check_runtime" = "0" -o "$host_up" = "1" ] ; then
+    projects_on_host=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
+    for service in $projects_on_host ; do
+      echo "  $service:"
+      if [ "$check_runtime" = "1" ] ; then
+        if [ $host_up = 1 ] ; then
+          project_status="Up"
+          container_list=$(dc -h $host -s $service compose ps -q)
+          if [ "$container_list" = "" ] ; then
+            project_status="error_no_containers"
+          else
+            stat_list=$( echo "$container_list" | xargs dc -h $host -s $service  docker inspect --format '{{.State.Status}}')
+            for stat in $stat_list ; do
+              if [ "$stat" != "running" ] ; then
+                project_status="error_incomplete_containers"
+              fi
+            done
+          fi
+          if [ "$project_status" != "Up" ] ; then
+            host_error_marker=1
+            error_list="$error_list $host:$service"
+            error=1
+          fi
+          echo "    state: $project_status"
+        else
+          echo "    state: UNKOWN"
         fi
-        echo "    state: $service_stat"
-      else
-        echo "    state: UNKOWN"
       fi
-    fi
-    img_list=$( dc-yq '.projects.'$service'.compose.services.*.image' ${MDE_DC_YAML} )
-    echo "    image:"
-    for img in $img_list ; do
-	    echo "      - $img"
+      img_list=$( dc-yq '.projects.'$service'.compose.services.*.image' ${MDE_DC_YAML} )
+      echo "    image:"
+      for img in $img_list ; do
+	      echo "      - $img"
+      done
     done
-  done
-
-fi
+  fi
 
   if [ "$check_runtime" = "1" ] ; then
     # print result for this host  
@@ -122,6 +130,7 @@ fi
       echo "  checkresult: ERROR"
     fi
   fi
+
 done
 if [ "$error" = "1" ] ; then
   echo "#"	

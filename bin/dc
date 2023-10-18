@@ -14,6 +14,7 @@ show_help() {
   echo ""
   echo "     -i <host-index>  ........... work with host from ${MDE_DC_YAML_FILE}  0|1|2|.."
   echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with service of the according service"
+  echo "     -d <path> .................. project directory"
   echo "     -h <host> .................. work with this host, instead of the one which is defined in the service ${MDE_DC_YAML_FILE} file. "
   echo "     -s <service> ............... work with this service."
   echo "     -v ......................... verbose"
@@ -23,7 +24,7 @@ show_help() {
   echo "     readme                        # show README.md"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list hosts"
-  echo "     list ...                      # list hosts/services/.."
+  echo "     list ...                      # list hosts/projects"
   echo "     config                        # check dc configurations"
   echo "     host ...                      # manage hosts and services on host"
   echo "     mounts [umount] ...           # list/unmount all service mounts to hosts"
@@ -89,6 +90,7 @@ SERVICE=""
 CONF=""
 VERB=""
 HIDX="0"
+PROJECT_DIR=""
 
 if [ "$1" = "mounts" ] ; then
   if [ "$2" != "umount" ] ; then
@@ -104,7 +106,10 @@ if [ "$1" = "mounts" ] ; then
   fi
   exit 0 
 fi
-
+if [ "$1" = "reset" ] ; then
+  rm -f /root/.ssh/dc/control/*
+  exit 0
+fi
 wrapper_list="inspect host install hcloud batch list manage config ls"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
@@ -126,58 +131,94 @@ while [ "$#" -gt 0 ]; do
     -i)  HIDX="$2"          ; shift 2 ;; 
     -i[0-9]) HIDX="${1#-i}" ; shift 1 ;; 
     -c)  CONF="$2"          ; shift 2 ;;
+    -d)  PROJECT_DIR="$2"   ; shift 2 ;;
     *)   CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done  
 eval set -- $CURROPT
 
-if [ "$CONF" != "" ] ; then
-   # conf-file given as parameter
-   if [ ! -f $CONF ] ; then
-     echo "error: <$CONF> missing."
-     exit 1
-   fi
-else
-  # check if we sit in a dc-project directory, the use this conf-file 
-  if [ -f ./${MDE_DC_YAML_FILE} ] ; then CONF="./${MDE_DC_YAML_FILE}" ; fi
-fi
-
-if [ "$HOST" != "" -a "$SERVICE" != "" ] ;then
-  # if HOST and SERVICE is given as parameters, then fetch conf-file from ${MDE_DC_YAML}
-  CONF=$( dc-yq '.projects.'$SERVICE'.dc_yml' ${MDE_DC_YAML} )
-  if [ "$CONF" = "" ] ; then
-    echo "error: service=<$SERVICE> not defined for host=<$HOST>"
-    exit 1
-  fi
-fi
-
-if [ "$CONF" != "" ] ; then
-  abs_path="$( cd `dirname $CONF` ; pwd)/`basename $CONF`"
-  project_name=$(  dc-yq '(( .projects.* | select(.dc_yml == "'$abs_path'" ) | path ) [-1] )' ${MDE_DC_YAML} )
-  main_service=$(  dc-yq '.projects.'$project_name'.dc.main_service' ${MDE_DC_YAML})
-  service_hosts=( `dc-yq '.projects.'$project_name'.dc.home.[].host' ${MDE_DC_YAML}`)   # Array
-  service_state=( `dc-yq '.projects.'$project_name'.dc.home.[].state' ${MDE_DC_YAML}`)  # Array
-  HNAME=${service_hosts[${HIDX}]}
-fi
-
-if [ "$HOST" != "" ] ; then
-  HNAME=$HOST
-fi
 CMD=${1}
-######################################################################################################################################
+
 if [ "$CMD" = "" ] ; then
   show_help
 fi
-if [ "$HNAME" != "" ] ; then
-  export DOCKER_HOST="ssh://${HNAME}"
-  if [ "$CONF" != "" ] ; then
-    cd `dirname $CONF`
+if [[ "$CMD" == "ssh" && "$HOST" != "" ]] ; then
+  shift
+  ssh $HOST $*
+  exit $?
+fi
+
+if [[ "$CMD" == "docker" && "$HOST" != "" ]] ; then
+  shift
+  export DOCKER_HOST="ssh://${HOST}"
+  docker $*
+  exit $ret
+fi  
+
+######################################################################################################################################
+project_dir=""
+if [[ "$CONF" != "" ]] ; then
+  if [[ ! -f $CONF && ! -d $CONF ]] ; then
+    echo "error: given project is neither a file nor a directory."
+    exit 1
+  fi
+  if [ -f $CONF ] ; then
+    project_dir="$( cd `dirname $CONF` ; pwd)"
+  else
+    project_dir="$( cd $CONF ; pwd)"
+  fi
+  if [ "${SERVICE}" != "" ] ; then
+    echo "error: it is not allowed to enter project file and service"
+    exit 1
   fi
 fi
+if [ "${SERVICE}" != "" ] ; then
+  project_dir=$( dc-yq '.projects.'$SERVICE'.project_dir' ${MDE_DC_YAML} )
+  if [ "$project_dir" = "null"  ] ; then
+    echo "error: unkown service given."
+    exit 1
+  fi
+fi
+if [[ "$project_dir" = "" && -f ./${MDE_DC_YAML_FILE} ]] ; then
+  project_dir="$(pwd)"
+fi
+if [[ "$project_dir" == "" ]] ; then
+  echo "error: no valid project given"
+  exit 1
+fi
+#echo "project_dir=$project_dir"
+
+# HIDX und HOST parameter auswerten und pruefen
+
+HNAME=""
+if [ "$HOST" != "" ] ; then
+  found="0"
+  hlist=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.home.[].host  )' ${MDE_DC_YAML} )
+  for i in $hlist ; do
+    if [ "$i" = "$HOST" ] ; then
+      found="1"
+      break
+    fi
+  done
+  if [ "$found" != "1" ] ; then
+    echo "error: host=$HOST not valid."
+    exit 1
+  fi
+  HNAME=$HOST
+else
+  HNAME=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.home.['$HIDX'].host  )' ${MDE_DC_YAML} )
+  if [ "$HNAME" = "null" ] ; then
+    echo "error: host_index=$HIDX not valid."
+    exit 1
+  fi
+fi
+#echo "HNAME=$HNAME"
+
+#if [ "$HNAME" != "" ] ; then
+  export DOCKER_HOST="ssh://${HNAME}"
+  cd $project_dir
+#fi
 case "$CMD" in
-  reset)
-    rm -f /root/.ssh/dc/control/*
-    ;;
   ssh)
     shift
     ssh ${HNAME} $*
@@ -195,49 +236,20 @@ case "$CMD" in
   rmup)
     docker compose stop ; docker compose rm -f ; docker compose up -d
     ;;
-  info)
-    ssh $HNAME 'echo -e "\n" ; df -h ; echo -e "\n" ; free -m ; echo -e "\n" ; uptime ; echo -e "\n"'
-    ;;
-  check)
-    for i in "${!service_hosts[@]}"; do
-      if [ "${service_hosts[${i}]}" != "$HOST" ] ; then continue ; fi 
-      if [ "${service_state[${i}]}" != "active" ] ; then
-        echo "${service_state[${i}]}"
-        exit 0
-      fi
-      container_list=$(dc -h ${service_hosts[${i}]}  -c $CONF compose ps -q)
-      if [ "$container_list" = "" ] ; then
-        echo "error_no_containers"
-        exit 1
-      fi
-      stat_list=$( echo "$container_list" | xargs dc -h ${service_hosts[${i}]} -c $CONF docker inspect --format '{{.State.Status}}')
-      for stat in $stat_list ; do
-        if [ "$stat" != "running" ] ; then
-          echo "error_incomplete_containers"
-          exit 1
-        fi
-      done
-      echo "Up"
-      exit 0
-    done
-    ;; 
   pull)
     docker compose pull
     exit 0
     ;;
-  push)
-    echo " !!!<pull|push> is deprecated!!! Use <data pull|push> insted."
-    exit 1
-    ;;
   data)
     scmd=$2
+    project_name=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      project_name=$(docker compose config | dc-yq '.name')
+      #project_name=$(docker compose config | dc-yq '.name')
       sshfs $HNAME:/${MDE_DC_DOCKER_VOL}/Services/${project_name} ./data
       exit $?
     fi
-    project_name=$( docker compose -f `dirname $CONF`/docker-compose.yml config | dc-yq '.name' )
+    #project_name=$( docker compose -f `dirname $CONF`/docker-compose.yml config | dc-yq '.name' )
     if [ "$scmd" = "umount" ] ; then
       umount ./data
       rmdir ./data
@@ -279,28 +291,33 @@ case "$CMD" in
     ;;
   ############
   supervisor)
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     docker compose exec ${main_service} supervisorctl
     ;;
   syslog)
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     docker compose exec ${main_service} tail -n 200 /var/log/syslog
     ;;
   login)
     shift
     if [ "$1" = "" ] ; then
-      cmd="bash"
+      cmd="sh"
     else
       cmd=$*
     fi
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
 	  docker compose exec  ${main_service} $cmd
     ;;
   cmd)
     shift
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     docker compose exec -T  ${main_service} $*
     ret=$?
     exit $ret
     ;;
   ovw)
     if [ "$2" = "push" ] ; then
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
       docker compose  exec ${main_service} rsync -av /service/ovw/ /
       exit 0
     fi
@@ -310,10 +327,12 @@ case "$CMD" in
         exit 0
       fi
       echo "rsync -avR ${3} /service/ovw/"
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
       docker compose  exec ${main_servicei} ync -avR ${3} /service/ovw/
       exit 0
     fi
     if [ "$2" = "fetch" ] ; then
+    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
        docker compose exec ${main_service} diff /service/ovw/${3} ${3}
        exit 0
     fi
@@ -331,8 +350,6 @@ case "$CMD" in
     echo "swarm command (have to be done)"
      ;;
   *)
-    if [ "$CONF" != "" ] ; then
-      docker compose $* 
-    fi
+    docker compose $* 
     ;;
 esac
