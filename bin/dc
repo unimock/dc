@@ -14,7 +14,7 @@ show_help() {
   echo "     -i <host-index>  ........... work with host from ${MDE_DC_YAML_FILE}  0|1|2|.."
   echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with project (can also be a directory)"
   echo "     -h <host> .................. work with this host, instead of the one which is defined in the project ${MDE_DC_YAML_FILE} file"
-  echo "     -s <project> ............... work with this project"
+  echo "     -p <project> ............... work with this project"
   echo "     -v ......................... verbose"
   echo ""
   echo "   cluster-commands:"
@@ -23,14 +23,14 @@ show_help() {
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list hosts"
   echo "     list ...                      # list hosts/projects"
-  echo "     config                        # check dc configurations"
+  echo "     config ...                    # manage dc configurations"
   echo "     host ...                      # manage hosts and projects on host"
   echo "     mounts [umount] ...           # list/unmount all projects mounts to hosts"
   echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
   echo "     hcloud ...                    # create and manage Hezner-Cloud hosts"
   echo "     batch ...                     # manage job batches"
   echo "     docker|compose|swarm          # delegate command to standard tools"
-  echo "     ssh                           # login into a host"                          
+  echo "     ssh [<cmd>]                   # login into a host"                          
   echo "     manage ...                    # sync projects between hosts"
   echo ""
   echo "  build and deploy images on host:"
@@ -124,8 +124,8 @@ while [ "$#" -gt 0 ]; do
     -v)  VERB="1"           ; shift 1 ;; 
     -h)  HOST="$2"          ; shift 2 ;;
     -h*) HOST="${1#-h}"     ; shift 1 ;;
-    -s)  SERVICE="$2"       ; shift 2 ;; 
-    -s*) SERVICE="${1#-s}"  ; shift 1 ;;
+    -p)  SERVICE="$2"       ; shift 2 ;; 
+    -p*) SERVICE="${1#-s}"  ; shift 1 ;;
     -i)  HIDX="$2"          ; shift 2 ;; 
     -i[0-9]) HIDX="${1#-i}" ; shift 1 ;; 
     -c)  CONF="$2"          ; shift 2 ;;

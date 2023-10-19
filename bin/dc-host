@@ -196,7 +196,7 @@ EOF
   if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "rmup"  ] ; then
     list=$( dc-list projects -h $HOST )
     for i in $list ; do
-      dc -h $HOST -s $i $CMD
+      dc -h $HOST -p $i $CMD
     done
   fi
 

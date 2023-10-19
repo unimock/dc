@@ -1,10 +1,14 @@
 version: '3'
-project:
+services:
   <main_service>:
     image: ${DC_ENV_IMAGE}
     restart: unless-stopped
     container_name: ${DC_ENV_NAME}
     hostname: ${DC_ENV_NAME}
+    ports:
+      - "54321:80"
+#    labels:
+    
 #    environment:
 #      - TZ=Europe/Berlin
 #    volumes:
@@ -14,8 +18,6 @@ project:
 #      - ${DC_VOL_cache}/xyz:/var/xqz
 #      - ${DC_VOL_logs}/smtp:/var/log
 #      - ${DC_VOL_data}/vmail:/home/vmail
-
-#    labels:
 #      - "traefik.enable=true"
 #      - "traefik.http.routers.${DC_ENV_NAME}.entrypoints=http"
 #      - "traefik.http.routers.${DC_ENV_NAME}.rule=Host(`${DC_ENV_TRAEFIK_URL}`)"

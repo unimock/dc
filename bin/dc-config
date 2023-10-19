@@ -156,6 +156,7 @@ if [ "$1" = "create" -a "$2" = "project" ] ; then
     echo "$i"
   done
   cd ${project_dir}
+  dc config refresh
   dc up
   dc login ls /
   dc rm

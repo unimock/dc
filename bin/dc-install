@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # hcloud ... hetzner cloud
-HCLOUD="1.22.1"
+HCLOUD="1.38.3"
 
 #
 APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd micro"

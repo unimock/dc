@@ -74,7 +74,7 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
       if [ "$opt_inspect" = "1" ]  ; then
 	host_state=$( dc-host -h $h state )
 	if [ "$host_state" = "dock" ] ; then
-          nrc=$(dc -s $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
+          nrc=$(dc -p $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
 	  color=$COL_RED
         elif [ "$host_state" = "off" ] ; then # host is defined as state=standby in host definition
 	  nrc=0

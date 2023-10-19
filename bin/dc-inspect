@@ -92,11 +92,11 @@ for host in $hosts ; do
       if [ "$check_runtime" = "1" ] ; then
         if [ $host_up = 1 ] ; then
           project_status="Up"
-          container_list=$(dc -h $host -s $service compose ps -q)
+          container_list=$(dc -h $host -p $service compose ps -q)
           if [ "$container_list" = "" ] ; then
             project_status="error_no_containers"
           else
-            stat_list=$( echo "$container_list" | xargs dc -h $host -s $service  docker inspect --format '{{.State.Status}}')
+            stat_list=$( echo "$container_list" | xargs dc -h $host -p $service  docker inspect --format '{{.State.Status}}')
             for stat in $stat_list ; do
               if [ "$stat" != "running" ] ; then
                 project_status="error_incomplete_containers"

@@ -26,6 +26,10 @@ git clone https://github.com/unimock/dc.git /opt/dc
 
 # TBD:
 
+```
+dc-install hcloud
+```
+
 
 ## Usage
 

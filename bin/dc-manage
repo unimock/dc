@@ -45,7 +45,7 @@ copy_data()
 dc_command()
 {
   cmd=$1 ; service=$2 ; host=$3  
-  dc -s $service -h $host $cmd
+  dc -p $service -h $host $cmd
   ret=$?
   echo -e "#\n# $cmd $service at $host (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
@@ -137,12 +137,12 @@ for SERVICE in $project_list ; do
 
     # check images
     image_mismatch=0
-    images=$( dc -s $SERVICE -h $S_HOST compose ps -q  )
+    images=$( dc -p $SERVICE -h $S_HOST compose ps -q  )
     for C in $images ; do
-      N=$( dc -s $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+      N=$( dc -p $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
       [[ $N != *:* ]] && N=$N:latest
-      S_ID=$( dc -s $SERVICE -h $S_HOST docker image ls -q $N )
-      T_ID=$( dc -s $SERVICE -h $T_HOST docker image ls -q $N )
+      S_ID=$( dc -p $SERVICE -h $S_HOST docker image ls -q $N )
+      T_ID=$( dc -p $SERVICE -h $T_HOST docker image ls -q $N )
       if [ "$S_ID" != "$T_ID" ] ; then
         image_mismatch=1
         echo "detect image mismatch for service: <$SERVICE> !!!!!"
@@ -152,7 +152,7 @@ for SERVICE in $project_list ; do
     if [ "$image_mismatch" = "1" -a "$with_images" = "0" ] ; then
       echo "#ERROR: found different images for <$SERVICE>."
       echo "#       Sync service with images manually with:"
-      echo "#       dc-manage --images -s $SERVICE sync"
+      echo "#       dc-manage --images -p $SERVICE sync"
       error_detect=1
       continue
     fi  
@@ -167,12 +167,12 @@ for SERVICE in $project_list ; do
     # create target containers
     if [ "$image_mismatch" = "1" -a "$with_images" = "1" ] ; then
       dc_command  rm      $SERVICE $T_HOST
-      images=$( dc -s $SERVICE -h $S_HOST compose ps -q  )
+      images=$( dc -p $SERVICE -h $S_HOST compose ps -q  )
       for C in $images ; do
-        N=$( dc -s $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+        N=$( dc -p $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
         [[ $N != *:* ]] && N=$N:latest
-        S_ID=$( dc -s $SERVICE -h $S_HOST docker image ls -q $N )
-        T_ID=$( dc -s $SERVICE -h $T_HOST docker image ls -q $N )
+        S_ID=$( dc -p $SERVICE -h $S_HOST docker image ls -q $N )
+        T_ID=$( dc -p $SERVICE -h $T_HOST docker image ls -q $N )
         if [ "$S_ID" != "$T_ID" ] ; then
           echo "##################"
           echo "# image to sync:"
@@ -180,12 +180,12 @@ for SERVICE in $project_list ; do
           echo "#  Source-ID=<$S_ID>"
           echo "#  Target-ID=<$T_ID>"
           if [ "$T_ID" != "" ] ; then
-            dc -s $SERVICE -h $T_HOST docker image rm $N
+            dc -p $SERVICE -h $T_HOST docker image rm $N
           fi
           if [ `which pv` != "" ] ; then # show progress if pv exists
-            dc -s $SERVICE -h $S_HOST docker save $N | pv | dc -s $SERVICE -h $T_HOST docker load
+            dc -p $SERVICE -h $S_HOST docker save $N | pv | dc -p $SERVICE -h $T_HOST docker load
           else
-            dc -s $SERVICE -h $S_HOST docker save $N | dc -s $SERVICE -h $T_HOST docker load
+            dc -p $SERVICE -h $S_HOST docker save $N | dc -p $SERVICE -h $T_HOST docker load
           fi
         fi
       done
@@ -194,7 +194,7 @@ for SERVICE in $project_list ; do
       else
         echo "#ERROR: Service: <$SERVICE> is not acitivated on <$T_HOST>."
         echo "#       Please create the containers manually with:"
-        echo "#       dc -s $SERVICE -h $T_HOST up"
+        echo "#       dc -p $SERVICE -h $T_HOST up"
         error_detect=1
       fi
     fi
