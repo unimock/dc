@@ -108,7 +108,7 @@ if [ "$1" = "reset" ] ; then
   rm -f /root/.ssh/dc/control/*
   exit 0
 fi
-wrapper_list="inspect host install hcloud batch list manage config ls"
+wrapper_list="inspect host install hcloud batch list manage config ls server"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift

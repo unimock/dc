@@ -12,13 +12,14 @@ _ask()
   read ans
   return
 }
-
+opt_project=""
 on_host=""
 verbose=""
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -h) on_host="$2" ; shift 2 ;;
+    -h) on_host="$2"              ; shift 2 ;;
+    -p) opt_project="$2"          ; shift 2 ;;
     -v) shift ; verbose="1" ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -36,7 +37,7 @@ if [ "$CMD" = "" ] ; then
   echo "    state               # state of a host. returns: ||ping|sshd|dock| "
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
-  echo "    nrc                 # number of running containers"
+  echo "    nrc [-p <project>]  # number of all running containers or project container on host"
   echo "    reboot              # reboot host"
   echo "    large_files <size>  # find lage files, size=xG"
   echo "    dir_entries <count> # find directories with more then count entries"
@@ -137,7 +138,11 @@ EOF
      ssh   ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
-    ssh $HOST docker ps -q | wc -l 
+    if [ "$opt_project" != "" ] ; then
+      dc -p $opt_project -h $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
+    else
+      ssh $HOST docker ps -q | wc -l
+    fi
   fi
 
   if [ "$CMD" = "update" ] ; then

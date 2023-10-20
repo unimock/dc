@@ -11,7 +11,6 @@ project:
 # enter the main service name of the compose project to jump into the container with dc login or to copy files.
   main_service: <main_service>
   group:
-    - http-web
   control:
     type: compose
     file: docker-compose.yml

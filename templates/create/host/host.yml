@@ -1,0 +1,17 @@
+host:
+  state: active
+  hostname: <hostname_or_ip>
+  desc: ""
+  info: ""
+  os: ubuntu
+  machine_id:
+  groups:
+    - dc
+  server:
+    hcloud:
+      name:
+      init:
+        type:
+        image:
+        location:
+        ssh-key:

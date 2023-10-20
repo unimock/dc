@@ -1,34 +1,139 @@
 #!/bin/bash
 
-hname="tescht"
+. /opt/dc/funcs/global
 
-
-if [ "$1" = "create" ] ; then
-  hcloud server create --name ${hname}  --type cx11 --image ubuntu-22.04 --ssh-key dc-pub-key --location fsn1
-  sleep 20
-  IP=$(hcloud server ip ${hname})
-  ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} 
-  scp -o StrictHostKeychecking=no /opt/dc/helper/docker@ubuntu-22.04.sh ${IP}:/tmp/dc-install
-  ssh -o StrictHostKeychecking=no ${IP} /tmp/dc-install
-  ssh -o StrictHostKeychecking=no ${IP} init 6
-  # todo set root password
+if [ "$1" = "" ] ; then
+  echo ""
+  echo "TBD"
+  exit 0
 fi
 
-if [ "$1" = "info" ] ; then
+CMD="$1"
+shift
+
+dc_host="$1"
+
+if [ "$CMD" = "reboot" ] ; then
+  ssh ${dc_host} "init 6"
+  echo "#########################################"
+  echo "# reboot host <${dc_host}> and wait until server is up"
+  echo "#########################################"
+  sleep 3
+  while true ; do
+    state=$( dc host -h ${dc_host} state )
+    echo "wait for state==dock current-state=state=$state"
+    if [ "$state" = "dock" ] ; then
+      break
+    fi
+    sleep 1
+  done
+  exit 0
+fi
+
+if [ "$CMD" = "install" ] ; then
+  echo "################################################################################"
+  echo "# install docker, set timezone, dist-upgrade on host <$dc_host>"
+  echo "################################################################################"
+  image=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.image'     ${MDE_DC_YAML} )
+  if [ ! -f /opt/dc/helper/hcloud-${image}.sh ] ; then
+    echo "error: missing installation script </opt/dc/helper/hcloud-${image}.sh>"
+    exit 1
+  fi
+  scp /opt/dc/helper/hcloud-${image}.sh ${dc_host}:/tmp/dc-install
+  ssh ${dc_host} /tmp/dc-install >/dev/null
+  exit $?
+fi
+
+if [ "$CMD" = "assign" ] ; then
+  shift
+  echo "################################################################################"
+  echo "# assing hcloud options to host <${dc_host}> definition"
+  echo "################################################################################"
+  if [ "$1" != "hcloud" ] ; then
+    echo "error unsupported server provider <$1> given!"
+    exit 1
+  fi
+  shift
+  FI=/root/.ssh/dc/config/${dc_host}.yml
+  for i in $* ; do
+    key=${i%=*}
+    val=${i#*=}
+    echo "$i   <$key> <$val>"
+    dc-yq -i '.host.server.hcloud.'$key' = "'${val}'"'         $FI
+  done
+  dc config refresh
+  dc-yq '.hosts.'${dc_host}'.server' ${MDE_DC_YAML}
+  exit 0
+fi
+
+hname=$(dc-yq '.hosts.'${dc_host}'.server.hcloud.name' ${MDE_DC_YAML} )
+if [ "$hname" = "" -o "$hname" = "null" ] ; then
+  echo "error: missing hcloud server name in <.hosts.${1}.server.hcloud.name>"
+  exit 1
+fi
+
+if [ "$CMD" = "create" ] ; then
+  echo "################################################################################"
+  echo "# create vserver based on host definition in ${MDE_DC_YAML}"
+  echo "################################################################################"
+  
+  typ=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.type'     ${MDE_DC_YAML} )
+  img=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.image'    ${MDE_DC_YAML} )
+  loc=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.location' ${MDE_DC_YAML} )
+  key=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.ssh-key'  ${MDE_DC_YAML} )
+  echo server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
+  hcloud server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
+  IP=$(hcloud server ip ${hname} )  
+  echo "################################################################################"
+  echo "# assign vserver HostName <$IP> to host <${dc_host}> definition"
+  echo "################################################################################"
+  ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
+  rm -f /root/.ssh/dc/control/${dc_host}
+  dc-yq -i '.host.hostname = "'${IP}'"'   /root/.ssh/dc/config/${dc_host}.yml
+  sed -i "s|HostName .*|HostName ${IP}|g" /root/.ssh/dc/config/${dc_host}.ssh
+  dc config refresh
+  dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
+  cat /root/.ssh/dc/config/${dc_host}.ssh
+  echo "###########################################"
+  echo "# wait until new sever is reachable via ssh"
+  echo "###########################################"
+  while true ; do
+    state=$( dc host -h ${dc_host} state )
+    echo "wait for state==sshd current-state=state=$state"
+    if [ "$state" = "sshd" ] ; then
+      break
+    fi
+    sleep 1
+  done
+  exit 0
+fi
+
+if [ "$CMD" = "info" ] ; then
   hcloud server describe ${hname}
 fi
 
-if [ "$1" = "list" ] ; then
-  hcloud server list
+if [ "$CMD" = "list" ] ; then
+  #hcloud server list
   #hcloud image list
   #hcloud location list
   #hcloud server-type list
+  exit 0
 fi
 
-
-
-if [ "$1" = "delete" ] ; then
-  hcloud server delete ${hname}
+if [ "$CMD" = "delete" ] ; then
+  echo "################################################################################"
+  echo "# delete Hetzner cloud server <$hname>"
+  echo "################################################################################"
+  # check if projects are defined for the host then error and exit
+  project_list=$( dc-list projects -h ${dc_host}  )
+  if [ "$project_list" != "" ] ; then
+    echo "projects assigned to <${dc_host}>:"
+    dc-list projects -h ${dc_host} | sed "s|^|  - |g"
+    echo "error: unable to delete server <$hname>"
+    exit 1
+  fi
+  hcloud server delete $hname
+  exit $?
 fi
 
 

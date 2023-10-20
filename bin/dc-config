@@ -2,11 +2,19 @@
 
 . /opt/dc/funcs/global
 
+
+call_from="$(ps -o comm= $PPID)"
+if [ "$call_from" == "dc" ] ; then
+  IAM="dc config"
+else
+  IAM="dc-config"
+fi
+
 VARDIR="/opt/dc/var/cache"
 
 project_dir="$VARDIR/projects"
 hosts_dir="$VARDIR/hosts"
-
+############################################################################################################################################
 _config_refresh()
 {
   config_change="0"
@@ -75,8 +83,6 @@ _config_refresh()
     fi
   done
 
-
-
   if [ "$config_change" = "1" ] ; then
     mkdir -p `dirname ${MDE_DC_YAML}`
     echo "re-create: ${MDE_DC_YAML}"
@@ -103,71 +109,196 @@ _config_refresh()
   fi
 }
 
+############################################################################################################################################
+# magic main
+############################################################################################################################################
 if [ "$1" = "" ] ; then
   echo ""
-  echo "usage: $IAM check"
-  echo "usage: $IAM create project <host> <project-name> <main-service-name> <project-directory>"
+  echo "usage: $IAM ..."
   echo ""
-  echo "examples:"
+  echo "# common config commands:"
   echo ""
-  echo "$IAM show     # show dc configuration"
-  echo "$IAM refresh  # refresh dc config environment (${MDE_DC_YAML})"
-  echo "$IAM rebuild  # rebuild dc config environment (${MDE_DC_YAML})"
-  echo "$IAM create project apps0 test-project filebrowser ${MDE_DC_SERV_DIR}/test-project"
+  echo "$IAM show         # show dc configuration"
+  echo "$IAM refresh      # refresh dc config environment (${MDE_DC_YAML})"
+  echo "$IAM rebuild      # rebuild dc config environment (${MDE_DC_YAML})"
+  echo ""
+  echo "# create/delete a sample project:"
+  echo "" 
+  echo "#$IAM create project <name>       <host> <main_service> <project_dir>"
+  echo "$IAM  create project test-project apps0  filebrowser ${MDE_DC_SERV_DIR}/test-project"
+  echo "$IAM  delete project test-project"
+  echo ""
+  echo "# create/delete a host definition"
+  echo ""
+  echo "#$IAM create host    <host>     [<hostname_or_ip]"
+  echo "$IAM  create host    test-host  localhost"
+  echo "$IAM  delete host    test-host"
   echo ""
   exit 0
 fi
 
-if [ "$1" = "rebuild" ] ; then
+CMD="$1"
+shift
+
+######################################################################################################################
+if [ "$CMD" = "rebuild" ] ; then
   rm -rf $VARDIR
   _config_refresh
   exit $?
 fi
 
-if [ "$1" = "refresh" ] ; then
+######################################################################################################################
+if [ "$CMD" = "refresh" ] ; then
    _config_refresh
   exit $?
 fi
 
-if [ "$1" = "create" -a "$2" = "project" ] ; then
-  shift ; shift
-  host="$1"
-  project_name="$2"    # must be unique
-  main_service="$3"    # keep it simple, like git,...
-  project_dir="$4"
-
-  traefik_net="traefik_default"
-  image="filebrowser/filebrowser:v2.25.0"
-
-  if [ -d ${project_dir} ] ; then
-    echo "error: ${project_dir} exists!"
-    exit 1
+######################################################################################################################
+if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
+  TYP="$1"
+  shift
+  if [ "$TYP" = "project" ] ; then
+    project_name="$1"    # must be unique
+    project_dir=$( dc-yq '.projects.'$project_name'.project_dir'  ${MDE_DC_YAML} )
+    if [ "$CMD" = "delete" ] ; then
+      echo "################################################################################"
+      echo "# delete project <$project_name> definition"
+      echo "################################################################################"
+      if [ "$project_dir" = "null" ] ; then
+        echo "error: project <$project_name> did not exist!"
+        exit 1
+      fi
+      project_hosts=$( dc-yq '.projects.'$project_name'.dc.home.[].host' ${MDE_DC_YAML} )
+      for i in $project_hosts ; do
+        nrc=$(dc-host -p $project_name -h $i $host nrc)
+        found=0
+        if [ "$nrc" != "0" ] ; then
+          echo " $nrc containers still running on <$i> for this project"
+          found=1
+        fi
+      done
+      if [ "$found" = "1" ] ; then
+        echo "error: do: dc -p ..."
+        exit 1
+      fi
+      echo "TBD: check volumes of project on target host"
+      rm -rvf $project_dir
+      exit 0
+    elif [ "$CMD" = "create" ] ; then
+      echo "################################################################################"
+      echo "# create project <$project_name>"
+      echo "################################################################################"
+      host="$2"
+      if [ "$(dc-yq '.hosts.'$host'.state' ${MDE_DC_YAML})" = "null" ] ; then
+        echo "error: host <$host> did not exist!"
+        exit 1
+      fi
+      if [ "$project_dir" != "null" ] ;then
+        echo "error: project <$project_name> already exists exists!"     
+        exit 1
+      fi
+      main_service="$3"    # keep it simple, like: git,...
+      conf_dir="$4"
+      traefik_net="traefik_default"
+      image="filebrowser/filebrowser:v2.25.0"
+      if [ -d ${conf_dir} ] ; then
+        echo "error: ${conf_dir} exists!"
+        exit 1
+      fi
+      mkdir -p ${conf_dir}
+      echo "${conf_dir} created"
+      cp -r /opt/dc/templates/create/project/.   ${conf_dir}/
+      flist=$( find  ${conf_dir} -type f)
+      for i in $flist ; do
+        sed -i "s|<project_name>|${project_name}|g"   $i
+        sed -i "s|<main_service>|${main_service}|g"   $i
+        sed -i "s|<host>|${host}|g"                   $i
+        sed -i "s|<image>|${image}|g"                 $i
+        sed -i "s|<traefik_net>|${traefik_net}|g"     $i
+        echo "$i"
+      done
+      cd ${conf_dir}
+      dc config refresh
+      dc up
+      dc login ls /
+      dc rm
+      exit 0
+    fi
   fi
-  mkdir -p ${project_dir}
-  echo "${project_dir} created"
-  cp -r /opt/dc/templates/create-project/.         ${project_dir}/
-  flist=$( find  ${project_dir} -type f)
-  for i in $flist ; do
-    sed -i "s|<project_name>|${project_name}|g"   $i
-    sed -i "s|<main_service>|${main_service}|g"   $i
-    sed -i "s|<host>|${host}|g"                   $i
-    sed -i "s|<image>|${image}|g"                 $i
-    sed -i "s|<traefik_net>|${traefik_net}|g"     $i
-    echo "$i"
-  done
-  cd ${project_dir}
-  dc config refresh
-  dc up
-  dc login ls /
-  dc rm
-  exit 0
+  if [ "$TYP" = "host" ] ; then
+    name="$1"
+    if [ "$name" = "" ] ; then
+      echo "error: invalid host name <$name> given!"
+      exit 1
+    fi
+    exists=$( dc-yq '.hosts.'$name'.state' ${MDE_DC_YAML} )
+    if [ "$CMD" = "delete" ] ; then
+      echo "################################################################################"
+      echo "# delete host <$name> definition"
+      echo "################################################################################"
+      if [ "$exists" = "null" ] ; then
+         echo "error: host <$name> did not exist!"
+         exit 1
+      fi
+      if [ "$( dc-list projects -h $name)" != "" ] ; then
+        echo "error: the following projects still defined for host <$name> :"
+        dc-list projects -h $name | sed "s|^| - |g" 
+        exit 1
+      fi
+      echo "TBD in $0 : do not allow, if hcloud server is assigned an running!"
+      rm -fv ${MDE_DC_DIR}/.ssh/dc/config/${name}.*
+      exit 0
+    fi
+    if [ "$CMD" = "create" ] ; then
+      echo "################################################################################"
+      echo "# create host <${name}> definition"
+      echo "################################################################################"
+      if [ -f "${MDE_DC_DIR}/.ssh/dc/config/${name}.yml" ] ; then
+        echo "error: <${MDE_DC_DIR}/.ssh/dc/config/${name}.yml> exists!"
+        echo "remove it with:  rm -vf ${MDE_DC_DIR}/.ssh/dc/config/${name}.*" 
+        exit 1
+      fi
+      cp  /opt/dc/templates/create/host/host.config ${MDE_DC_DIR}/.ssh/dc/config/${name}.ssh
+      cp  /opt/dc/templates/create/host/host.yml    ${MDE_DC_DIR}/.ssh/dc/config/${name}.yml
+      flist="${MDE_DC_DIR}/.ssh/dc/config/${name}.ssh ${MDE_DC_DIR}/.ssh/dc/config/${name}.yml"
+      hostname="$name"
+      if [ "$2" != "" ] ; then
+        hostname="$2"
+      fi
+      for i in $flist ; do
+          sed -i "s|<name>|${name}|g"   $i
+          sed -i "s|<hostname_or_ip>|${hostname}|g"   $i
+          echo "created '$i'"
+      done   
+    fi
+    exit 0
+  fi
 fi
 
-if [ "$1" = "show"  ] ; then
+if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
+  if [[ "$1" == "" || ( "$1" != "host" &&  "$1" != "project" ) ]] ; then
+    echo "error: unkown type given. Use host or project!"
+    exit 1
+  fi
+  TYP="$1" ; shift
+  if [ "$1" == "" ] ; then
+    echo "error: no $TYP name given!"
+    exit 1
+  fi
+  name="$1" ; shift
+  rest=$*
+  #if [ "$TYP" = "host" ] ; then
+  #else
+  #fi
+  echo "conig_file="
+  exit $?  
+fi
+
+if [ "$CMD" = "show"  ] ; then
   dc-yq ${MDE_DC_YAML}
 fi  
 
-if [ "$1" = "check" ] ; then
+if [ "$CMD" = "check" ] ; then
   echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
   hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $hosts ; do
@@ -188,7 +319,6 @@ if [ "$1" = "check" ] ; then
     #
     # check for not unique project names
     #
-    
     anz=$( dc-yq '.projects' ${MDE_DC_YAML} | grep "^${p}:"  | wc -l)
     if [ "$anz" != "1" ] ; then
       echo " ❌ project name [$p] not unique"
