@@ -12,7 +12,9 @@ CMD="$1"
 shift
 
 dc_host="$1"
-
+###################################################################
+# reboot
+###################################################################
 if [ "$CMD" = "reboot" ] ; then
   ssh ${dc_host} "init 6"
   echo "#########################################"
@@ -30,20 +32,42 @@ if [ "$CMD" = "reboot" ] ; then
   exit 0
 fi
 
+###################################################################
+# install
+###################################################################
 if [ "$CMD" = "install" ] ; then
   echo "################################################################################"
   echo "# install docker, set timezone, dist-upgrade on host <$dc_host>"
   echo "################################################################################"
-  image=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.image'     ${MDE_DC_YAML} )
+  image=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'     ${MDE_DC_YAML} )
   if [ ! -f /opt/dc/helper/hcloud-${image}.sh ] ; then
     echo "error: missing installation script </opt/dc/helper/hcloud-${image}.sh>"
     exit 1
   fi
   scp /opt/dc/helper/hcloud-${image}.sh ${dc_host}:/tmp/dc-install
   ssh ${dc_host} /tmp/dc-install >/dev/null
-  exit $?
+  echo "TBD: Disable PasswordAuthentication in sshd_config ..."
+  #ssh  ${dc_host} "sed -i  's|#PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config" 
+  echo "TBD: Unset root password ..."
+  #ssh  ${dc_host}"usermod -p ! root"
+  ret=$?
+  exit $ret
 fi
 
+###################################################################
+# list 
+###################################################################
+if [ "$CMD" = "list" ] ; then
+  hcloud server list
+  #hcloud image list
+  #hcloud location list
+  #hcloud server-type list
+  exit 0
+fi
+
+###################################################################
+# assign
+###################################################################
 if [ "$CMD" = "assign" ] ; then
   shift
   echo "################################################################################"
@@ -54,33 +78,38 @@ if [ "$CMD" = "assign" ] ; then
     exit 1
   fi
   shift
-  FI=/root/.ssh/dc/config/${dc_host}.yml
+  host_dir=$( dc-yq '.hosts.'${dc_host}'.host_dir' ${MDE_DC_YAML} )
   for i in $* ; do
     key=${i%=*}
     val=${i#*=}
-    echo "$i   <$key> <$val>"
-    dc-yq -i '.host.server.hcloud.'$key' = "'${val}'"'         $FI
+    #echo "$i   <$key> <$val>"
+    dc-yq -i '.host.vserver.hcoud.'$key' = "'${val}'"'   $host_dir/host.yml
   done
   dc config refresh
-  dc-yq '.hosts.'${dc_host}'.server' ${MDE_DC_YAML}
+  dc-yq '.hosts.'${dc_host}'.vserver' ${MDE_DC_YAML}
   exit 0
 fi
 
-hname=$(dc-yq '.hosts.'${dc_host}'.server.hcloud.name' ${MDE_DC_YAML} )
+hname=$(dc-yq '.hosts.'${dc_host}'.vserver.hcoud.name' ${MDE_DC_YAML} )
 if [ "$hname" = "" -o "$hname" = "null" ] ; then
-  echo "error: missing hcloud server name in <.hosts.${1}.server.hcloud.name>"
+  echo "error: missing hcloud server name in <.hosts.${1}.vserver.hcoud.name>"
   exit 1
 fi
 
+###################################################################
+# create
+###################################################################
 if [ "$CMD" = "create" ] ; then
   echo "################################################################################"
   echo "# create vserver based on host definition in ${MDE_DC_YAML}"
   echo "################################################################################"
   
-  typ=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.type'     ${MDE_DC_YAML} )
-  img=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.image'    ${MDE_DC_YAML} )
-  loc=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.location' ${MDE_DC_YAML} )
-  key=$( dc-yq '.hosts.'${dc_host}'.server.hcloud.init.ssh-key'  ${MDE_DC_YAML} )
+  host_dir=$( dc-yq '.hosts.'${dc_host}'.host_dir' ${MDE_DC_YAML} )
+  
+  typ=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.type'     ${MDE_DC_YAML} )
+  img=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'    ${MDE_DC_YAML} )
+  loc=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.location' ${MDE_DC_YAML} )
+  key=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.ssh-key'  ${MDE_DC_YAML} )
   echo server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
   hcloud server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
   IP=$(hcloud server ip ${hname} )  
@@ -88,12 +117,13 @@ if [ "$CMD" = "create" ] ; then
   echo "# assign vserver HostName <$IP> to host <${dc_host}> definition"
   echo "################################################################################"
   ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
-  rm -f /root/.ssh/dc/control/${dc_host}
-  dc-yq -i '.host.hostname = "'${IP}'"'   /root/.ssh/dc/config/${dc_host}.yml
-  sed -i "s|HostName .*|HostName ${IP}|g" /root/.ssh/dc/config/${dc_host}.ssh
+  ssh-keyscan -H ${IP} >> /root/.ssh/known_hosts
+  rm -f ${MDE_DC_HOST_DIR}/.control/${dc_host}
+  dc-yq -i '.host.hostname = "'${IP}'"'   $host_dir/host.yml
+  sed -i "s|HostName .*|HostName ${IP}|g" $host_dir/host.ssh
   dc config refresh
   dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
-  cat /root/.ssh/dc/config/${dc_host}.ssh
+  cat $host_dir/host.yml
   echo "###########################################"
   echo "# wait until new sever is reachable via ssh"
   echo "###########################################"
@@ -108,18 +138,16 @@ if [ "$CMD" = "create" ] ; then
   exit 0
 fi
 
+###################################################################
+# info
+###################################################################
 if [ "$CMD" = "info" ] ; then
   hcloud server describe ${hname}
 fi
 
-if [ "$CMD" = "list" ] ; then
-  #hcloud server list
-  #hcloud image list
-  #hcloud location list
-  #hcloud server-type list
-  exit 0
-fi
-
+###################################################################
+# delete
+###################################################################
 if [ "$CMD" = "delete" ] ; then
   echo "################################################################################"
   echo "# delete Hetzner cloud server <$hname>"

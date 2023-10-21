@@ -23,7 +23,7 @@ _help() {
   echo "  dc-ls --active           # "
   echo "  dc-ls --host=<host_name> # show only this host"
   echo "  dc-ls --short            # list only host names"
-  echo "  dc-ls --group=<group>    # show only hosts of group=<group>. see /root/.ssh/dc/config/*.yml"
+  echo "  dc-ls --group=<group>    # show only hosts of group=<group> in '${MDE_DC_HOST_DIR}/*/host.yml'."
   echo ""
 }
 

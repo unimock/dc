@@ -18,23 +18,81 @@
 #fi
 #  prev="${COMP_WORDS[COMP_CWORD-1]}"
 
+function INLIST() {
+  _list="$2"
+  for i in $_list ; do
+    if [ "$i" = "$1" ] ; then
+      return 0
+    fi
+  done
+  return 1     
+}
+
+
 _dc() {
-
-  if [[ "$COMP_CWORD" == "1" ]] ; then
-    COMPREPLY=( $(compgen -W "inspect host install hcloud batch list manage config ls mount umount login" -- "$2") )
-
+  # -h ..
+  if [[ "$3" == "-h" ]] ; then
+    list=$( dc-list hosts dc  )
+    COMPREPLY=( $(compgen -W "$list" -- "$2") )
+  # -p ..
+  elif  [[ "$3" == "-p" ]] ; then
+    list=$( dc-list projects )
+    COMPREPLY=( $(compgen -W "$list" -- "$2") )
+  # dc
+  elif [[ "$COMP_CWORD" == "1" ]] ; then
+    COMPREPLY=( $(compgen -W "inspect host install vserver batch list manage config ls mount umount login" -- "$2") )
+  # dc config ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "config" ]] ; then
-    COMPREPLY=( $(compgen -W "show refresh rebuild create" -- "$2") )
-
+    COMPREPLY=( $(compgen -W "show refresh rebuild create delete yq edit" -- "$2") )
+  # dc config <> ...
+  elif [[ "${COMP_WORDS[1]}" = "config" ]] ; then
+    # dc config delete|  ..
+    if  [[  "$COMP_CWORD" == "3" ]] && INLIST $3 "create delete yq edit" ; then
+      COMPREPLY=( $(compgen -W "host project" -- "$2") )
+    # dc config delete|edit|yq host ..
+    elif [[ "${COMP_WORDS[3]}" == "host" ]] ; then
+      if [[ "${COMP_WORDS[2]}" == "create" ]] ; then
+        if [[ "$COMP_CWORD" == "4" ]] ; then
+          COMPREPLY=( $(compgen -W "<dc_host_name>" -- "$2") )
+        elif [[ "$COMP_CWORD" == "5" ]] ; then
+          COMPREPLY=( $(compgen -W "[<hostname_or_ip>]" -- "$2") )
+        fi
+      else
+        list=$( dc-list hosts all  )
+        COMPREPLY=( $(compgen -W "$list" -- "$2") )
+      fi
+    # dc config delete|edit|yq project
+    elif [[ "${COMP_WORDS[3]}" == "project"  ]] ; then
+      if [[ "${COMP_WORDS[2]}" == "create" ]] ; then
+        if [[ "$COMP_CWORD" == "4" ]] ; then
+          COMPREPLY=( $(compgen -W "<project_name>" -- "$2") )
+        elif [[ "$COMP_CWORD" == "5" ]] ; then
+          list=$( dc-list hosts dc )
+          COMPREPLY=( $(compgen -W "$list" -- "$2") )
+        elif [[ "$COMP_CWORD" == "6" ]] ; then
+          compopt -o default; COMPREPLY=() # work on filesystem
+        fi
+      else 
+        list=$( dc-list projects )
+        COMPREPLY=( $(compgen -W "$list" -- "$2") )
+      fi
+    fi
+  # dc ls .. 
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
     COMPREPLY=( $(compgen -W "projects hosts" -- "$2") )
-
+  # dc host
   elif [[  "$COMP_CWORD" == "2" && "$3" == "host" ]] ; then
     COMPREPLY=( $(compgen -W "state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
-
+  # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
     COMPREPLY=( $(compgen -W "hosts projects" -- "$2") )
+  # dc list host
+  elif [[  "$COMP_CWORD" == "3" && "$3" == "hosts" ]] ; then
+    COMPREPLY=( $(compgen -W "all dc used" -- "$2") )
+  # dc vserver
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "vserver" ]] ; then
 
+    COMPREPLY=( $(compgen -W "reboot install assign create info list delete" -- "$2") )
   fi
 }
 complete -F _dc dc

@@ -2,9 +2,9 @@ Host <name>
     HostName <hostname_or_ip>
     User root
     Port 22
-    IdentityFile ~/.ssh/dc/id_ed25519
+    IdentityFile ${MDE_DC_HOST_DIR}/id_ed25519
     StrictHostKeyChecking no
     UserKnownHostsFile /dev/null
     ControlMaster     auto
-    ControlPath       ~/.ssh/dc/control/%n
+    ControlPath       ${MDE_DC_HOST_DIR}/.control/%n
     ControlPersist    yes

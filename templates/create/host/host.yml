@@ -7,11 +7,12 @@ host:
   machine_id:
   groups:
     - dc
-  server:
-    hcloud:
+  vserver:
+    hcoud:
       name:
       init:
         type:
         image:
         location:
         ssh-key:
+

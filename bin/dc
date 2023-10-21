@@ -27,7 +27,7 @@ show_help() {
   echo "     host ...                      # manage hosts and projects on host"
   echo "     mounts [umount] ...           # list/unmount all projects mounts to hosts"
   echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
-  echo "     hcloud ...                    # create and manage Hezner-Cloud hosts"
+  echo "     vserver ...                   # manage virtual servers and aassign the to host definition"
   echo "     batch ...                     # manage job batches"
   echo "     docker|compose|swarm          # delegate command to standard tools"
   echo "     ssh [<cmd>]                   # login into a host"                          
@@ -64,7 +64,15 @@ show_help() {
 #
 ####################################################################################################################################
 if [ "${1}" = "update" ] ; then
-  (cd /opt/dc && git pull && dc config rebuild)
+  version=$( cat /opt/dc/VERSION )
+  if [ -d /opt/.dc-$version ] ; then
+    echo "backaup /opt/.dc-$version already exists"
+    exit 0
+  fi
+  cp -rf /opt/dc /opt/.dc-$version
+  echo "backup /opt/.dc-$version created"
+  #(cd /opt/dc && git pull )
+  dc config rebuild
   exit 0
 fi
 if [ "${1}" = "readme" ] ; then
@@ -75,7 +83,12 @@ if [ "${1}" = "readme" ] ; then
   fi
 fi
 if [ "${MDE_DC_DOCKER_VOL}" = "" ] ; then
-  echo " ❌ {MDE_DC_DOCKER_VOL not set in </opt/dc/bin/dc-config> "
+  echo " ❌ MDE_DC_DOCKER_VOL not set in </opt/dc/bin/dc-config> "
+  exit 1
+fi
+
+if [ "${MDE_DC_HOST_DIR}" = "" ] ; then
+  echo " ❌ MDE_DC_HOST_DIR not set in </opt/dc/bin/dc-config> "
   exit 1
 fi
 if [ "$1" = "completion" ] ; then
@@ -105,14 +118,14 @@ if [ "$1" = "mounts" ] ; then
   exit 0 
 fi
 if [ "$1" = "reset" ] ; then
-  rm -f /root/.ssh/dc/control/*
+  rm -f ${MDE_DC_HOST_DIR}/.control/*
   exit 0
 fi
-wrapper_list="inspect host install hcloud batch list manage config ls server"
+wrapper_list="inspect host install vserver batch list manage config ls server"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
-    /opt/dc/bin/dc-$i $*
+    /opt/dc/bin/dc-$i $@
     exit $?
   fi  
 done

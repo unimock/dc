@@ -1,0 +1,95 @@
+#!/bin/bash
+# 2023-10-14 
+
+new=".dc-hosts"
+
+cd /root
+rm -rvf ${new}
+
+
+mkdir -p ${new}/.control ${new}/config
+cp -av  .ssh/dc/id* ${new}
+
+
+list=$( ls /root/.ssh/dc/config/*.yml )
+for i in $list ; do
+  name=`basename $i`
+  host=${name%.yml}
+  echo "$name $host"
+  mkdir -p ${new}/$host
+  cp -a /root/.ssh/dc/config/${host}.yml ${new}/$host/host.yml
+  cp -a /root/.ssh/dc/config/${host}.ssh ${new}/$host/host.ssh
+  
+  sed -i 's|~/.ssh/dc/control/%n|${MDE_DC_HOST_DIR}/.control/%n|g'  ${new}/$host/host.ssh
+  sed -i 's|~/.ssh/dc/id_ed25519|${MDE_DC_HOST_DIR}/id_ed25519|g'   ${new}/$host/host.ssh
+done
+
+echo 'Include ~/.dc-hosts/*/host.ssh' >  .ssh/config
+
+  tree ${new}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+exit 0
+
+
+mkdir -p /root/.ssh/dc/config
+mkdir -p /root/.ssh/dc/control
+
+rm  -r /root/.ssh/dc/control.* /root/.ssh/dc/config/*
+
+
+echo 'Include dc/config/*.ssh'  > .ssh/config
+
+
+
+all_cfg=$( ls /root/.ssh/dc/config/*.ssh 2>/dev/null )
+list=""
+for i in $all_cfg ; do
+
+  FI=`dirname $i` 
+  name=`basename $i`
+  name=${name%.ssh}
+  NEW=$FI/$name.yml
+  host=$( grep -h "^Host" $i | sed -e "s/^Host//g" -e "s/ //g" )
+  echo "host:"  > $NEW
+  echo "  state: active" >>$NEW
+  desc=$(  grep "^#desc: "  $i | sed -e "s/#desc: //g" | awk '{$1=$1};1' )
+  prov=$(  grep "^#prov: "  $i | sed "s/#prov: //g"    | awk '{$1=$1};1' )
+  os=$(    grep "^#os: "    $i | sed "s/#os: //g"      | awk '{$1=$1};1' )
+  mid=$(   grep "^#id: "    $i | sed "s/#id: //g"      | awk '{$1=$1};1' )
+  hname=$( grep "HostName"  $i | sed "s/HostName//g"   | awk '{$1=$1};1' )
+  if [ "$prov" = "-"  ] ; then
+    prov=""
+  fi
+  echo "  hostname: $hname"            >>$NEW
+  echo "  desc: \"$desc\""             >>$NEW
+  echo "  info: \"$prov\""             >>$NEW
+  echo "  os: $os"                     >>$NEW
+  echo "  machine_id: $mid"            >>$NEW
+
+  group=$( grep "^#group: " $i | sed "s/#group: //g" | awk '{$1=$1};1')
+  echo "  groups:"                     >>$NEW
+  for (( k=0; k<${#group}; k++ )); do
+    x="${group:$k:1}"
+    if [ "$x" = "d" ] ; then
+      x="dc"
+    fi
+    echo "    - $x"                    >>$NEW
+  done
+  sed -i '/^[[:blank:]]*#/d;s/#.*//'  $i
+
+dc-yq $NEW
+done
+

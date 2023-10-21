@@ -37,18 +37,20 @@ _config_refresh()
   #
   # check for changed hosts configurations
   #
-  last=$( find /root/.ssh/dc/config  -maxdepth 1 -name "*.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "host.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
   if [ ! -f ${hosts_dir}/modified.${stamp} ] ; then
     rm -rf ${hosts_dir}
     mkdir ${hosts_dir}
     echo "$last" | awk '{ print $2 }' > ${hosts_dir}/modified.${stamp}
-    list=$( find /root/.ssh/dc/config -name "*.yml" )
-    echo "hosts:" > ${hosts_dir}/hosts.yml
+    list=$( find ${MDE_DC_HOST_DIR}  -name "*.yml" )
+    echo "hosts:"                                               > ${hosts_dir}/hosts.yml
     for i in $list ; do
-      name=`basename $i`
-      name=${name%.yml}
-      sed "s|^host:|${name}:|g" $i | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' >> ${hosts_dir}/hosts.yml
+      name=${i#${MDE_DC_HOST_DIR}/}
+      name=${name%/host.yml}
+      echo "  $name:"                                           >> ${hosts_dir}/hosts.yml
+      echo "    host_dir: ${MDE_DC_HOST_DIR}/$name"             >> ${hosts_dir}/hosts.yml
+      sed "s|^host:||g" $i | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' >> ${hosts_dir}/hosts.yml
     done
     config_change="1"
   fi
@@ -194,7 +196,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         exit 1
       fi
       if [ "$project_dir" != "null" ] ;then
-        echo "error: project <$project_name> already exists exists!"     
+        echo "error: project <$project_name> already exists!"     
         exit 1
       fi
       main_service="$3"    # keep it simple, like: git,...
@@ -231,12 +233,12 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       echo "error: invalid host name <$name> given!"
       exit 1
     fi
-    exists=$( dc-yq '.hosts.'$name'.state' ${MDE_DC_YAML} )
+    host_dir=$( dc-yq '.hosts.'$name'.host_dir' ${MDE_DC_YAML} )
     if [ "$CMD" = "delete" ] ; then
       echo "################################################################################"
       echo "# delete host <$name> definition"
       echo "################################################################################"
-      if [ "$exists" = "null" ] ; then
+      if [ "$host_dir" = "null" ] ; then
          echo "error: host <$name> did not exist!"
          exit 1
       fi
@@ -246,27 +248,31 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         exit 1
       fi
       echo "TBD in $0 : do not allow, if hcloud server is assigned an running!"
-      rm -fv ${MDE_DC_DIR}/.ssh/dc/config/${name}.*
+      rm -rv ${MDE_DC_HOST_DIR}/$name
       exit 0
     fi
     if [ "$CMD" = "create" ] ; then
       echo "################################################################################"
       echo "# create host <${name}> definition"
       echo "################################################################################"
-      if [ -f "${MDE_DC_DIR}/.ssh/dc/config/${name}.yml" ] ; then
-        echo "error: <${MDE_DC_DIR}/.ssh/dc/config/${name}.yml> exists!"
-        echo "remove it with:  rm -vf ${MDE_DC_DIR}/.ssh/dc/config/${name}.*" 
+      if [  "$host_dir" != "null"  ] ; then
+        echo "error: host <$name> already exist!"
         exit 1
       fi
-      cp  /opt/dc/templates/create/host/host.config ${MDE_DC_DIR}/.ssh/dc/config/${name}.ssh
-      cp  /opt/dc/templates/create/host/host.yml    ${MDE_DC_DIR}/.ssh/dc/config/${name}.yml
-      flist="${MDE_DC_DIR}/.ssh/dc/config/${name}.ssh ${MDE_DC_DIR}/.ssh/dc/config/${name}.yml"
+      if [ -d ${MDE_DC_HOST_DIR}/$name ] ; then
+        echo "error: <${MDE_DC_HOST_DIR}/$name exists!"
+        echo "remove it with:  rm -rf ${MDE_DC_HOST_DIR}/$name" 
+        exit 1
+      fi
       hostname="$name"
       if [ "$2" != "" ] ; then
         hostname="$2"
       fi
+      mkdir -p ${MDE_DC_HOST_DIR}/$name
+      cp  /opt/dc/templates/create/host/*     ${MDE_DC_HOST_DIR}/$name
+      flist=$(find ${MDE_DC_HOST_DIR}/$name -type f)
       for i in $flist ; do
-          sed -i "s|<name>|${name}|g"   $i
+          sed -i "s|<name>|${name}|g"                 $i
           sed -i "s|<hostname_or_ip>|${hostname}|g"   $i
           echo "created '$i'"
       done   
@@ -286,11 +292,25 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
     exit 1
   fi
   name="$1" ; shift
-  rest=$*
-  #if [ "$TYP" = "host" ] ; then
-  #else
-  #fi
-  echo "conig_file="
+  rest=$@
+  if [ "$TYP" = "host" ] ; then
+    config_dir=$( dc-yq '.hosts.'$name'.host_dir' ${MDE_DC_YAML}  )
+    file="host.yml"
+  else
+    config_dir=$( dc-yq '.projects.'$name'.project_dir' ${MDE_DC_YAML}  )
+    file="docker-compose.yml"
+  fi
+  if [ "$config_dir" = "null" ] ; then
+    echo "error: $TYP <$name> does not exists!"
+    exit 1
+  fi 
+  if [ "$CMD" = "edit" ] ; then
+    vi $config_dir
+  else
+    echo "<$1> <$2>"
+    x="'"$2"'" 
+    echo dc-yq $x $config_dir/$file
+  fi
   exit $?  
 fi
 
