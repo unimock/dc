@@ -58,10 +58,10 @@ fi
 # list 
 ###################################################################
 if [ "$CMD" = "list" ] ; then
-  hcloud server list
-  #hcloud image list
-  #hcloud location list
-  #hcloud server-type list
+  dc-hcloud server list
+  #dc-hcloud image list
+  #dc-hcloud location list
+  #dc-hcloud server-type list
   exit 0
 fi
 
@@ -82,7 +82,6 @@ if [ "$CMD" = "assign" ] ; then
   for i in $* ; do
     key=${i%=*}
     val=${i#*=}
-    #echo "$i   <$key> <$val>"
     dc-yq -i '.host.vserver.hcoud.'$key' = "'${val}'"'   $host_dir/host.yml
   done
   dc config refresh
@@ -111,8 +110,8 @@ if [ "$CMD" = "create" ] ; then
   loc=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.location' ${MDE_DC_YAML} )
   key=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.ssh-key'  ${MDE_DC_YAML} )
   echo server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
-  hcloud server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
-  IP=$(hcloud server ip ${hname} )  
+  dc-hcloud server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
+  IP=$(dc-hcloud server ip ${hname} )  
   echo "################################################################################"
   echo "# assign vserver HostName <$IP> to host <${dc_host}> definition"
   echo "################################################################################"
@@ -142,7 +141,7 @@ fi
 # info
 ###################################################################
 if [ "$CMD" = "info" ] ; then
-  hcloud server describe ${hname}
+  dc-hcloud server describe ${hname}
 fi
 
 ###################################################################
@@ -160,7 +159,7 @@ if [ "$CMD" = "delete" ] ; then
     echo "error: unable to delete server <$hname>"
     exit 1
   fi
-  hcloud server delete $hname
+  dc-hcloud server delete $hname
   exit $?
 fi
 

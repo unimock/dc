@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# hcloud ... hetzner cloud
-HCLOUD="1.38.3"
+echo "TBD"
+exit 1
 
 #
-APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd micro"
+APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd "
 
 if [ "$1" = "" ] ; then
   echo ""
@@ -12,7 +12,6 @@ if [ "$1" = "" ] ; then
   echo "     commands:"
   echo "       init ....... initialize dc environment"
   echo "       tools ...... install additional tools. (pv, tree, dialog, ...)"
-  echo "       hcloud ..... hcloud"
   echo "       docker ..... install docker-ce"
   echo ""
 fi
@@ -67,25 +66,6 @@ if [ "$CMD" = "docker" ] ; then
     apt-get install -y docker-ce
     exit $?
   fi
-fi
-####################################################################################
-if [ "$CMD" = "hcloud" ] ; then
-  . /etc/profile
-  
-  VER=$( hcloud version | cut -d"v" -f2 )
-  if [ "$VER" != "$HCLOUD" ] ; then
-    VER=$HCLOUD
-    TDIR=$( mktemp -d )
-    curl -L https://github.com/hetznercloud/cli/releases/download/v${VER}/hcloud-linux-amd64.tar.gz >  $TDIR/hcloud-linux-amd64.tar.gz
-    tar -C $TDIR -xzf $TDIR/hcloud-linux-amd64.tar.gz
-    cp  $TDIR/hcloud /usr/local/bin
-    chmod a+x /usr/local/bin/hcloud
-    source <(hcloud completion bash)
-    if ! grep -q "(hcloud completion bash)" /root/.bashrc ; then echo 'source <(hcloud completion bash)' >> /root/.bashrc ; fi
-    rm -rf $TDIR 
-    echo "install hcloud $VER"
-  fi
-  exit 0
 fi
 ####################################################################################
 if [ "$CMD" = "tools" ] ; then

@@ -20,6 +20,8 @@ show_help() {
   echo "   cluster-commands:"
   echo ""
   echo "     readme                        # show README.md"
+  echo "     update                        # update dc environment"
+  echo "     versions                      # show versions"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list hosts"
   echo "     list ...                      # list hosts/projects"
@@ -32,6 +34,7 @@ show_help() {
   echo "     docker|compose|swarm          # delegate command to standard tools"
   echo "     ssh [<cmd>]                   # login into a host"                          
   echo "     manage ...                    # sync projects between hosts"
+  echo "     hcloud ...                    # link to comptible hcloud version"
   echo ""
   echo "  build and deploy images on host:"
   echo ""
@@ -63,6 +66,15 @@ show_help() {
 # magic main
 #
 ####################################################################################################################################
+if [ "${1}" = "versions" ] ; then
+ echo "dc-$(cat /opt/dc/VERSION)"
+ /opt/dc/external/yq -V
+ /opt/dc/external/hcloud version
+ exit 0
+fi
+
+
+
 if [ "${1}" = "update" ] ; then
   version=$( cat /opt/dc/VERSION )
   if [ -d /opt/.dc-$version ] ; then
@@ -121,7 +133,7 @@ if [ "$1" = "reset" ] ; then
   rm -f ${MDE_DC_HOST_DIR}/.control/*
   exit 0
 fi
-wrapper_list="inspect host install vserver batch list manage config ls server"
+wrapper_list="inspect host install vserver batch list manage config ls server hcloud"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
