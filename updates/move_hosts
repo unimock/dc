@@ -22,6 +22,11 @@ for i in $list ; do
   
   sed -i 's|~/.ssh/dc/control/%n|${MDE_DC_HOST_DIR}/.control/%n|g'  ${new}/$host/host.ssh
   sed -i 's|~/.ssh/dc/id_ed25519|${MDE_DC_HOST_DIR}/id_ed25519|g'   ${new}/$host/host.ssh
+
+replace-helper /root  '/root/.ssh/dc/id_ed25519' '${MDE_DC_HOST_DIR}/id_ed25519'
+replace-helper /root  '/root/.ssh/dc/control' '${MDE_DC_HOST_DIR}/.control'
+
+
 done
 
 echo 'Include ~/.dc-hosts/*/host.ssh' >  .ssh/config

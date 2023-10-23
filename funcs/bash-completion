@@ -80,6 +80,10 @@ _dc() {
   # dc ls .. 
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
     COMPREPLY=( $(compgen -W "projects hosts" -- "$2") )
+  elif [[ "${COMP_WORDS[1]}" = "ls" ]] ; then
+    if [[ "${COMP_WORDS[2]}" == "projects" ]] ; then
+      COMPREPLY=( $(compgen -W "--inspect" -- "$2") )
+    fi
   # dc host
   elif [[  "$COMP_CWORD" == "2" && "$3" == "host" ]] ; then
     COMPREPLY=( $(compgen -W "state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )

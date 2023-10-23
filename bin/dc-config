@@ -20,13 +20,13 @@ _config_refresh()
   config_change="0"
   mkdir -p $project_dir
   #
-  # remove projects from cache, which do not exits in ${MDE_DC_SERV_DIR} anymore
+  # remove projects from cache, which do not exits in ${MDE_DC_PROJ_DIR} anymore
   #
   list=$( find $project_dir -name "modified.*" )
   for i in $list ; do
     relPath=${i%/modified.*}
     relPath=${relPath#${project_dir}/}
-    if [ -f $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE} ] ; then
+    if [ -f $MDE_DC_PROJ_DIR/${relPath}/${MDE_DC_YAML_FILE} ] ; then
       continue
     else
       echo "remove $project_dir/${relPath}"
@@ -57,13 +57,13 @@ _config_refresh()
   #
   # check for changed project configurations
   #
-  list=$( find $MDE_DC_SERV_DIR -name ${MDE_DC_YAML_FILE} )
+  list=$( find $MDE_DC_PROJ_DIR -name ${MDE_DC_YAML_FILE} )
   for i in $list ; do
     relPath=${i%/${MDE_DC_YAML_FILE}}
-    relPath=${relPath#$MDE_DC_SERV_DIR/}
-    VAR="${project_dir}/${i#${MDE_DC_SERV_DIR}/}"
+    relPath=${relPath#$MDE_DC_PROJ_DIR/}
+    VAR="${project_dir}/${i#${MDE_DC_PROJ_DIR}/}"
     DIR="${i%/${MDE_DC_YAML_FILE}}"
-    last=$( find $MDE_DC_SERV_DIR/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+    last=$( find $MDE_DC_PROJ_DIR/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
     stamp=${last% *}
     #echo "$last"
     if [ -f ${project_dir}/${relPath}/modified.${stamp} ] ; then
@@ -75,7 +75,7 @@ _config_refresh()
       compose_yml=$(dc-yq '.project.control.file' $i)
       echo "rebuild dc project for $i"
       cp $i ${project_dir}/${relPath}/
-      docker compose -f $MDE_DC_SERV_DIR/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
+      docker compose -f $MDE_DC_PROJ_DIR/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
       # overrule project name, if host is mailcowdockerized
       project_name=$(dc-yq '.project.overrule_compose_name'  $i)
       if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
@@ -100,9 +100,9 @@ _config_refresh()
       compose_yml=$(dc-yq '.project.control.file' $project_dir/${relPath}/${MDE_DC_YAML_FILE})
       compose_project=$(dc-yq '.name' $project_dir/${relPath}/compose.yml)
       echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
-      echo "    project_dir: $MDE_DC_SERV_DIR/${relPath}"                         >> ${MDE_DC_YAML}
-      echo "    dc_yml: $MDE_DC_SERV_DIR/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
-      echo "    compose_yml: $MDE_DC_SERV_DIR/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
+      echo "    project_dir: $MDE_DC_PROJ_DIR/${relPath}"                         >> ${MDE_DC_YAML}
+      echo "    dc_yml: $MDE_DC_PROJ_DIR/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
+      echo "    compose_yml: $MDE_DC_PROJ_DIR/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
       cat $project_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^project:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
       echo "    compose:"                                                         >> ${MDE_DC_YAML}
@@ -127,7 +127,7 @@ if [ "$1" = "" ] ; then
   echo "# create/delete a sample project:"
   echo "" 
   echo "#$IAM create project <name>       <host> <main_service> <project_dir>"
-  echo "$IAM  create project test-project apps0  filebrowser ${MDE_DC_SERV_DIR}/test-project"
+  echo "$IAM  create project test-project apps0  filebrowser ${MDE_DC_PROJ_DIR}/test-project"
   echo "$IAM  delete project test-project"
   echo ""
   echo "# create/delete a host definition"
