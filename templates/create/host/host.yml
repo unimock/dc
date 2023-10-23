@@ -1,6 +1,5 @@
 host:
   state: active
-  hostname: <hostname_or_ip>
   desc: ""
   info: ""
   os: ubuntu

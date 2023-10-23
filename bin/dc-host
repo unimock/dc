@@ -35,6 +35,7 @@ if [ "$CMD" = "" ] ; then
   echo ""
   echo " host commands:"
   echo "    state               # state of a host. returns: ||ping|sshd|dock| "
+  echo "    ports               # show ports"
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
   echo "    nrc [-p <project>]  # number of all running containers or project container on host"
@@ -197,6 +198,16 @@ EOF
   if [ "$CMD" = "list" ] ; then
     dc-list projects -h $HOST
   fi
+  if [ "$CMD" = "ports" ] ; then
+    echo "dc-ssh=$(dc-yq '.hosts.'$HOST'.port')"
+    list=$( dc-list projects -h $HOST  )
+    for i in $list ; do
+      ports=$(  dc-yq '.projects.'$i'.compose.services.*.ports[].published' | tr '\n' ' ' )
+      if [ "$ports" != "" ] ; then
+        echo "project.$i=$ports"
+      fi
+    done
+  fi 
   ####################################################################################################################
   if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "rmup"  ] ; then
     list=$( dc-list projects -h $HOST )

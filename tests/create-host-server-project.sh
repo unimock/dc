@@ -34,7 +34,7 @@ fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
   dc -p ${PROJECT} rm                         # shutdown project service
   dc config delete project ${PROJECT}         # delete project definition
-  dc vserver delete         ${DC_HOST}         # delete assigned Hetzner cloud server
+  dc vserver delete        ${DC_HOST}         # delete assigned Hetzner cloud server
   dc config delete host    ${DC_HOST}         # delete host definition
   echo "error_detect=$error_detect"
 fi

@@ -37,7 +37,7 @@ _config_refresh()
   #
   # check for changed hosts configurations
   #
-  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "host.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "host.*" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
   if [ ! -f ${hosts_dir}/modified.${stamp} ] ; then
     rm -rf ${hosts_dir}
@@ -50,7 +50,15 @@ _config_refresh()
       name=${name%/host.yml}
       echo "  $name:"                                           >> ${hosts_dir}/hosts.yml
       echo "    host_dir: ${MDE_DC_HOST_DIR}/$name"             >> ${hosts_dir}/hosts.yml
-      sed "s|^host:||g" $i | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' >> ${hosts_dir}/hosts.yml
+     
+      hostname=$( grep " HostName " ${MDE_DC_HOST_DIR}/$name/host.ssh | awk '{ print $2 }' )
+      port=$(     grep " Port "     ${MDE_DC_HOST_DIR}/$name/host.ssh | awk '{ print $2 }' )
+      if [ "$port" = "" ] ; then
+        port="22"
+      fi 
+      echo "    hostname: $hostname"   >> ${hosts_dir}/hosts.yml
+      echo "    port: $port"           >> ${hosts_dir}/hosts.yml
+      sed "s|^host:||g" $i | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d'    >> ${hosts_dir}/hosts.yml
     done
     config_change="1"
   fi

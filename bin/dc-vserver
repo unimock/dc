@@ -118,7 +118,6 @@ if [ "$CMD" = "create" ] ; then
   ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
   ssh-keyscan -H ${IP} >> /root/.ssh/known_hosts
   rm -f ${MDE_DC_HOST_DIR}/.control/${dc_host}
-  dc-yq -i '.host.hostname = "'${IP}'"'   $host_dir/host.yml
   sed -i "s|HostName .*|HostName ${IP}|g" $host_dir/host.ssh
   dc config refresh
   dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
