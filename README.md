@@ -117,7 +117,7 @@ cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 ```
 dc -h ${ABBREV} create
 dc ls
-dc -h ${ABBREV} ssh mkdir -p ${MDE_DC_VOL}/Backup  ${MDE_DC_VOL}/Cache  ${MDE_DC_VOL}/Data  ${MDE_DC_VOL}/Logs  ${MDE_DC_VOL}/Services
+dc -h ${ABBREV} ssh mkdir -p ${MDE_DC_VOL_Backup}  ${MDE_DC_VOL_Cache}  ${MDE_DC_VOL_Data}  ${MDE_DC_VOL_Logs}  ${MDE_DC_VOL_Projects}
 dc -h ${ABBREV} ssh chmod -R a+rwx ${MDE_DC_VOL}
 ```
 
