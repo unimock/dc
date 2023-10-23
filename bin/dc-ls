@@ -69,7 +69,7 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
 
     xxx=""
     yyy=""
-    ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' $MDE_DC_YAML | wc -l )
+    ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
     for h in $p_hosts ; do
       if [ "$opt_inspect" = "1" ]  ; then
 	host_state=$( dc-host -h $h state )

@@ -87,7 +87,7 @@ if [ "$CMD" = "state" ] ; then
     fi
     if [ "$state" = "" ] ; then
       # check if host is off state==standby
-      if [ `dc-yq '.hosts.'$HOST'.state' $MDE_DC_YAML` = "standby" ] ; then
+      if [ `dc-yq '.hosts.'$HOST'.state' ${MDE_DC_YAML}` = "standby" ] ; then
 	state="off"
       fi
     fi	    

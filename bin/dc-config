@@ -26,7 +26,7 @@ _config_refresh()
   for i in $list ; do
     relPath=${i%/modified.*}
     relPath=${relPath#${project_dir}/}
-    if [ -f $MDE_DC_PROJ_DIR/${relPath}/${MDE_DC_YAML_FILE} ] ; then
+    if [ -f ${MDE_DC_PROJ_DIR}/${relPath}/${MDE_DC_YAML_FILE} ] ; then
       continue
     else
       echo "remove $project_dir/${relPath}"
@@ -57,13 +57,13 @@ _config_refresh()
   #
   # check for changed project configurations
   #
-  list=$( find $MDE_DC_PROJ_DIR -name ${MDE_DC_YAML_FILE} )
+  list=$( find ${MDE_DC_PROJ_DIR} -name ${MDE_DC_YAML_FILE} )
   for i in $list ; do
     relPath=${i%/${MDE_DC_YAML_FILE}}
-    relPath=${relPath#$MDE_DC_PROJ_DIR/}
+    relPath=${relPath#${MDE_DC_PROJ_DIR}/}
     VAR="${project_dir}/${i#${MDE_DC_PROJ_DIR}/}"
     DIR="${i%/${MDE_DC_YAML_FILE}}"
-    last=$( find $MDE_DC_PROJ_DIR/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+    last=$( find ${MDE_DC_PROJ_DIR}/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
     stamp=${last% *}
     #echo "$last"
     if [ -f ${project_dir}/${relPath}/modified.${stamp} ] ; then
@@ -75,7 +75,7 @@ _config_refresh()
       compose_yml=$(dc-yq '.project.control.file' $i)
       echo "rebuild dc project for $i"
       cp $i ${project_dir}/${relPath}/
-      docker compose -f $MDE_DC_PROJ_DIR/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
+      docker compose -f ${MDE_DC_PROJ_DIR}/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
       # overrule project name, if host is mailcowdockerized
       project_name=$(dc-yq '.project.overrule_compose_name'  $i)
       if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
@@ -100,9 +100,9 @@ _config_refresh()
       compose_yml=$(dc-yq '.project.control.file' $project_dir/${relPath}/${MDE_DC_YAML_FILE})
       compose_project=$(dc-yq '.name' $project_dir/${relPath}/compose.yml)
       echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
-      echo "    project_dir: $MDE_DC_PROJ_DIR/${relPath}"                         >> ${MDE_DC_YAML}
-      echo "    dc_yml: $MDE_DC_PROJ_DIR/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
-      echo "    compose_yml: $MDE_DC_PROJ_DIR/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
+      echo "    project_dir: ${MDE_DC_PROJ_DIR}/${relPath}"                         >> ${MDE_DC_YAML}
+      echo "    dc_yml: ${MDE_DC_PROJ_DIR}/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
+      echo "    compose_yml: ${MDE_DC_PROJ_DIR}/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
       cat $project_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^project:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
       echo "    compose:"                                                         >> ${MDE_DC_YAML}
@@ -322,9 +322,9 @@ if [ "$CMD" = "check" ] ; then
   echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
   hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $hosts ; do
-    res=$(  dc-yq '.hosts.'$h'.state' $MDE_DC_YAML ) 
+    res=$(  dc-yq '.hosts.'$h'.state' ${MDE_DC_YAML} ) 
     if [ "$res" = "null" ] ; then
-      echo " ❌ missing host definition \".hosts.$h.state:\" in <$MDE_DC_YAM>"
+      echo " ❌ missing host definition \".hosts.$h.state:\" in <${MDE_DC_YAML}>"
     elif [ "$res" != "active" ] ; then
       echo " 💡 \".hosts.$h.state:\" != active"
     fi
