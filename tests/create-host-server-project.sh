@@ -12,6 +12,8 @@ DC_HOST="test-host"
 SERVER="karl"
 PROJECT="test-project"
 
+. /opt/dc/etc/config
+
 if [ "$1" = "" -o "$1" = "create" ] ; then 
   dc config create host ${DC_HOST} test.intra # create new host with hostname test.intra 
   dc vserver assign      ${DC_HOST} hcloud "name=$SERVER" "init.type=cx11" "init.image=ubuntu-22.04" "init.location=fsn1" "init.ssh-key=dc"
@@ -24,7 +26,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   dc vserver install     ${DC_HOST}            # install docker an do a dist-upgrade 
   dc vserver reboot      ${DC_HOST}            # reboot and and wait until docker ist available
   # install, start and test filebrowser template project for the host
-  dc config create project ${PROJECT} ${DC_HOST} filebrowser /root/dc-projects/${PROJECT}
+  dc config create project ${PROJECT} ${DC_HOST} filebrowser ${MDE_DC_PROJ_DIR}/${PROJECT}
   dc -p ${PROJECT} up                         # start project service
   ip=$(dc-yq '.hosts.'${DC_HOST}'.hostname' ${MDE_DC_YAML})
   port=$( dc-yq '.projects.'${PROJECT}'.compose.services.filebrowser.ports.[0].published'  ${MDE_DC_YAML} )

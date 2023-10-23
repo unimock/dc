@@ -40,7 +40,7 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # dc
   elif [[ "$COMP_CWORD" == "1" ]] ; then
-    COMPREPLY=( $(compgen -W "inspect host install vserver batch list manage config ls mount umount login" -- "$2") )
+    COMPREPLY=( $(compgen -W "versions update readme inspect host install vserver batch list manage config ls mount umount login" -- "$2") )
   # dc config ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "config" ]] ; then
     COMPREPLY=( $(compgen -W "show refresh rebuild create delete yq edit" -- "$2") )
