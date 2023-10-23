@@ -22,6 +22,7 @@ show_help() {
   echo "     readme                        # show README.md"
   echo "     update                        # update dc environment"
   echo "     versions                      # show versions"
+  echo "     completion                    # source bash completion like: echo 'source <(dc completion)' >> ~/.bash_aliases"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list hosts"
   echo "     list ...                      # list hosts/projects"
@@ -83,7 +84,8 @@ if [ "${1}" = "update" ] ; then
   fi
   cp -rf /opt/dc /opt/.dc-$version
   echo "backup /opt/.dc-$version created"
-  #(cd /opt/dc && git pull )
+  (cd /opt/dc && git pull )
+  . /opt/dc/funcs/bash-completion
   dc config rebuild
   exit 0
 fi
@@ -94,8 +96,8 @@ if [ "${1}" = "readme" ] ; then
     vi /opt/dc/README.md
   fi
 fi
-if [ "${MDE_DC_DOCKER_VOL}" = "" ] ; then
-  echo " ❌ MDE_DC_DOCKER_VOL not set in </opt/dc/bin/dc-config> "
+if [ "${MDE_DC_VOL}" = "" ] ; then
+  echo " ❌ MDE_DC_VOL not set in </opt/dc/bin/dc-config> "
   exit 1
 fi
 
@@ -121,7 +123,7 @@ if [ "$1" = "mounts" ] ; then
     exit 0
   fi
   if [ "$2" = "umount" ] ; then  
-    list=$( mount | grep fuse.sshfs | grep "${MDE_DC_DOCKER_VOL}"  | cut -d " " -f1 )
+    list=$( mount | grep fuse.sshfs | grep "${MDE_DC_VOL}"  | cut -d " " -f1 )
     for i in $list ; do
       umount $i
       echo unmounting: $i
@@ -269,7 +271,7 @@ case "$CMD" in
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
       #project_name=$(docker compose config | dc-yq '.name')
-      sshfs $HNAME:/${MDE_DC_DOCKER_VOL}/Services/${project_name} ./data
+      sshfs $HNAME:/${MDE_DC_VOL}/Services/${project_name} ./data
       exit $?
     fi
     #project_name=$( docker compose -f `dirname $CONF`/docker-compose.yml config | dc-yq '.name' )
@@ -290,17 +292,17 @@ case "$CMD" in
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh ${HNAME}  mkdir -p /${MDE_DC_DOCKER_VOL}/Services/${project_name}
+        ssh ${HNAME}  mkdir -p /${MDE_DC_VOL}/Services/${project_name}
         rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-               ${LDIR}/ ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE
-        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE>)"
+               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL}/Services/${project_name}/$TYPE
+        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_VOL}/Services/${project_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
-        ssh ${HNAME} ls -d /${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE >/dev/null 2>&1
+        ssh ${HNAME} ls -d /${MDE_DC_VOL}/Services/${project_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
           rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-                  ${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE/ ${LDIR}
-          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_DOCKER_VOL}/Services/${project_name}/$TYPE>) TO <./${TYPE}> done." 
+                  ${HNAME}:/${MDE_DC_VOL}/Services/${project_name}/$TYPE/ ${LDIR}
+          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_VOL}/Services/${project_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
             echo "WARNING ./${TYPE} only exists locally!"  

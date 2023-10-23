@@ -19,7 +19,7 @@ _help()
   echo "       copy .................. only copy data (persistent/service)"
   echo "       image_update .......... update an image (tbd)"
   echo "       backup <source> <target> <mask> ... swarm backup"
-  echo "       backup h1:${MDE_DC_DOCKER_VOL}/Data h2:${MDE_DC_DOCKER_VOL}/Backup/xyz 0,7,14"
+  echo "       backup h1:${MDE_DC_VOL}/Data h2:${MDE_DC_VOL}/Backup/xyz 0,7,14"
   exit 0
 }
 
@@ -28,11 +28,11 @@ copy_data()
 {
   service=$1 ; s_host=$2 ; t_host=$3 
 
-  dc-rdc   $s_host rdc exec ls ${MDE_DC_DOCKER_VOL}/Data/$service/* >/dev/null 2>&1 
+  dc-rdc   $s_host rdc exec ls ${MDE_DC_VOL}/Data/$service/* >/dev/null 2>&1 
   if [ "$?" = "0" ] ; then
-  dc-rdc   $s_host rdc sync ${MDE_DC_DOCKER_VOL}/Data/$service      rdc-${t_host}:${MDE_DC_DOCKER_VOL}/Data/$service     real >/dev/null 2>&1
+  dc-rdc   $s_host rdc sync ${MDE_DC_VOL}/Data/$service      rdc-${t_host}:${MDE_DC_VOL}/Data/$service     real >/dev/null 2>&1
   fi
-  dc-rdc   $s_host rdc sync ${MDE_DC_DOCKER_VOL}/Services/$service  rdc-${t_host}:${MDE_DC_DOCKER_VOL}/Services/$service real 
+  dc-rdc   $s_host rdc sync ${MDE_DC_VOL}/Services/$service  rdc-${t_host}:${MDE_DC_VOL}/Services/$service real 
   ret=$?
   echo -e "#\n# copy_data from $s_host to $t_host for $service (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then

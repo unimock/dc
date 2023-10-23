@@ -365,14 +365,14 @@ if [ "$CMD" = "check" ] ; then
         if [ "$ignore_vol_check" != "true" ] ; then
           for vol in $vol_list ; do
             #echo "  $vol" 
-            if [[ "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p"         || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Logs/$p/"*       || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p"     || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Services/$p/"*   || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p"        || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Cache/$p/"*      || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p"         || \
-                  "$vol" == "${MDE_DC_DOCKER_VOL}/Data/$p/"*          \
+            if [[ "$vol" == "${MDE_DC_VOL}/Logs/$p"         || \
+                  "$vol" == "${MDE_DC_VOL}/Logs/$p/"*       || \
+                  "$vol" == "${MDE_DC_VOL}/Services/$p"     || \
+                  "$vol" == "${MDE_DC_VOL}/Services/$p/"*   || \
+                  "$vol" == "${MDE_DC_VOL}/Cache/$p"        || \
+                  "$vol" == "${MDE_DC_VOL}/Cache/$p/"*      || \
+                  "$vol" == "${MDE_DC_VOL}/Data/$p"         || \
+                  "$vol" == "${MDE_DC_VOL}/Data/$p/"*          \
                ]] ; then
               # check if $vol exists on host
               ssh ${p_on_hosts[$h]} ls -d $vol >/dev/null 2>&1

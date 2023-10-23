@@ -70,7 +70,7 @@ for host in $hosts ; do
     if [ $host_up = 1 ] ; then
       os=$( dc -h $host ssh "lsb_release -s -r" )
       echo "  os: $os"
-      proc=$( dc -h $host ssh df ${MDE_DC_DOCKER_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
+      proc=$( dc -h $host ssh df ${MDE_DC_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
       size=${proc%\%}
       size_text=""
       if [ ${size} -ge ${DISK_USAGE_LIMIT} ] ; then
