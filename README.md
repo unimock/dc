@@ -117,8 +117,8 @@ cat ~/.docker/hosts/${ABBREV}/dc-host.yml
 ```
 dc -h ${ABBREV} create
 dc ls
-dc -h ${ABBREV} ssh mkdir -p /Docker/Backup  /Docker/Cache  /Docker/Data  /Docker/Logs  /Docker/Services
-dc -h ${ABBREV} ssh chmod -R a+rwx /Docker
+dc -h ${ABBREV} ssh mkdir -p ${MDE_DC_VOL}/Backup  ${MDE_DC_VOL}/Cache  ${MDE_DC_VOL}/Data  ${MDE_DC_VOL}/Logs  ${MDE_DC_VOL}/Services
+dc -h ${ABBREV} ssh chmod -R a+rwx ${MDE_DC_VOL}
 ```
 
 ### join slave machine to swarm with rdc support
@@ -169,7 +169,7 @@ dc -h ${ABBREV} ssh
 ### copy data between nodes
 ```
 dc-rdc <source>
-rdc . sync /Docker rdc-<target>:/Docker real
+rdc . sync ${MDE_DC_VOL} rdc-<target>:${MDE_DC_VOL} real
 ```
 
 ### remove a a service and all related data
@@ -180,7 +180,7 @@ dc -i 0 data umount
 dc -i 0 rm
 grep image: docker-compose.yml     # print <service-image>
 dc -i 0 docker rmi <service-image>
-grep "/Docker" docker-compose.yml  # print out <host-volume>
+grep "${MDE_DC_VOL}" docker-compose.yml  # print out <host-volume>
 dc -i 0 ssh rm -Rvf <host-volume>
 cd ..
 rm -Rvf <serive-directory>
