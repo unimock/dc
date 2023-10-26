@@ -37,7 +37,8 @@ if [ "$CMD" = "hosts" ] ; then
   if [ "$2" = "" -o  "$2" = "all" ] ; then
     dc-ls --short | sort
   elif [ "$2" = "dc" ] ; then
-    dc-ls --group=dc --short | sort
+    dc-yq '((.hosts.* | select (.type == "dc" )) | path) [-1]' | sort
+    #dc-ls --group=dc --short | sort
   elif [ "$2" = "used" ] ; then
     dc-yq '.projects.*.dc.home.[].host'   ${MDE_DC_YAML} | sort | uniq
   fi

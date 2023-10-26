@@ -24,7 +24,7 @@ if [ "$CMD" = "reboot" ] ; then
   while true ; do
     state=$( dc host -h ${dc_host} state )
     echo "wait for state==dock current-state=state=$state"
-    if [ "$state" = "dock" ] ; then
+    if [ "$state" = "dock" -o "$state" = "dc" ] ; then
       break
     fi
     sleep 1

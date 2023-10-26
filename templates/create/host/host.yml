@@ -1,11 +1,12 @@
 host:
+  type: dc
   state: active
   desc: ""
   info: ""
   os: ubuntu
   machine_id:
   groups:
-    - dc
+  ssh_config:
   vserver:
     hcoud:
       name:

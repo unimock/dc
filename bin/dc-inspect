@@ -53,7 +53,7 @@ for host in $hosts ; do
     H_STATE=$( dc-yq '.hosts.'$host'.state' ${MDE_DC_YAML} )
     if [ "$H_STATE" = "active"  ] ; then
       state=$( dc-host -h $host state )
-      if [ "$state" = "dock" ] ; then
+      if [ "$state" = "dock" -o "$state" = "dc"  ] ; then
          host_up=1
          state="Running"
       else

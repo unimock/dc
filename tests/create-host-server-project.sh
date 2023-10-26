@@ -2,11 +2,8 @@
 error_detect=0
 err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $LINENO' ERR
 ################################################################################
-# "dc"  ssh-key bei hetzner Hinterlegen
 # dc-hcloud context create  dc  # creates: ~/.config/hcloud/cli.toml 
-# dc-hcloud image    list
-# dc-hcloud location list
-# dc-hcloud type     list
+# dc-hcloud ssh-key create --name dc --public-key-from-file dc/hosts/id_ed25519.pub
 ################################################################################
 DC_HOST="test-host"
 SERVER="karl"

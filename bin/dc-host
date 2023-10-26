@@ -34,7 +34,12 @@ if [ "$CMD" = "" ] ; then
   echo " usage: `basename $0` [-h <host>] <command>  # manage hosts and/or projects on hosts"
   echo ""
   echo " host commands:"
-  echo "    state               # state of a host. returns: ||ping|sshd|dock| "
+  echo "    state               # state of a host. returns: ||ping|sshd|dock|off|dc|"
+  echo "                        #   dc ....  dc memeber,  if state=dock and host.type==dc"
+  echo "                        #   dock ... docker running"
+  echo "                        #   sshd ... reachable via sshd"
+  echo "                        #   ping ... pingable"
+  echo "                        #   off .... not pingable and host.state==standby"
   echo "    ports               # show ports"
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
@@ -83,6 +88,9 @@ if [ "$CMD" = "state" ] ; then
         ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST pidof dockerd >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           state="dock"
+          if [ `dc-yq '.hosts.'$HOST'.type' ${MDE_DC_YAML}` = "dc" ] ; then
+            state="dc"
+          fi
         fi
       fi
     fi

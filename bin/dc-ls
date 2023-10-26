@@ -73,7 +73,7 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
     for h in $p_hosts ; do
       if [ "$opt_inspect" = "1" ]  ; then
 	host_state=$( dc-host -h $h state )
-	if [ "$host_state" = "dock" ] ; then
+	if [ "$host_state" = "dock" -o "$host_state" = "dc"  ] ; then
           #nrc=$(dc -p $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
           nrc=$(dc-host -p $p -h $h nrc)
 	  color=$COL_RED
@@ -153,7 +153,7 @@ fi
       
       state=$( dc-host -h ${i} state )
 
-      if [ "$state" = "sshd" -o "$state" = "dock" ] ; then
+      if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
         if [ "$os" = "ubuntu" ] ; then
           os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
           os_ver=${os_ver:0:8}
@@ -164,7 +164,7 @@ fi
           os_ver=${os_ver%_*}
         fi
         dver=""
-        if [ "$state" = "dock" ] ; then
+        if [ "$state" = "dock" -o "$state" = "dc" ] ; then
           dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
         fi
         # get mde-wg patch number
@@ -240,7 +240,7 @@ fi
       fi
       eval `cat $host_data_file`
       dc_host_state="${state}"
-      if [ "$dc_host_state" = "sshd" -o "$dc_host_state" = "dock" ] ; then
+      if [ "$dc_host_state" = "sshd" -o "$dc_host_state" = "dock" -o "$dc_host_state" = "dc" ] ; then
         col_state=$COL_LGRAY
         col_std=$COL_LGRAY
         col_size=$COL_LGRAY
