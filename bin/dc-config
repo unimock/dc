@@ -327,7 +327,13 @@ if [ "$CMD" = "show"  ] ; then
 fi  
 
 if [ "$CMD" = "check" ] ; then
+  echo " ✅ dc version: $( cat /opt/dc/VERSION)"
   echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
+  ssh_config_entry='Include '${MDE_DC_HOST_DIR}'/*/host.ssh'
+  grep "Include ${MDE_DC_HOST_DIR}/\*/host.ssh"  ~/.ssh/config >/dev/null 2>&1
+  if [ "$?" != "0" ] ; then
+    echo " ❌ missing ssh config: <Include ${MDE_DC_HOST_DIR}/*/host.ssh> in ~/.ssh/config"
+  fi
   hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $hosts ; do
     res=$(  dc-yq '.hosts.'$h'.state' ${MDE_DC_YAML} ) 

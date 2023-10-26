@@ -13,8 +13,8 @@ services:
 #      - TZ=Europe/Berlin
 #    volumes:
 #      - /etc/localtime:/etc/localtime:ro
-#      - ${DC_VOL_service}/config:/config
-#      - ${DC_VOL_persistent/mysql:/var/lib/mysql
+#      - ${DC_VOL_cfg}/config:/config
+#      - ${DC_VOL_var}/mysql:/var/lib/mysql
 #      - ${DC_VOL_cache}/xyz:/var/xqz
 #      - ${DC_VOL_logs}/smtp:/var/log
 #      - ${DC_VOL_data}/vmail:/home/vmail

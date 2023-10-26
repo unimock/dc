@@ -265,7 +265,7 @@ EOF
       echo "# $host image name ->  backup image name"
       echo "###########################################################################"
       if [ "$cmd" = "backup" ] ; then
-        echo "try to connect to $url"   
+        echo "connecting to image backup repository <$url> ..."   
         ping -c3 -W5  ${url%:*} >/dev/null
         if [ "$?" != "0" ] ; then
           echo "error connexting to $url !!!"
