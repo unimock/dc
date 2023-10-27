@@ -1,83 +1,73 @@
 #!/bin/bash
 
-echo "TBD"
-exit 1
+IAM="dc install"
+if [ "$(ps -o comm= $PPID)" = "dc" ] ; then
+  IAM="dc install"
+fi
 
+_help() {
+  echo ""
+  echo " usage: $IAM  base|.."
+  echo ""
+  echo " common config commands:"
+  echo ""
+  echo "$IAM     # dc managment basi installation"
+  echo ""
+  echo ""
+}
+
+#if [ "$1" = "" ] ; then
+#  _help
+#  exit 0
+#fi
+
+  if [ ! -d /opt/dc ] ; then
+    git clone https://github.com/unimock/dc.git /opt/dc
+  fi
+  if [ ! -f /opt/dc/etc/config ] ; then
+    echo ""
+    echo "# Main configuration file </opt/dc/etc/config> does not exists."
+    echo "# Default configuration from template directory was activated."
+    echo "# You can change it and then re-call dc-install"
+    echo ""
+    mkdir -p /opt/dc/etc
+    cp /opt/dc/templates/config /opt/dc/etc/config
+    exit 0
+  fi
+  source /opt/dc/etc/config
+  echo "$IAM: create directries <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."
+  mkdir -vp ${MDE_DC_PROJ_DIR} ${MDE_DC_HOST_DIR}
+  if [ ! -f /root/dc/hosts/id_ed25519 ] ; then
+    echo "$IAM: create ssh keys in </root/dc/hosts/>..."
+    ssh-keygen -q -N "" -o -a 100 -t ed25519 -f /root/dc/hosts/id_ed25519 -C 'dc'
+  fi
+  echo "$IAM: create <etc/profile.d/dc-profile.sh>..."
+  echo 'source /opt/dc/etc/config'         >  /etc/profile.d/dc-profile.sh
+  echo 'export PATH=/opt/dc/bin:$PATH'     >> /etc/profile.d/dc-profile.sh
+  chmod a+x /etc/profile.d/dc-profile.sh
+  echo "$IAM: modify </root/.bashrc>..."
+
+  sed -i '1 i\source /opt/dc/etc/config #dc-install' /root/.bashrc
+  sed -i '1 i\export PATH=/opt/dc/bin:$PATH #dc-install' /root/.bashrc
+
+  echo "$IAM: modify </root/.bash_aliases>..."
+  echo 'source <(/opt/dc/bin/dc completion) #dc-install' >> /root/.bash_aliases
+  echo "$IAM: modify </root/.ssh/config>..."
+  echo 'Include /opt/dc/var/ssh/config/* #dc-install' >> /root/.ssh/config
+
+exit 0
+
+####################################################################################
+#echo "TBD: sshfs qemu-guest-agent"
+#if [ "$CMD" = "tools" ] ; then
+#  . /etc/profile
 #
-APT_LIST="tig pv tree sshfs sendemail libnet-ssleay-perl libio-socket-ssl-perl dialog qemu-guest-agent sshfs knockd "
+#  if [ "${LC_ALL}" = "" ] ; then
+#    export LC_ALL=en_US.UTF-8
+#    update-locale LC_ALL=en_US.UTF-8
+#  fi
+#  apt-get update
+#  apt-get install -y $APT_LIST
 
-if [ "$1" = "" ] ; then
-  echo ""
-  echo " usage `basename $0` <command>"
-  echo "     commands:"
-  echo "       init ....... initialize dc environment"
-  echo "       tools ...... install additional tools. (pv, tree, dialog, ...)"
-  echo "       docker ..... install docker-ce"
-  echo ""
-fi
-CMD="$1"
-if [ "$CMD" = "init" ] ; then
-  ##############################################################
-  FI=/opt/dc/etc/config
-  if [ ! -f $FI ] ; then
-    echo "creating dc default configuration file <$FI>"
-    mkdir -p `dirname $FI`
-    echo 'export MDE_DC_DIR=/root'                                  > $FI
-    echo 'export MDE_DC_PROJ_DIR=${MDE_DC_DIR}/Services'           >> $FI
-    echo 'export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch'             >> $FI
-    echo 'export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs'                >> $FI
-    echo 'export MDE_DC_CONFIG_DIR=${MDE_DC_DIR}/config'           >> $FI
-  fi
-  ##############################################################
-  FI=/etc/profile.d/dc-profile.sh
-  . /opt/dc/etc/config
-  echo "creating dc profile <$FI>"
-  rm -f $FI
-  mkdir -p `dirname $FI`
-  echo '. /opt/dc/etc/config'                                                     > $FI
-  echo 'export PATH=$PATH:/opt/dc/bin:${MDE_DC_DIR}/utils:${MDE_DC_DIR}/scripts' >> $FI
-  #echo alias de="'"'__de() { eval "$(docker-machine env $1 )" ; }; __de'"'"      >> $FI
-  . /etc/profile
-  ##############################################################
-  exit 0
-fi
-####################################################################################
 
-if [ "$CMD" = "docker" ] ; then
-  apt-get install -y lsb-release
-  REL=$(lsb_release -cs)
-  if [ "${REL}" = "jammy" ] ; then # ubuntu-server 22.04
-    apt-get install -y ca-certificates curl gnupg
-    mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-    ${REL} stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-     chmod a+r /etc/apt/keyrings/docker.gpg
-     apt-get update
-     apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-     exit $?
-  else
-    apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-    #add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) edge"
-    echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu $REL stable" > /etc/apt/sources.list.d/docker.list
-    apt-get update
-    apt-get install -y docker-ce
-    exit $?
-  fi
-fi
-####################################################################################
-if [ "$CMD" = "tools" ] ; then
-  . /etc/profile
 
-  if [ "${LC_ALL}" = "" ] ; then
-    export LC_ALL=en_US.UTF-8
-    update-locale LC_ALL=en_US.UTF-8
-  fi
-
-  apt-get update
-  apt-get install -y $APT_LIST
- 
-  exit 0
-fi
