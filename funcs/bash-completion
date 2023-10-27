@@ -56,6 +56,8 @@ _dc() {
           COMPREPLY=( $(compgen -W "<dc_host_name>" -- "$2") )
         elif [[ "$COMP_CWORD" == "5" ]] ; then
           COMPREPLY=( $(compgen -W "[<hostname_or_ip>]" -- "$2") )
+        elif [[ "$COMP_CWORD" == "6" ]] ; then
+          COMPREPLY=( $(compgen -W "ping sshd dock dc" -- "$2") )
         fi
       else
         list=$( dc-list hosts all  )

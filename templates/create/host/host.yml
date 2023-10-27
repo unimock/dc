@@ -4,7 +4,7 @@ host:
   #   - sshd ... if host is accessible via ssh
   #   - dock ... if host is accessible via ssh and has docker installed
   #   - dc ..... if host is accessible via ssh and has docker installed and belongs to dc cluster
-  type: dc
+  type: <type>
   state: active
   # hostname or ip
   hostname: <hostname_or_ip> 

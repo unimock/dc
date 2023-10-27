@@ -151,8 +151,8 @@ if [ "$1" = "" ] ; then
   echo ""
   echo "# create/delete a host definition"
   echo ""
-  echo "#$IAM create host    <host>     [<hostname_or_ip]"
-  echo "$IAM  create host    test-host  localhost"
+  echo "#$IAM create host    <host>     [<hostname_or_ip] [type]"
+  echo "$IAM  create host    test-host  localhost         ping|sshd|dock|dc # default=dc"
   echo "$IAM  delete host    test-host"
   echo ""
   exit 0
@@ -295,12 +295,17 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       if [ "$2" != "" ] ; then
         hostname="$2"
       fi
+      typ="dc"
+      if [ "$3" != "" ] ; then
+        typ="$3"
+      fi
       mkdir -p ${MDE_DC_HOST_DIR}/$name
       cp  /opt/dc/templates/create/host/*     ${MDE_DC_HOST_DIR}/$name
       flist=$(find ${MDE_DC_HOST_DIR}/$name -type f)
       for i in $flist ; do
           sed -i "s|<name>|${name}|g"                 $i
           sed -i "s|<hostname_or_ip>|${hostname}|g"   $i
+          sed -i "s|<type>|${typ}|g"                  $i
           echo "created '$i'"
       done   
     fi
@@ -334,9 +339,7 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
   if [ "$CMD" = "edit" ] ; then
     vi $config_dir
   else
-    echo "<$1> <$2>"
-    x="'"$2"'" 
-    echo dc-yq $x $config_dir/$file
+    echo "currentlx not suppoprted!!!!"
   fi
   exit $?  
 fi

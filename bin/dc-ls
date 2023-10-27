@@ -66,21 +66,20 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
     p_groups=${p_groups%,}
     main_service=$( dc-yq '.projects.'$p'.dc.main_service'    ${MDE_DC_YAML} )
     p_image=$( dc-yq '.projects.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
-
     xxx=""
     yyy=""
     ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
     for h in $p_hosts ; do
       if [ "$opt_inspect" = "1" ]  ; then
-	host_state=$( dc-host -h $h state )
-	if [ "$host_state" = "dock" -o "$host_state" = "dc"  ] ; then
+	      host_state=$( dc-host -h $h state )
+	      if [ "$host_state" = "dock" -o "$host_state" = "dc"  ] ; then
           #nrc=$(dc -p $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
           nrc=$(dc-host -p $p -h $h nrc)
-	  color=$COL_RED
+	        color=$COL_RED
         elif [ "$host_state" = "off" ] ; then # host is defined as state=standby in host definition
-	  nrc=0
-	  color=$COL_GRAY
-	fi	
+	        nrc=0
+	        color=$COL_GRAY
+	      fi	
         if [ "$ndc" = "$nrc" ] ; then
           xxx="$xxx $h"
           yyy="$yyy $h"
@@ -91,13 +90,18 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
       else
         xxx="$xxx $h"
         yyy="$yyy $h"
+
       fi
+      
     done
     xxx=${xxx# }
     yyy=${yyy# }
     len=$((15+${#yyy}-${#xxx}))
     yyy="$yyy                               "
     yyy=${yyy:0:$len}
+    if [ "$opt_inspect" != "1" ]  ; then
+      COL_LGRAY=${COL_DEFAULT}  #if not inspect, print not lighten
+    fi
     printf "${COL_LGRAY}%15s|%2s|%b${COL_LGRAY}|%-20s|%-35s|%-35s|%s${COL_DEFAULT}\n" "$p" "${ndc}" "${yyy}" "$p_groups" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
   done
   exit 0
