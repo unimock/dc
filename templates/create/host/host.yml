@@ -1,12 +1,28 @@
 host:
+  # type can be:
+  #   - ping ... if host is only pingable
+  #   - sshd ... if host is accessible via ssh
+  #   - dock ... if host is accessible via ssh and has docker installed
+  #   - dc ..... if host is accessible via ssh and has docker installed and belongs to dc cluster
   type: dc
   state: active
+  # hostname or ip
+  hostname: <hostname_or_ip> 
+  # sshd port 
+  port: "22"
+  groups:
   desc: ""
   info: ""
   os: ubuntu
   machine_id:
-  groups:
   ssh_config:
+    User: root
+    IdentityFile: ${MDE_DC_HOST_DIR}/id_ed25519
+    StrictHostKeyChecking: no
+    UserKnownHostsFile: /dev/null
+    ControlMaster: auto
+    ControlPersist: yes
+  # if host is homed in Hetzner Cloud
   vserver:
     hcoud:
       name:
@@ -15,4 +31,3 @@ host:
         image:
         location:
         ssh-key:
-

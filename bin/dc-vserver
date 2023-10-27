@@ -59,6 +59,7 @@ fi
 ###################################################################
 if [ "$CMD" = "list" ] ; then
   dc-hcloud server list
+  echo "TBD: show assiggnment host <-> vhost"
   #dc-hcloud image list
   #dc-hcloud location list
   #dc-hcloud server-type list
@@ -102,9 +103,7 @@ if [ "$CMD" = "create" ] ; then
   echo "################################################################################"
   echo "# create vserver based on host definition in ${MDE_DC_YAML}"
   echo "################################################################################"
-  
   host_dir=$( dc-yq '.hosts.'${dc_host}'.host_dir' ${MDE_DC_YAML} )
-  
   typ=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.type'     ${MDE_DC_YAML} )
   img=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'    ${MDE_DC_YAML} )
   loc=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.location' ${MDE_DC_YAML} )
@@ -117,11 +116,12 @@ if [ "$CMD" = "create" ] ; then
   echo "################################################################################"
   ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
   ssh-keyscan -H ${IP} >> /root/.ssh/known_hosts
-  rm -f ${MDE_DC_HOST_DIR}/.control/${dc_host}
-  sed -i "s|HostName .*|HostName ${IP}|g" $host_dir/host.ssh
+  rm -f /opt/dc/var/ss/control/${dc_host}
+  # place IP or hostname in host.yml definition and rebuild
+  dc-yq -i '.host.hostname = "'$IP'"'  $host_dir/host.yml
   dc config refresh
-  dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
-  cat $host_dir/host.yml
+  #dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
+  dc-yq '.' $host_dir/host.yml
   echo "###########################################"
   echo "# wait until new sever is reachable via ssh"
   echo "###########################################"

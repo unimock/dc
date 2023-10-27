@@ -23,6 +23,7 @@ show_help() {
   echo "     update                        # update dc environment"
   echo "     versions                      # show versions"
   echo "     completion                    # source bash completion like: echo 'source <(dc completion)' >> ~/.bash_aliases"
+  echo "     ssh-control-reset             # remove ssh control sockets"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list hosts"
   echo "     list ...                      # list hosts/projects"
@@ -131,8 +132,8 @@ if [ "$1" = "mounts" ] ; then
   fi
   exit 0 
 fi
-if [ "$1" = "reset" ] ; then
-  rm -f ${MDE_DC_HOST_DIR}/.control/*
+if [ "$1" = "ssh-control-reset" ] ; then
+  rm -fv  /opt/dc/var/ssh/control/*
   exit 0
 fi
 wrapper_list="inspect host install vserver batch list manage config ls server hcloud"
