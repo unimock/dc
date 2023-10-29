@@ -243,9 +243,9 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       done
       cd ${conf_dir}
       dc config refresh
-      dc up
-      dc login ls /
-      dc rm
+      #dc up
+      #dc login ls /
+      #dc rm
       exit 0
     fi
   fi
