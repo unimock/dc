@@ -92,7 +92,6 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
         yyy="$yyy $h"
 
       fi
-      
     done
     xxx=${xxx# }
     yyy=${yyy# }
@@ -108,168 +107,149 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
 fi
 
 ####################################################################################################################################
+# hosts
+####################################################################################################################################
+HOST_DATA_DIR=/opt/dc/var/hosts
+mkdir -p $HOST_DATA_DIR
+if [ "$opt_group" != "" ] ; then
+  list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
+else
+  list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} | sort )
+fi
 
-    if [ "$opt_group" != "" ] ; then
-      list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
+if [ "$opt_short" = "1" ] ; then
+  for i in $list ; do     
+    if [ "$opt_active" = "1" ] ; then
+      ssh -o BatchMode=yes -o ConnectTimeout=1 $i true >/dev/null 2>&1
+      ret=$?
+      if [ "$ret" = "0" ] ; then
+        echo "$i"
+      fi
     else
-      list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} | sort )
+        echo "$i"
     fi
-    if [ "$opt_short" = "1" ] ; then
-      for i in $list ; do     
-        if [ "$opt_active" = "1" ] ; then
-          ssh -o BatchMode=yes -o ConnectTimeout=1 $i true >/dev/null 2>&1
-          ret=$?
-          if [ "$ret" = "0" ] ; then
-            echo "$i"
-          fi
-        else
-            echo "$i"
-        fi
-      done 
-      exit 0
-    fi
-    MASK="%10s|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-    printf "$MASK" "HOST" "STAT" "GROUPS" "OS" "OS_VER" "DOCK_VER" "MDE_VER" "M" "P" "HD" "ID" "LAST_REACHABLE" "DESCRIPTION"
-    printf "$MASK" "----------" "----" "------" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
-    for i in $list ; do
-      if [ "$opt_host" != "" -a "$opt_host" != "$i" ] ; then
-         continue
-      fi
-      desc=$(  dc-yq '.hosts.'$i'.desc'       ${MDE_DC_YAML} )
-      prov=$(  dc-yq '.hosts.'$i'.info'       ${MDE_DC_YAML} )
-      group=$( dc-yq '.hosts.'$i'.groups.[]'  ${MDE_DC_YAML} | tr '\r\n' ',' )
-      group=${group%,}
-      os=$(    dc-yq '.hosts.'$i'.os'         ${MDE_DC_YAML} )
-      mid=$(   dc-yq '.hosts.'$i'.machine_id' ${MDE_DC_YAML} )
-      hname=$( dc-yq '.hosts.'$i'.hostname  ' ${MDE_DC_YAML} )
-
-      if  [ "$hname" = "" ] ; then
-        hname="$i"
-      fi
-      dver=""
-      mver=""
-      os_ver=""
-      size=""
-      patch=""
-      serial=""
-      monitor=""
-      state=""
+  done 
+  exit 0
+fi
+MASK="%10s|%-4s|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
+printf "$MASK" "host" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "mid" "last_inspection" "description"
+printf "$MASK" "----------" "----" "----" "------" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
+for host in $list ; do
+  if [ "$opt_host" != "" -a "$opt_host" != "$host" ] ; then
+    continue
+  fi
+  host_data_file=$HOST_DATA_DIR/$host
+  if [ ! -f $host_data_file ] ; then
+    echo "insp_os_ver="          >> $host_data_file
+    echo "insp_dock_ver="        >> $host_data_file
+    echo "insp_mde_ver="         >> $host_data_file
+    echo "insp_mde_monitor="     >> $host_data_file
+    echo "insp_mde_patch="       >> $host_data_file
+    echo "insp_hd_size="         >> $host_data_file
+    echo "insp_machine_id="      >> $host_data_file
+    echo "insp_last_inspect="    >> $host_data_file
+  fi
+  desc=$(  dc-yq '.hosts.'$host'.desc'       ${MDE_DC_YAML} )
+  group=$( dc-yq '.hosts.'$host'.groups.[]'  ${MDE_DC_YAML} | tr '\r\n' ' ' )
+  group=${group% }
+  os=$(    dc-yq '.hosts.'$host'.os'         ${MDE_DC_YAML} )
+  mid=$(   dc-yq '.hosts.'$host'.machine_id' ${MDE_DC_YAML} )
+  hname=$( dc-yq '.hosts.'$host'.hostname  ' ${MDE_DC_YAML} )
+  typ=$(   dc-yq '.hosts.'$host'.type  '     ${MDE_DC_YAML} )
+  if  [ "$hname" = "" ] ; then
+    hname="$host"
+  fi
+  dock_ver=""
+  mde_ver=""
+  os_ver=""
+  size=""
+  mde_patch=""
+  mde_monitor=""
       
-      state=$( dc-host -h ${i} state )
-
-      if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
-        if [ "$os" = "ubuntu" ] ; then
-          os_ver=$( ssh $i lsb_release -d -s 2>/dev/null | cut -d " " -f2)
-          os_ver=${os_ver:0:8}
-        else
-          VERSION_ID=""
-          eval $( ssh $i "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
-          os_ver="$VERSION_ID"
-          os_ver=${os_ver%_*}
-        fi
-        dver=""
-        if [ "$state" = "dock" -o "$state" = "dc" ] ; then
-          dver=$( DOCKER_HOST="ssh://$i" docker version --format '{{.Server.Version}}' 2>/dev/null )
-        fi
-        # get mde-wg patch number
-        patch=$( ssh $i cat /etc/mde/patch 2>/dev/null )
-        size=0
-        size_list=$(ssh $i df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
-        for x in $size_list ; do
-          if (( $x >= $size )) ; then
-            let size=$x
-          fi
-        done
-        x=$( ssh $i cat /etc/machine-id 2>/dev/null )
-        if [ "$x" = "" ] ; then
-          serial="!!"
-        elif [ "$x" = "$mid" ] ; then
-          serial="OK"
-        else
-          serial="$x"
-        fi
-        mver=$( ssh $i dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
-        if [ "$mver" = "" ] ; then
-          mver=""
-          monitor=""
-        else
-          x=$( ssh $i pgrep mde-monitor 2>/dev/null)
-          if [ "$x" != "" ] ; then
-            monitor="M"
-          fi
-        fi
-        #
-        # store latests host data
-        #
-        mkdir -p /var/dc/hosts
-        host_data_file=/var/dc/hosts/$i
-        rm -f $host_data_file
-        HOST="host"
-        echo "dc_${HOST}_name=\"${i}\""                 >> $host_data_file
-        echo "dc_${HOST}_state=\"${state}\""            >> $host_data_file
-        echo "dc_${HOST}_group=\"${group}\""            >> $host_data_file
-        echo "dc_${HOST}_os=\"${os}\""                  >> $host_data_file
-        echo "dc_${HOST}_os_version=\"${os_ver}\""      >> $host_data_file
-        echo "dc_${HOST}_docker_version=\"${dver}\""    >> $host_data_file
-        echo "dc_${HOST}_mde_version=\"${mver}\""       >> $host_data_file
-        echo "dc_${HOST}_mde_monitor=\"${monitor}\""    >> $host_data_file
-        echo "dc_${HOST}_patch=\"${patch}\""            >> $host_data_file
-        echo "dc_${HOST}_hd_size=${size}"               >> $host_data_file
-        echo "dc_${HOST}_machine_id=\"${serial}\""      >> $host_data_file
-        echo "dc_${HOST}_last_reachable=$(date +%s)"    >> $host_data_file
-        echo "dc_${HOST}_desc=\"${desc}\""              >> $host_data_file
+  serial=""
+  state=$( dc-host -h ${host} state )
+  if [ "$state" = "$typ" ] ; then
+    if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
+      if [ "$os" = "ubuntu" ] ; then
+        os_ver=$( ssh $host lsb_release -d -s 2>/dev/null | cut -d " " -f2)
+        os_ver=${os_ver:0:8}
       else
-        #
-        # host not connected
-        #
-        dc_host_last_reachable="-"
-        host_data_file="/var/dc/hosts/$i"
-        if [ ! -f $host_data_file ] ; then
-          HOST="host"
-          echo "dc_${HOST}_name=\"${i}\""               >> $host_data_file
-          echo "dc_${HOST}_state=\"${state}\""          >> $host_data_file
-          echo "dc_${HOST}_group=\"${group}\""          >> $host_data_file
-          echo "dc_${HOST}_os=\"${os}\""                >> $host_data_file
-          echo "dc_${HOST}_os_version=\"-\""            >> $host_data_file
-          echo "dc_${HOST}_docker_version=\"-\""        >> $host_data_file
-          echo "dc_${HOST}_mde_version=\"-\""           >> $host_data_file
-          echo "dc_${HOST}_mde_monitor=\"-\""           >> $host_data_file
-          echo "dc_${HOST}_patch=\"-\""                 >> $host_data_file
-          echo "dc_${HOST}_hd_size=\"-\""               >> $host_data_file
-          echo "dc_${HOST}_machine_id=\"-\""            >> $host_data_file
-          echo "dc_${HOST}_last_reachable=\"-\""        >> $host_data_file
-          echo "dc_${HOST}_desc=\"${desc}\""            >> $host_data_file
-        fi
-        sed -i -e 's/dc_host_state=.*/dc_host_state=""/'   $host_data_file
+        VERSION_ID=""
+        eval $( ssh $host "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
+        os_ver="$VERSION_ID"
+        os_ver=${os_ver%_*}
       fi
-      eval `cat $host_data_file`
-      dc_host_state="${state}"
-      if [ "$dc_host_state" = "sshd" -o "$dc_host_state" = "dock" -o "$dc_host_state" = "dc" ] ; then
-        col_state=$COL_LGRAY
-        col_std=$COL_LGRAY
-        col_size=$COL_LGRAY
-        if [ $size -gt 80 ] ; then
-           col_size=$COL_ORANGE
+      dock_ver=""
+      if [ "$state" = "dock" -o "$state" = "dc" ] ; then
+        dock_ver=$( DOCKER_HOST="ssh://$host" docker version --format '{{.Server.Version}}' 2>/dev/null )
+      fi
+      # get mde_patch
+      mde_patch=$( ssh $host cat /etc/mde/patch 2>/dev/null )
+      size=0
+      size_list=$(ssh $host df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
+      for x in $size_list ; do
+        if (( $x >= $size )) ; then
+          let size=$x
         fi
-        if [ $size -gt 90 ] ; then
-           col_size=$COL_RED
-        fi
-      elif [ "$state" = "ping" ] ; then
-	      col_state=$COL_DEFAULT
-	      col_std=$COL_DEFAULT
-	      col_size=$COL_DEFAULT
+      done
+      x=$( ssh $host cat /etc/machine-id 2>/dev/null )
+      if [ "$x" = "" ] ; then
+        serial="!!"
+      elif [ "$x" = "$mid" ] ; then
+        serial="OK"
       else
-        col_state=$COL_GRAY
-        col_std=$COL_GRAY
-        col_size=$COL_GRAY
+        serial="$x"
       fi
-      #
-      # Ausgabe
-      #
-      last_reachable="-"
-      if [ "${dc_host_last_reachable}" != "-" ] ; then
-        last_reachable=$(date -d @${dc_host_last_reachable} +"%Y-%m-%d_%H:%M" )
+      mde_ver=$( ssh $host dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
+      if [ "$mde_ver" = "" ] ; then
+        mde_ver=""
+        mde_monitor=""
+      else
+        x=$( ssh $host pgrep mde-monitor 2>/dev/null)
+        if [ "$x" != "" ] ; then
+          mde_monitor="M"
+        fi
       fi
-      MASK="${col_state}%10s${col_std}|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-      printf "$MASK" "${dc_host_name}" "${state}" "${dc_host_group}" "${dc_host_os}" "${dc_host_os_version}" "${dc_host_docker_version}" "${dc_host_mde_version}" "${dc_host_mde_monitor}" "${dc_host_patch}" "${dc_host_hd_size}" "${dc_host_machine_id}" "${last_reachable}" "${dc_host_desc}"
-    done
+    fi
+    #
+    # store latest inspection data
+    #
+    echo "insp_os_ver=\"${os_ver}\""           >> $host_data_file
+    echo "insp_dock_ver=\"${dock_ver}\""       >> $host_data_file
+    echo "insp_mde_ver=\"${mde_ver}\""         >> $host_data_file
+    echo "insp_mde_monitor=\"${mde_monitor}\"" >> $host_data_file
+    echo "insp_mde_patch=\"${mde_patch}\""     >> $host_data_file
+    echo "insp_hd_size=${size}"                >> $host_data_file
+    echo "insp_machine_id=\"${serial}\""       >> $host_data_file
+    echo "insp_last_inspect=$(date +%s)"       >> $host_data_file
+  fi
+  eval `cat $host_data_file`
+  if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
+    col_state=$COL_LGRAY
+    col_std=$COL_LGRAY
+    col_size=$COL_LGRAY
+    if [ $size -gt 80 ] ; then
+       col_size=$COL_ORANGE
+    fi
+    if [ $size -gt 90 ] ; then
+      col_size=$COL_RED
+    fi
+  elif [ "$state" = "ping" ] ; then
+    col_state=$COL_DEFAULT
+    col_std=$COL_DEFAULT
+    col_size=$COL_DEFAULT
+  else
+    col_state=$COL_GRAY
+    col_std=$COL_GRAY
+    col_size=$COL_GRAY
+  fi
+  #
+  # Ausgabe
+  #
+  last_inspect=""
+  if [ "${insp_last_inspect}" != "" ] ; then
+    last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
+  fi
+  MASK="${col_state}%10s${col_std}|%-4s|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
+  printf "$MASK" "${host}" "${state}" "${typ}" "${group}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+done
