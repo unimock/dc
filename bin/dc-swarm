@@ -12,8 +12,8 @@ _help()
   echo ""
   echo "        ls|rm|up|logs"
   echo ""
-  echo "        sync      <node> [real]   ..................... sync Service/Data directories to node"
-  echo "        pull|push <node> peristent|service [real]   ... pull service or persistentn data from node"
+  echo "        sync      <node> [real]   ........... sync project data directories to node"
+  echo "        pull|push <node> ${MDE_DC_VOL_N_CFG}|${MDE_DC_VOL_N_VAR} [real]   ... pull ${MDE_DC_VOL_N_CFG} or ${MDE_DC_VOL_N_VAR} data from node"
   echo ""           
   exit 0
 }
@@ -39,7 +39,7 @@ if [ "$CMD" = "pull" -o "$CMD" = "push" ] ; then
   NODE=$2
   DIR=$3
   REAL=$4
-  if [ "$DIR" != "persistent" -a "$DIR" != "service" ] ; then
+  if [ "$DIR" != "${MDE_DC_VOL_N_CFG}" -a "$DIR" != "${MDE_DC_VOL_N_VAR}" ] ; then
     _help
   fi
   if [ "$CMD" = "pull" ] ; then

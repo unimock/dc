@@ -54,8 +54,8 @@ show_help() {
   echo ""
   echo "     rmup|up|rm|down|ps|start|stop # control projects"
   echo "     logs [-f]|stop|start          # print logs from service console"
-  echo "     data pull|push service|s|persistent|p|sp [real|r] # sync service and persistent data"
-  echo "     data mount|umount             # mount project and persistent data to ./data"
+  echo "     data pull|push ${MDE_DC_VOL_N_CFG}|c|${MDE_DC_VOL_N_VAR}|v|cv [real|r] # sync ${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data"
+  echo "     data mount|umount             # mount p${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data to ./data"
   echo ""
   echo "   container-commands:"
   echo ""
@@ -244,12 +244,25 @@ else
     exit 1
   fi
 fi
-#echo "HNAME=$HNAME"
 
-#if [ "$HNAME" != "" ] ; then
-  export DOCKER_HOST="ssh://${HNAME}"
-  cd $project_dir
-#fi
+if [ "$CMD" = "vol" ] ; then
+  #if [ "$(pwd)" = "$project_dir" ] ; then
+  if [ "$SERVICE" = "" ] ; then
+    SERVICE=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'") | path ) [-1] )' ${MDE_DC_YAML}  )
+
+ 
+  fi
+  echo "pwd=$(pwd)"
+  #echo "project_dir=$project_dir"
+  echo "HNAME=$HNAME"
+  echo "project=$SERVICE"
+  exit 0
+fi
+
+
+export DOCKER_HOST="ssh://${HNAME}"
+cd $project_dir
+
 case "$CMD" in
   ssh)
     shift
@@ -277,25 +290,23 @@ case "$CMD" in
     project_name=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      #project_name=$(docker compose config | dc-yq '.name')
       sshfs $HNAME:/${MDE_DC_VOL_Projects}/${project_name} ./data
       exit $?
     fi
-    #project_name=$( docker compose -f `dirname $CONF`/docker-compose.yml config | dc-yq '.name' )
     if [ "$scmd" = "umount" ] ; then
       umount ./data
       rmdir ./data
     fi
     type=${3%/}
     DRY=" --dry-run " ; if [ "$4" = "real" -o "$4" = "r" ] ; then DRY="" ; fi
-    if   [ "$type" = "sp" ] ; then list="service persistent"
-    elif [ "$type" = "s"  ] ; then list="service"
-    elif [ "$type" = "p"  ] ; then list="persistent"
+    if   [ "$type" = "cv" ] ; then list="${MDE_DC_VOL_N_CFG} ${MDE_DC_VOL_N_VAR}"
+    elif [ "$type" = "s"  ] ; then list="${MDE_DC_VOL_N_CFG}"
+    elif [ "$type" = "p"  ] ; then list="${MDE_DC_VOL_N_VAR}"
     else   list="$type" ; fi
     for TYPE in $list ; do
-      LDIR=`dirname $CONF`/$TYPE
-      if [ "$TYPE" != "persistent" -a "$TYPE" != "service" ] ; then
-        echo "error neither persistent nor service given."
+      LDIR=./$TYPE
+      if [ "$TYPE" != "${MDE_DC_VOL_N_VAR}" -a "$TYPE" != "${MDE_DC_VOL_N_CFG}" ] ; then
+        echo "error neither ${MDE_DC_VOL_N_VAR} nor ${MDE_DC_VOL_N_CFG} given."
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
@@ -316,8 +327,6 @@ case "$CMD" in
             exit 1
           fi
         fi
-      elif [ "$scmd" = "remove" ] ; then
-         echo "TBD"
       fi
     done
     ;;
