@@ -132,6 +132,36 @@ if [ "$CMD" = "create" ] ; then
 fi
 
 ###################################################################
+# rebuild
+###################################################################
+
+if [ "$CMD" = "rebuild" ] ; then
+  echo "################################################################################"
+  echo "# rebuild vserver b${hname} based on host definition in ${MDE_DC_YAML}"
+  echo "################################################################################"
+  img=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'    ${MDE_DC_YAML} )
+  echo "dc-hcloud server rebuild ${hname} --image $img"
+  dc-hcloud server rebuild ${hname} --image $img
+
+  wait_state="sshd"
+  printf "# wait until host reaches state: $wait_state "
+  while true ; do
+    state=$( dc host -h ${dc_host} state )
+    if [ "$state" = "" ] ; then printf "." ; fi
+    if [ "$state" = "ping" ] ; then printf "p" ; fi
+    if [ "$state" = "sshd" ] ; then printf "s" ; fi
+    if [ "$state" = "dock" ] ; then printf "d" ; fi
+    if [ "$state" = "dc" ]   ; then printf "D" ; fi
+    if [ "$state" = "$wait_state" ] ; then
+      printf "\n# host has reached state: $wait_state\n"
+      break
+    fi
+    sleep 1
+  done
+
+fi
+
+###################################################################
 # info
 ###################################################################
 if [ "$CMD" = "info" ] ; then

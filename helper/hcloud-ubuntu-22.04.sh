@@ -31,7 +31,7 @@ timedatectl set-timezone Europe/Berlin
 echo "$0 : disable PasswordAuthentication in sshd_config" 1>&2
 sed -i  's|#PasswordAuthentication.*|PasswordAuthentication no|g' /etc/ssh/sshd_config
 
-echo "$0 : unset root password"
+echo "$0 : unset root password" 1>&2
 usermod -p ! root
 
 exit 0

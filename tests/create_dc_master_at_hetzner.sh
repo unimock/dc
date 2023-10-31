@@ -14,6 +14,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   dc config create host ${DC_HOST} test.intra dock # create new host with hostname test.intra and type "dock" 
   dc vserver assign     ${DC_HOST} hcloud "name=$SERVER" "init.type=cx11" "init.image=ubuntu-22.04" "init.location=fsn1" "init.ssh-key=dc"
   dc vserver create     ${DC_HOST}            # create assigned hetzner cloud server
+# dc vserver rebuild    ${DC_HOST}
   dc vserver install    ${DC_HOST}            # install docker an do a dist-upgrade 
   dc vserver reboot     ${DC_HOST}            # reboot and and wait until docker ist available
   IP=$(dc-yq '.hosts.'${DC_HOST}'.hostname' ${MDE_DC_YAML})
