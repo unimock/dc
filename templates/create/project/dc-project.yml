@@ -2,13 +2,13 @@ version: "1"
 project:
   desc: description of the dc project
 
-# enter a unique project name, if you can not use COMPOSE_PROJECT_NAME in .env
+  # enter a unique project name, if you can not use COMPOSE_PROJECT_NAME in .env
   overrule_compose_name: 
 
-# set to true, if the service do not really fit into the dc environment. This will skip volume checks.
+  # set to true, if the service do not really fit into the dc environment. This will skip volume checks.
   ignore_volume_check: false
 
-# enter the main service name of the compose project to jump into the container with dc login or to copy files.
+  # enter the main service name of the compose project to jump into the container with dc login or to copy files.
   main_service: <main_service>
   group:
   control:
@@ -16,6 +16,7 @@ project:
     file: docker-compose.yml
   home:
     - type: default
+      # set state to "disabled" so that project service will not be included in "dc-inspect runtime"
       state: active
       host: <host>
 

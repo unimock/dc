@@ -11,17 +11,17 @@ The management on the master includes ssh definitions for accessing the slaves a
 
 
 ## Requirements for master and slaves
- * ubuntu-server >= 20.04
+ * ubuntu-server >= 22.04
  * openssh-server (pubkey mode)
 
-## Installation (master)
+## dc installation
+
 ```
 git clone https://github.com/unimock/dc.git /opt/dc
-# TBD:/opt/dc/bin/dc install init    # initialize dc environment
-# TBD: /opt/dc/bin/dc install docker  # install docker-ce (stable)
-# TBD:/opt/dc/bin/dc install tools   # install additional tools (pv, tree, compose, machine, ..)
-# TBD:/opt/dc/bin/dc install hcloud  # optional: manage hetzner cloud hosts
-. /etc/profile
+/opt/dc/bin/dc-install   # prepare config file /dc/etc/config
+# Check whether the created config file /dc/etc/config fits your needs
+vi /dc/etc/config
+/opt/dc/bin/dc-install   # installation
 ```
 
 # TBD:
