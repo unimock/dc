@@ -5,7 +5,7 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 # dc-hcloud context create  dc  # creates: ~/.config/hcloud/cli.toml 
 # dc-hcloud ssh-key create --name dc --public-key-from-file dc/hosts/id_ed25519.pub
 ################################################################################
-DC_HOST="test-master"
+DC_HOST="tmaster"
 SERVER="hugo"
 
 . /opt/dc/etc/config
@@ -38,7 +38,7 @@ if [ "$1" = "" -o "$1" = "delete" ] ; then
   ssh ${DC_HOST} dc config delete host hugo
   dc vserver delete        ${DC_HOST}         # delete assigned Hetzner cloud server
   dc config delete host    ${DC_HOST}         # delete host definition
-  dc-hcloud server list
+  dc vserver list
   echo "error_detect=$error_detect"
 fi
 exit $error_detect
