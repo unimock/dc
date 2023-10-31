@@ -7,12 +7,6 @@ if [ "$(ps -o comm= $PPID)" = "dc" ] ; then
   IAM="dc install"
 fi
 
-_install_apt() {
-  for i in $apt_packages ; do
-    
-  done
-}
-
 _help() {
   echo ""
   echo " usage: $IAM  base|.."
