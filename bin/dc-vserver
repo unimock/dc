@@ -46,12 +46,7 @@ if [ "$CMD" = "install" ] ; then
   fi
   scp /opt/dc/helper/hcloud-${image}.sh ${dc_host}:/tmp/dc-install
   ssh ${dc_host} /tmp/dc-install >/dev/null
-  echo "TBD: Disable PasswordAuthentication in sshd_config ..."
-  #ssh  ${dc_host} "sed -i  's|#PasswordAuthentication yes|PasswordAuthentication no|g' /etc/ssh/sshd_config" 
-  echo "TBD: Unset root password ..."
-  #ssh  ${dc_host}"usermod -p ! root"
-  ret=$?
-  exit $ret
+  exit $?
 fi
 
 ###################################################################
