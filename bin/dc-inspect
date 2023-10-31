@@ -89,6 +89,9 @@ for host in $hosts ; do
     projects_on_host=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
     for service in $projects_on_host ; do
       echo "  $service:"
+      defined_state=( `dc-yq '( .projects.'$service'.dc.home.[] | select(.host == "'$host'" ) | .state) '`)
+      echo "    state: $defined_state"
+
       if [ "$check_runtime" = "1" ] ; then
         if [ $host_up = 1 ] ; then
           project_status="Up"
@@ -108,9 +111,9 @@ for host in $hosts ; do
             error_list="$error_list $host:$service"
             error=1
           fi
-          echo "    state: $project_status"
+          echo "    act_state: $project_status"
         else
-          echo "    state: UNKOWN"
+          echo "    act_state: UNKOWN"
         fi
       fi
       img_list=$( dc-yq '.projects.'$service'.compose.services.*.image' ${MDE_DC_YAML} )

@@ -254,8 +254,11 @@ if [ "$CMD" = "vol" ] ; then
   fi
   echo "pwd=$(pwd)"
   #echo "project_dir=$project_dir"
-  echo "HNAME=$HNAME"
-  echo "project=$SERVICE"
+  echo "TBD:"
+  echo " HNAME=$HNAME"
+  echo " project=$SERVICE"
+  echo " list|mount|umount|pull|push"
+  echo " <cmd> Project/cfg, Project, Backup, Logs, /Volumes/xzy"
   exit 0
 fi
 
