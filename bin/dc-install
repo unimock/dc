@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APT_PACKAGES"sshfs"
+APT_PACKAGES="sshfs"
 
 IAM="dc install"
 if [ "$(ps -o comm= $PPID)" = "dc" ] ; then
