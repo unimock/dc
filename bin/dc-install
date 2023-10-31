@@ -1,9 +1,17 @@
 #!/bin/bash
 
+APT_PACKAGES"sshfs"
+
 IAM="dc install"
 if [ "$(ps -o comm= $PPID)" = "dc" ] ; then
   IAM="dc install"
 fi
+
+_install_apt() {
+  for i in $apt_packages ; do
+    
+  done
+}
 
 _help() {
   echo ""
@@ -38,36 +46,39 @@ _help() {
   echo "$IAM: create directries <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."
   mkdir -vp ${MDE_DC_PROJ_DIR} ${MDE_DC_HOST_DIR}
   if [ ! -f /root/dc/hosts/id_ed25519 ] ; then
-    echo "$IAM: create ssh keys in </root/dc/hosts/>..."
+    echo "$IAM: create dc ssh keys in </root/dc/hosts/>..."
     ssh-keygen -q -N "" -o -a 100 -t ed25519 -f /root/dc/hosts/id_ed25519 -C 'dc'
   fi
+  # create dc prfile file
   echo "$IAM: create <etc/profile.d/dc-profile.sh>..."
   echo 'source /opt/dc/etc/config'         >  /etc/profile.d/dc-profile.sh
   echo 'export PATH=/opt/dc/bin:$PATH'     >> /etc/profile.d/dc-profile.sh
   chmod a+x /etc/profile.d/dc-profile.sh
-  echo "$IAM: modify </root/.bashrc>..."
 
-  sed -i '1 i\source /opt/dc/etc/config #dc-install' /root/.bashrc
-  sed -i '1 i\export PATH=/opt/dc/bin:$PATH #dc-install' /root/.bashrc
+  # modify other files
+  FI=/root/.bashrc
+  echo "$IAM: modify <$FI>..."
+  touch $FI
+  sed -i '/#dc-install/d' $FI        
+  sed -i '1 i\source /opt/dc/etc/config #dc-install'     $FI
+  sed -i '1 i\export PATH=/opt/dc/bin:$PATH #dc-install' $FI
+  FI=/root/.bash_aliases
+  echo "$IAM: modify <$FI>..."
+  touch $FI
+  sed -i '/#dc-install/d' $FI
+  echo 'source <(/opt/dc/bin/dc completion) #dc-install' >> $FI
+  FI=/root/.ssh/config
+  echo "$IAM: modify <$FI>..."
+  touch $FI
+  sed -i '/#dc-install/d' $FI
+  echo 'Include /opt/dc/var/ssh/config/* #dc-install' >> $FI
 
-  echo "$IAM: modify </root/.bash_aliases>..."
-  echo 'source <(/opt/dc/bin/dc completion) #dc-install' >> /root/.bash_aliases
-  echo "$IAM: modify </root/.ssh/config>..."
-  echo 'Include /opt/dc/var/ssh/config/* #dc-install' >> /root/.ssh/config
+  # install additional apt packages
+  for p in ${APT_PACKAGES} ; do
+    dpkg -s $p >/dev/null 2>&1
+    if [ "$?" != "0" ] ; then
+      apt-get install -y $p
+    fi
+  done
 
 exit 0
-
-####################################################################################
-#echo "TBD: sshfs qemu-guest-agent"
-#if [ "$CMD" = "tools" ] ; then
-#  . /etc/profile
-#
-#  if [ "${LC_ALL}" = "" ] ; then
-#    export LC_ALL=en_US.UTF-8
-#    update-locale LC_ALL=en_US.UTF-8
-#  fi
-#  apt-get update
-#  apt-get install -y $APT_LIST
-
-
-
