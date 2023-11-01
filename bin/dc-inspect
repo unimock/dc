@@ -47,12 +47,12 @@ for host in $hosts ; do
   echo "# checking host $host ..."
   echo "#"
   echo "$host:"
-
+  echo "  type: $(dc-yq '.hosts.'$host'.type' ${MDE_DC_YAML} )"
   if [ "$check_runtime" = "1" ] ; then 	
     host_error_marker=0
     H_STATE=$( dc-yq '.hosts.'$host'.state' ${MDE_DC_YAML} )
     if [ "$H_STATE" = "active"  ] ; then
-      state=$( dc-host -h $host state )
+      state=$( dc-host $host state )
       if [ "$state" = "dock" -o "$state" = "dc"  ] ; then
          host_up=1
          state="Running"

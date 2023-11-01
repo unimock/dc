@@ -194,7 +194,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       fi
       project_hosts=$( dc-yq '.projects.'$project_name'.dc.home.[].host' ${MDE_DC_YAML} )
       for i in $project_hosts ; do
-        nrc=$(dc-host -p $project_name -h $i $host nrc)
+        nrc=$(dc-host $i -p $project_name nrc)
         found=0
         if [ "$nrc" != "0" ] ; then
           echo " $nrc containers still running on <$i> for this project"

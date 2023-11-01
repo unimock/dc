@@ -71,10 +71,10 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
     ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
     for h in $p_hosts ; do
       if [ "$opt_inspect" = "1" ]  ; then
-	      host_state=$( dc-host -h $h state )
+	      host_state=$( dc-host $h state )
 	      if [ "$host_state" = "dock" -o "$host_state" = "dc"  ] ; then
           #nrc=$(dc -p $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
-          nrc=$(dc-host -p $p -h $h nrc)
+          nrc=$(dc-host $h -p $p nrc)
 	        color=$COL_RED
         elif [ "$host_state" = "off" ] ; then # host is defined as state=standby in host definition
 	        nrc=0
@@ -167,7 +167,7 @@ for host in $list ; do
   mde_monitor=""
       
   serial=""
-  state=$( dc-host -h ${host} state )
+  state=$( dc-host ${host} state )
   if [ "$state" = "$typ" ] ; then
     if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
       if [ "$os" = "ubuntu" ] ; then

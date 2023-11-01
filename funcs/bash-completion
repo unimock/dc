@@ -30,8 +30,11 @@ function INLIST() {
 
 
 _dc() {
-  # -h ..
+  # -t ..
   if [[ "$3" == "-h" ]] ; then
+    COMPREPLY=( $(compgen -W "dc all" -- "$2") )
+  # -h ..
+  elif [[ "$3" == "-h" ]] ; then
     list=$( dc-list hosts dc  )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # -p ..
@@ -88,6 +91,9 @@ _dc() {
     fi
   # dc host
   elif [[  "$COMP_CWORD" == "2" && "$3" == "host" ]] ; then
+    list=$( dc-list hosts dc )
+    COMPREPLY=( $(compgen -W "-t $list" -- "$2") )
+  elif [[  "$COMP_CWORD" == "3" ]] ; then 
     COMPREPLY=( $(compgen -W "ports state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
   # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then

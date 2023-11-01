@@ -13,12 +13,13 @@ _ask()
   return
 }
 opt_project=""
+opt_type=""
 on_host=""
 verbose=""
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -h) on_host="$2"              ; shift 2 ;;
+    -t) opt_type="$2"             ; shift 2 ;;
     -p) opt_project="$2"          ; shift 2 ;;
     -v) shift ; verbose="1" ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
@@ -26,13 +27,11 @@ while [ "$#" -gt 0 ]; do
 done
 eval set -- $CURROPT
 
-CMD=$1
-shift
 
-if [ "$CMD" = "" ] ; then
+if [ "$1" = "" ] ; then
   echo ""
-  echo " usage: `basename $0` [-h <host>] <command>  # manage hosts and/or projects on hosts"
-  echo ""
+  echo " usage: `basename $0` <host>|-t <type> <command>  # manage hosts and/or projects on hosts"
+  echo "      type: all dc"
   echo " host commands:"
   echo "    state               # state of a host. returns: ||ping|sshd|dock|off|dc|"
   echo "                        #   dc ....  dc memeber,  if state=dock and host.type==dc"
@@ -63,16 +62,24 @@ if [ "$CMD" = "" ] ; then
   exit 0
 fi
 
-
-if [ "$on_host" = "" ] ; then
-  if [ "$CMD" = "state" ] ; then
-    hlist=$( dc-list hosts all )
-  else
-    hlist=$( dc-list hosts dc )
-  fi
+if [ "$opt_type" = "" ] ; then
+  hlist="$1"
+  shift
 else
-  hlist="$on_host"
+  hlist=$( dc-list hosts $opt_type )
 fi
+CMD=$1
+shift
+
+#if [ "$on_host" = "" ] ; then
+#  if [ "$CMD" = "state" ] ; then
+#    hlist=$( dc-list hosts all )
+#  else
+#    hlist=$( dc-list hosts dc )
+#  fi
+#else
+#  hlist="$on_host"
+#fi
 
 
 if [ "$CMD" = "state" ] ; then
@@ -173,7 +180,7 @@ EOF
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
-    dc host -h $HOST check
+    dc-host $HOST check
     _ask "Start autoremove?"
     ssh $HOST apt-get -y autoremove
     _ask "Start apt-get update?"
@@ -186,7 +193,7 @@ EOF
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
     _ask "Show running containers!"
-    dc host -h $HOST check
+    dc-host $HOST check
     _ask "reboot?"
     ssh $HOST init 6
   fi
@@ -265,8 +272,8 @@ EOF
     cluster="$cluster_name"
     echo ""
     for host in $hlist ; do
-      if [ "$cmd" = "restore" -a "$on_host" = "" ] ; then
-        echo "restoring images only allowd for single haosts. use -h <host> parameter"
+      if [ "$cmd" = "restore" -a "$opt_type" = "" ] ; then
+        echo "restoring images only allowd for single haosts. use dc host <name> restore"
         exit 1
       fi
       echo "###########################################################################"

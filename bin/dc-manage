@@ -128,7 +128,7 @@ for SERVICE in $project_list ; do
       echo " $SERVICE not active. Skipping!"
       continue ;
     fi
-    target_host_state=$( dc-host -h $T_HOST state )
+    target_host_state=$( dc-host $T_HOST state )
     if [ "$target_host_state" = "off" ] ; then
       echo " target host defined as state=standby in host definition and is not reachable"
       error_detect="1"
