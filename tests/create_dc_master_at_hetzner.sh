@@ -10,13 +10,14 @@ SERVER="hugo"
 
 . /opt/dc/etc/config
 
-if [ "$1" = "" -o "$1" = "create" ] ; then 
-  dc config create host ${DC_HOST} test.intra dock # create new host with hostname test.intra and type "dock" 
-  dc vserver assign     ${DC_HOST} hcloud "name=$SERVER" "init.type=cx11" "init.image=ubuntu-22.04" "init.location=fsn1" "init.ssh-key=dc"
-  dc vserver create     ${DC_HOST}            # create assigned hetzner cloud server
-# dc vserver rebuild    ${DC_HOST}
-  dc vserver install    ${DC_HOST}            # install docker an do a dist-upgrade 
-  dc vserver reboot     ${DC_HOST}            # reboot and and wait until docker ist available
+if [ "$1" = "" -o "$1" = "create" ] ; then
+
+  dc host ${DC_HOST} config create test.intra dock  # create new host definition with hostname test.intra and type "dc"
+  dc host ${DC_HOST} vserver assign hcloud "name=$SERVER" "init.type=cx11" "init.image=ubuntu-22.04" "init.location=fsn1" "init.ssh-key=dc"
+  dc host ${DC_HOST} vserver create         # create assigned hetzner cloud server
+# dc host ${DC_HOST} vserver rebuild
+  dc host ${DC_HOST} vserver install        # install docker an do a dist-upgrade 
+  dc host ${DC_HOST} reboot wait dock,dc    # reboot and and wait until docker ist available
   IP=$(dc-yq '.hosts.'${DC_HOST}'.hostname' ${MDE_DC_YAML})
   echo "IP=$IP"
   ssh ${DC_HOST} git clone https://github.com/unimock/dc.git /opt/dc
@@ -24,7 +25,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   ssh ${DC_HOST} /opt/dc/bin/dc-install
   # lets play around on the new dc cluster manager
   ssh ${DC_HOST} 'cat /root/dc/hosts/id_ed25519.pub > /root/.ssh/authorized_keys'
-  ssh ${DC_HOST} dc config create host hugo $IP dc
+  ssh ${DC_HOST} dc host hugo config create $IP dc
   ssh ${DC_HOST} dc ls hosts
   ssh ${DC_HOST} dc config create project filebrowser hugo filebrowser /root/dc/projects/filebrowser
   ssh ${DC_HOST} dc -p filebrowser up
@@ -34,12 +35,12 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   netcat -vz $IP $PORT
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  ssh ${DC_HOST} dc -p filebrowser rm          # stop and remove 
+  ssh ${DC_HOST} dc -p filebrowser rm         # stop and remove 
   ssh ${DC_HOST} dc config delete project filebrowser
-  ssh ${DC_HOST} dc config delete host hugo
-  dc vserver delete        ${DC_HOST}         # delete assigned Hetzner cloud server
-  dc config delete host    ${DC_HOST}         # delete host definition
-  dc vserver list
+  ssh ${DC_HOST} dc host hugo config delete
+  dc host ${DC_HOST} vserver delete           # delete assigned Hetzner cloud server
+  dc host ${DC_HOST} config delete            # delete host definition
+  dc hcloud list
   echo "error_detect=$error_detect"
 fi
 exit $error_detect

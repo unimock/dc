@@ -2,50 +2,16 @@
 
 . /opt/dc/funcs/global
 
-wait_host_state() {
-
-  wait_state=",${2},"
-  printf "# wait until host reaches state: ${2}"
-  while true ; do
-    state=$( dc-host ${1} state )
-    if [ "$state" = "" ] ; then printf "." ; fi
-    if [ "$state" = "ping" ] ; then printf "p" ; fi
-    if [ "$state" = "sshd" ] ; then printf "s" ; fi
-    if [ "$state" = "dock" ] ; then printf "d" ; fi
-    if [ "$state" = "dc" ]   ; then printf "D" ; fi
-    if [[ $wait_state == *",${state},"* ]] ; then
-      printf "\n# host has reached state: $state\n"
-      break
-    fi
-    sleep 1
-  done
-
-
-}
-
-
 if [ "$1" = "" ] ; then
   echo ""
   echo "TBD"
   exit 0
 fi
 
-CMD="$1"
+dc_host="$1"
 shift
 
-dc_host="$1"
-###################################################################
-# reboot
-###################################################################
-if [ "$CMD" = "reboot" ] ; then
-  ssh ${dc_host} "init 6"
-  echo "#########################################"
-  echo "# reboot host <${dc_host}> and wait until server is up"
-  echo "#########################################"
-  sleep 3
-  wait_host_state ${dc_host} "dock,dc"
-  exit 0
-fi
+CMD="$1"
 
 ###################################################################
 # install
@@ -132,7 +98,7 @@ if [ "$CMD" = "create" ] ; then
   dc config refresh
   #dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
   dc-yq '.' $host_dir/host.yml
-  wait_host_state ${dc_host} "sshd"
+  dc-host ${dc_host} state wait "sshd"
   exit 0
 fi
 
@@ -147,7 +113,7 @@ if [ "$CMD" = "rebuild" ] ; then
   img=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'    ${MDE_DC_YAML} )
   echo "dc-hcloud server rebuild ${hname} --image $img"
   dc-hcloud server rebuild ${hname} --image $img
-  wait_host_state ${dc_host} "sshd"
+  dc-host ${dc_host} state wait "sshd"
 fi
 
 ###################################################################

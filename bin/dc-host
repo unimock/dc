@@ -71,16 +71,38 @@ fi
 CMD=$1
 shift
 
-#if [ "$on_host" = "" ] ; then
-#  if [ "$CMD" = "state" ] ; then
-#    hlist=$( dc-list hosts all )
-#  else
-#    hlist=$( dc-list hosts dc )
-#  fi
-#else
-#  hlist="$on_host"
-#fi
+if [ "$CMD" = "config"  ] ; then
+  cmd=$1
+  shift
+  dc-config $cmd host ${hlist} $@
+  exit $?
+fi
+if [ "$CMD" = "vserver" ] ; then
+  dc-vserver ${hlist} $@
+  exit $?
+fi
 
+#################################################################
+# dc-host <host> state wait dc,dock
+#################################################################
+if [ "$CMD" = "state" -a "$1" = "wait" ] ; then
+  wait_state=",${2},"
+  printf "# wait until host reaches state: ${2}"
+  while true ; do
+    state=$( dc-host ${hlist} state )
+    if [ "$state" = "" ] ; then printf "." ; fi
+    if [ "$state" = "ping" ] ; then printf "p" ; fi
+    if [ "$state" = "sshd" ] ; then printf "s" ; fi
+    if [ "$state" = "dock" ] ; then printf "d" ; fi
+    if [ "$state" = "dc" ]   ; then printf "D" ; fi
+    if [[ $wait_state == *",${state},"* ]] ; then
+      printf "\n# host has reached state: $state\n"
+      break
+    fi
+    sleep 1
+  done
+  exit 0
+fi
 
 if [ "$CMD" = "state" ] ; then
   for HOST in $hlist ; do
@@ -104,15 +126,13 @@ if [ "$CMD" = "state" ] ; then
     if [ "$state" = "" ] ; then
       # check if host is off state==standby
       if [ `dc-yq '.hosts.'$HOST'.state' ${MDE_DC_YAML}` = "standby" ] ; then
-	state="off"
+        state="off"
       fi
     fi	    
     echo "$state"
-    
   done
   exit 0
 fi
-
 
 dc mounts umount
 
@@ -144,14 +164,14 @@ EOF
     #ssh ${HOST} "find ${MDE_DC_VOL} /var /xxx /tmp /home -type f -size +${1} -exec ls -lh {} + 2>/dev/null" | awk '{ print "'"${HOST} "'" $5 " " $9}'
   fi
   if [ "$CMD" = "prune" ] ; then
-     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-     ssh   ${HOST} apt-get autoremove
-     dc -h ${HOST} docker volume prune
-     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-     dc -h ${HOST} docker system prune -a
-     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-     ssh   ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
-     ssh   ${HOST} df -h / | grep -v "^Filesystem"
+    ssh   ${HOST} df -h / | grep -v "^Filesystem"
+    ssh   ${HOST} apt-get autoremove
+    dc -h ${HOST} docker volume prune
+    ssh   ${HOST} df -h / | grep -v "^Filesystem"
+    dc -h ${HOST} docker system prune -a
+    ssh   ${HOST} df -h / | grep -v "^Filesystem"
+    ssh   ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+    ssh   ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
     if [ "$opt_project" != "" ] ; then
@@ -160,7 +180,6 @@ EOF
       ssh $HOST docker ps -q | wc -l
     fi
   fi
-
   if [ "$CMD" = "update" ] ; then
     BCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
@@ -174,7 +193,6 @@ EOF
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
   fi
-
   if [ "$CMD" = "upgrade" ] ; then
     BCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
@@ -197,7 +215,6 @@ EOF
     _ask "reboot?"
     ssh $HOST init 6
   fi
-
   if [ "$CMD" = "check" ] ; then
     BCOUNT=$( ssh $HOST docker ps -q | wc -l )
     echo "#"
@@ -206,7 +223,7 @@ EOF
     if [ "$1" = "details" ] ; then
       dc-inspect -h $HOST runtime
     else
-      dc-inspect -h $HOST runtime | grep " state:"
+      dc-inspect -h $HOST runtime | grep -e " state:" -e "^  [^ ]"
     fi
   fi
 
@@ -232,7 +249,12 @@ EOF
   fi
 
   if [ "$CMD" = "reboot"   ] ; then
-    ssh $HOST "reboot ; exit"
+    ssh $HOST "init 6"
+    if [ "$1" != "" ] ; then
+      sleep 3
+      #                   wait <state>
+      dc-host $HOST state $@
+    fi
   fi
 done
 
