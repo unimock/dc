@@ -1,7 +1,7 @@
 # config area:
-export MDE_DC_DIR=/root
-export MDE_DC_PROJ_DIR=${MDE_DC_DIR}/dc/projects
-export MDE_DC_HOST_DIR=${MDE_DC_DIR}/dc/hosts
+export MDE_DC_DIR=/root/dc
+export MDE_DC_PROJ_DIR=${MDE_DC_DIR}/projects
+export MDE_DC_HOST_DIR=${MDE_DC_DIR}/hosts
 export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch
 export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs
 export MDE_DC_CONFIG_DIR=${MDE_DC_DIR}/config

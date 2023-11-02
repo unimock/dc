@@ -28,6 +28,7 @@ fi
 # create
 ############################################################
 if [ "$CMD" = "create" ] ; then
+  mkdir -p ${MDE_DC_BATCH_DIR}
   mkdir -p ${MDE_DC_LOG_DIR}/$JOB_NAME
   if [ ! -f  ${MDE_DC_BATCH_DIR}/$JOB_NAME.list ] ; then
     cat <<EOF >${MDE_DC_BATCH_DIR}/$JOB_NAME.list
