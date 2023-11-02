@@ -48,18 +48,6 @@ if [ "$CMD" = "create" ] ; then
 EOF
     echo "-> configure your batch jobs in ${MDE_DC_BATCH_DIR}/$JOB_NAME.list"
   fi
-#  if [ ! -f  ${MDE_DC_BATCH_DIR}/global.yml ] ; then
-#    cat <<EOF >${MDE_DC_BATCH_DIR}/global.yml
-#batch:
-#  mail:
-#    sender: noreply@my.domain
-#    smtp:
-#      host: xx.yyyy:587 
-#      user:
-#      pass:
-#EOF
-#  echo "-> set your smtp configuration in ${MDE_DC_BATCH_DIR}/global.yml"
-#  fi
   exit 0
 fi
 
@@ -170,8 +158,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
     mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
 
-    #eval $( dc-yml -c ${MDE_DC_CONFIG_DIR}/dc_cluster.yml )
-    #eval $( dc-yml -c ${MDE_DC_BATCH_DIR}/global.yml   )
     if [ "$errors" = "0" ] ; then
       subject="✅ report: ${JOB_NAME}@${cluster_name}"
     else

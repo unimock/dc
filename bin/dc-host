@@ -270,23 +270,11 @@ if [ "$CMD" = "image"   ] ; then
       echo ""
       exit 0
     fi
-
-    # TBD move this in dc-install init sectioen 
-#    if [ ! -f ${MDE_DC_CONFIG_DIR}/dc_cluster.yml ] ; then
-#      mkdir -p ${MDE_DC_CONFIG_DIR}
-#      cat <<EOF > ${MDE_DC_CONFIG_DIR}/dc_cluster.yml
-#cluster:
-#  name:
-#  backup:
-#    image_url:
-#EOF
-#    fi
     #
     # read config data
     #
     cluster_name=$( dc-yq '.config.cluster.name'  )
     cluster_backup_image_url=$( dc-yq '.config.cluster.backup.image_url'  )
-    #eval `dc-yml -c ${MDE_DC_CONFIG_DIR}/dc_cluster.yml`
     if [ "$cluster_name" = "" -o "$cluster_backup_image_url" = "" ] ; then
       echo "cluster_name and/or cluster_backup_image_url not set in config/cluster.yml !!!"
       exit 1
