@@ -142,7 +142,7 @@ if [ "$1" = "ssh-control-reset" ] ; then
   rm -fv  /opt/dc/var/ssh/control/*
   exit 0
 fi
-wrapper_list="inspect host install vserver batch list manage config ls server hcloud"
+wrapper_list="inspect host project install vserver batch list manage config ls server hcloud"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift

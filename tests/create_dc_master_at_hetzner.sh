@@ -25,22 +25,22 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   ssh ${DC_HOST} /opt/dc/bin/dc-install
   # lets play around on the new dc cluster manager
   ssh ${DC_HOST} 'cat /root/dc/hosts/id_ed25519.pub > /root/.ssh/authorized_keys'
-  ssh ${DC_HOST} dc host hugo config create $IP dc
+  ssh ${DC_HOST} dc host HUGO config create $IP dc
   ssh ${DC_HOST} dc ls hosts
-  ssh ${DC_HOST} dc config create project filebrowser hugo filebrowser /root/dc/projects/filebrowser
+  ssh ${DC_HOST} dc project filebrowser config create HUGO filebrowser /root/dc/projects/filebrowser
   ssh ${DC_HOST} dc -p filebrowser up
   ssh ${DC_HOST} dc ls projects --inspect
-  PORT=$(ssh ${DC_HOST} dc-yq '.projects.filebrowser.compose.services.filebrowser.ports.[0].published')
+  PORT=$(ssh ${DC_HOST} dc-yq '.projects.ifilebrowser.compose.services.filebrowser.ports.[0].published')
   sleep 1
   netcat -vz $IP $PORT
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
   ssh ${DC_HOST} dc -p filebrowser rm         # stop and remove 
-  ssh ${DC_HOST} dc config delete project filebrowser
-  ssh ${DC_HOST} dc host hugo config delete
+  ssh ${DC_HOST} dc project filebrowser config delete
+  ssh ${DC_HOST} dc host HUGO config delete
   dc host ${DC_HOST} vserver delete           # delete assigned Hetzner cloud server
   dc host ${DC_HOST} config delete            # delete host definition
-  dc hcloud list
+  dc hcloud server list
   echo "error_detect=$error_detect"
 fi
 exit $error_detect

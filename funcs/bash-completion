@@ -43,7 +43,50 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # dc
   elif [[ "$COMP_CWORD" == "1" ]] ; then
-    COMPREPLY=( $(compgen -W "ssh-control-reset versions update readme inspect host install vserver batch list manage config ls mount umount login" -- "$2") )
+    COMPREPLY=( $(compgen -W "project ssh-control-reset versions update readme inspect host install vserver batch list manage config ls mount umount login" -- "$2") )
+  # dc project ..
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "project" ]] ; then
+    list=$( dc-list projects )
+    COMPREPLY=( $(compgen -W "$list" -- "$2") )
+  elif [[ "${COMP_WORDS[1]}" = "project" ]] ; then
+    if  [[  "$COMP_CWORD" == "3" ]]  ; then
+      COMPREPLY=( $(compgen -W "config" -- "$2") )
+    elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
+      if [[ "$COMP_CWORD" == "4" ]] ; then
+        COMPREPLY=( $(compgen -W "create delete yq edit" -- "$2") )
+      elif [[ "${COMP_WORDS[4]}" == "create" ]] ; then
+        if [[ "$COMP_CWORD" == "5" ]] ; then
+          list=$( dc-list hosts dc )
+          COMPREPLY=( $(compgen -W "$list" -- "$2") )
+        elif  [[ "$COMP_CWORD" == "6" ]] ; then
+          COMPREPLY=( $(compgen -W "<main_service>" -- "$2") )
+        elif [[ "$COMP_CWORD" == "7" ]] ; then
+          compopt -o default; COMPREPLY=() # work on filesystem
+        fi
+      fi
+    fi
+  # dc host
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "host" ]] ; then
+    list=$( dc-list hosts all)
+    COMPREPLY=( $(compgen -W "-t $list" -- "$2") )
+  elif [[  "${COMP_WORDS[1]}" == "host"  ]] ; then 
+    if  [[  "$COMP_CWORD" == "3" ]]  ; then
+      COMPREPLY=( $(compgen -W "config ports state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
+    elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
+      if [[ "$COMP_CWORD" == "4" ]] ; then
+        COMPREPLY=( $(compgen -W "create delete yq edit" -- "$2") )
+      elif [[ "${COMP_WORDS[4]}" == "create" ]] ; then
+        if [[ "$COMP_CWORD" == "5" ]] ; then
+          COMPREPLY=( $(compgen -W "[<hostname_or_ip>]" -- "$2") )
+        elif [[ "$COMP_CWORD" == "6" ]] ; then
+          COMPREPLY=( $(compgen -W "ping sshd dock dc" -- "$2") )
+        fi
+      fi
+    fi
+
+
+
+
   # dc config ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "config" ]] ; then
     COMPREPLY=( $(compgen -W "show refresh rebuild create delete yq edit" -- "$2") )
@@ -75,6 +118,8 @@ _dc() {
           list=$( dc-list hosts dc )
           COMPREPLY=( $(compgen -W "$list" -- "$2") )
         elif [[ "$COMP_CWORD" == "6" ]] ; then
+          COMPREPLY=( $(compgen -W "<main_service>" -- "$2") )
+        elif [[ "$COMP_CWORD" == "7" ]] ; then
           compopt -o default; COMPREPLY=() # work on filesystem
         fi
       else 
@@ -89,12 +134,6 @@ _dc() {
     if [[ "${COMP_WORDS[2]}" == "projects" ]] ; then
       COMPREPLY=( $(compgen -W "--inspect" -- "$2") )
     fi
-  # dc host
-  elif [[  "$COMP_CWORD" == "2" && "$3" == "host" ]] ; then
-    list=$( dc-list hosts dc )
-    COMPREPLY=( $(compgen -W "-t $list" -- "$2") )
-  elif [[  "$COMP_CWORD" == "3" ]] ; then 
-    COMPREPLY=( $(compgen -W "ports state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
   # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
     COMPREPLY=( $(compgen -W "hosts projects" -- "$2") )
