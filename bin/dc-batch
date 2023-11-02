@@ -48,18 +48,18 @@ if [ "$CMD" = "create" ] ; then
 EOF
     echo "-> configure your batch jobs in ${MDE_DC_BATCH_DIR}/$JOB_NAME.list"
   fi
-  if [ ! -f  ${MDE_DC_BATCH_DIR}/global.yml ] ; then
-    cat <<EOF >${MDE_DC_BATCH_DIR}/global.yml
-batch:
-  mail:
-    sender: noreply@my.domain
-    smtp:
-      host: xx.yyyy:587 
-      user:
-      pass:
-EOF
-  echo "-> set your smtp configuration in ${MDE_DC_BATCH_DIR}/global.yml"
-  fi
+#  if [ ! -f  ${MDE_DC_BATCH_DIR}/global.yml ] ; then
+#    cat <<EOF >${MDE_DC_BATCH_DIR}/global.yml
+#batch:
+#  mail:
+#    sender: noreply@my.domain
+#    smtp:
+#      host: xx.yyyy:587 
+#      user:
+#      pass:
+#EOF
+#  echo "-> set your smtp configuration in ${MDE_DC_BATCH_DIR}/global.yml"
+#  fi
   exit 0
 fi
 
@@ -164,22 +164,28 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   # send report mail
   #
   if [ "$mail_to" != "" ] ; then
-    eval $( dc-yml -c ${MDE_DC_CONFIG_DIR}/dc_cluster.yml )
-    eval $( dc-yml -c ${MDE_DC_BATCH_DIR}/global.yml   )
+    cluster_name=$(   dc-yq '.config.cluster.name'   )
+    mail_sender=$(    dc-yq '.config.mail.sender'    )
+    mail_smtp_user=$( dc-yq '.config.mail.smtp.user' )
+    mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
+    mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
+
+    #eval $( dc-yml -c ${MDE_DC_CONFIG_DIR}/dc_cluster.yml )
+    #eval $( dc-yml -c ${MDE_DC_BATCH_DIR}/global.yml   )
     if [ "$errors" = "0" ] ; then
       subject="✅ report: ${JOB_NAME}@${cluster_name}"
     else
-      subject="❌ ERROR-report: ${JOB_NAME}@${cluster_name}"
+      subject="❌ report: ${JOB_NAME}@${cluster_name}"
     fi
     param=""
-    if [ "$batch_mail_smtp_user" != "" ] ; then
-      param="  -xu $batch_mail_smtp_user -xp $batch_mail_smtp_pass "
+    if [ "$mail_smtp_user" != "" ] ; then
+      param="  -xu $mail_smtp_user -xp $mail_smtp_pass "
     fi 
-    sendemail $param -f $batch_mail_sender   \
-              -t "$mail_to"                  \
-              -s $batch_mail_smtp_host       \
-              -o message-file=$FI            \
-              -u "$subject"                  \
+    sendemail $param -f $mail_sender   \
+              -t "$mail_to"            \
+              -s $mail_smtp_host       \
+              -o message-file=$FI      \
+              -u "$subject"            \
               -a ${E_FI}
   fi
   exit 0
