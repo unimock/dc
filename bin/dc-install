@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APT_PACKAGES="sshfs"
+APT_PACKAGES="sshfs libnet-ssleay-perl swaks"
 
 IAM="dc install"
 if [ "$(ps -o comm= $PPID)" = "dc" ] ; then
@@ -44,7 +44,7 @@ _help() {
     ssh-keygen -q -N "" -o -a 100 -t ed25519 -f /root/dc/hosts/id_ed25519 -C 'dc'
   fi
   # create dc prfile file
-  echo "$IAM: create <etc/profile.d/dc-profile.sh>..."
+  echo "$IAM: create </etc/profile.d/dc-profile.sh>..."
   echo 'source /opt/dc/etc/config'         >  /etc/profile.d/dc-profile.sh
   echo 'export PATH=/opt/dc/bin:$PATH'     >> /etc/profile.d/dc-profile.sh
   chmod a+x /etc/profile.d/dc-profile.sh
@@ -75,11 +75,24 @@ _help() {
     fi
   done
 
+  mkdir -p ${MDE_DC_CONFIG_DIR}
   # establish dc-crontab
   if [ ! -f ${MDE_DC_CONFIG_DIR}/dc-crontab ] ; then
-    mkdir -p ${MDE_DC_CONFIG_DIR}
     cp /opt/dc/templates/create/config/dc-crontab ${MDE_DC_CONFIG_DIR}
+  fi
   if [ ! -f /etc/cron.d/dc-crontab ] ; then
     ln -s ${MDE_DC_CONFIG_DIR}/dc-crontab /etc/cron.d/dc-crontab
+    echo "$IAM: create <${MDE_DC_CONFIG_DIR}/dc-crontab>"
   fi
+
+  # other yml configs
+  list=$( find /opt/dc/templates/create/config -name "*.yml" )
+  for i in $list ; do
+    if [ ! -f ${MDE_DC_CONFIG_DIR}/`basename $i` ] ; then
+      cp $i ${MDE_DC_CONFIG_DIR}
+      echo "$IAM: create <${MDE_DC_CONFIG_DIR}/`basename $i`>"
+    fi
+  done      
+
+
 exit 0

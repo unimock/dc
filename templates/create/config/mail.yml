@@ -1,0 +1,6 @@
+mail:
+  sender: noreply@domain
+  smtp:
+    host: smtp-host:587
+    user: user
+    pass: password
