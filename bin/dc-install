@@ -39,7 +39,7 @@ _help() {
     exit 0
   fi
   source /opt/dc/etc/config
-  echo "$IAM: create directries <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."
+  echo "$IAM: create directories <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."
   mkdir -vp ${MDE_DC_PROJ_DIR} ${MDE_DC_HOST_DIR}
   if [ ! -f /root/dc/hosts/id_ed25519 ] ; then
     echo "$IAM: create dc ssh keys in </root/dc/hosts/>..."
@@ -96,5 +96,6 @@ _help() {
     fi
   done      
 
+  dc-config rebuild
 
 exit 0
