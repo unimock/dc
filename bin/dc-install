@@ -25,6 +25,8 @@ _help() {
 
   if [ ! -d /opt/dc ] ; then
     git clone https://github.com/unimock/dc.git /opt/dc
+  else
+    (cd /opt/dc && git pull)
   fi
   if [ ! -f /opt/dc/etc/config ] ; then
     echo ""

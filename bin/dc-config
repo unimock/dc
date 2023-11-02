@@ -14,6 +14,7 @@ VARDIR="/opt/dc/var/cache"
 
 project_dir="$VARDIR/projects"
 hosts_dir="$VARDIR/hosts"
+config_dir="$VARDIR/config"
 ############################################################################################################################################
 _config_refresh()
 {
@@ -34,6 +35,24 @@ _config_refresh()
       config_change="1"
     fi
   done
+  #
+  # check for changed config configurations
+  #
+  last=$( find ${MDE_DC_CONFIG_DIR} -maxdepth 1 -name "*.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  stamp=${last% *}
+  if [ ! -f ${config_dir}/modified.${stamp} ] ; then
+    rm -rf ${config_dir}
+    mkdir ${config_dir}
+    echo "$last" | awk '{ print $2 }' > ${config_dir}/modified.${stamp}
+    list=$( find ${MDE_DC_CONFIG_DIR} -maxdepth 1  -name "*.yml" )
+    # append config definition to cached host file
+    echo "config:"                                                                               > ${config_dir}/config.yml
+    for yaml in $list ; do
+      grep -o '^[^#]*' $yaml | sed "s|^|  |g"                          >> ${config_dir}/config.yml
+    done
+    config_change="1"
+  fi
+
   #
   # check for changed hosts configurations
   #
@@ -107,7 +126,8 @@ _config_refresh()
   if [ "$config_change" = "1" ] ; then
     mkdir -p `dirname ${MDE_DC_YAML}`
     echo "re-create: ${MDE_DC_YAML}"
-    cp $hosts_dir/hosts.yml ${MDE_DC_YAML}
+    cp $config_dir/config.yml                                                        ${MDE_DC_YAML}
+    cat $hosts_dir/hosts.yml                                                      >> ${MDE_DC_YAML}
     #
     # projects
     #
@@ -118,7 +138,7 @@ _config_refresh()
       relPath=${relPath#${project_dir}/}
       compose_yml=$(dc-yq '.project.control.file' $project_dir/${relPath}/${MDE_DC_YAML_FILE})
       compose_project=$(dc-yq '.name' $project_dir/${relPath}/compose.yml)
-      echo "  ${compose_project}:"                                                >> ${MDE_DC_YAML}
+      echo "  ${compose_project}:"                                                  >> ${MDE_DC_YAML}
       echo "    project_dir: ${MDE_DC_PROJ_DIR}/${relPath}"                         >> ${MDE_DC_YAML}
       echo "    dc_yml: ${MDE_DC_PROJ_DIR}/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
       echo "    compose_yml: ${MDE_DC_PROJ_DIR}/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
@@ -339,7 +359,7 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
   if [ "$CMD" = "edit" ] ; then
     vi $config_dir
   else
-    echo "currentlx not suppoprted!!!!"
+    echo "currently not suppoprted!!!!"
   fi
   exit $?  
 fi
