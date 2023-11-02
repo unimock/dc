@@ -75,4 +75,11 @@ _help() {
     fi
   done
 
+  # establish dc-crontab
+  if [ ! -f ${MDE_DC_CONFIG_DIR}/dc-crontab ] ; then
+    mkdir -p ${MDE_DC_CONFIG_DIR}
+    cp /opt/dc/templates/create/config/dc-crontab ${MDE_DC_CONFIG_DIR}
+  if [ ! -f /etc/cron.d/dc-crontab ] ; then
+    ln -s ${MDE_DC_CONFIG_DIR}/dc-crontab /etc/cron.d/dc-crontab
+  fi
 exit 0

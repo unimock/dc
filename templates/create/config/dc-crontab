@@ -1,0 +1,8 @@
+SHELL=/bin/bash
+PATH=/bin:/usr/bin:/usr/local/bin:/opt/dc/bin:/root/scripts:/root/utils
+
+
+# run the nightly dc-batch 
+#10 00 * * * root (cd /root && dc-batch nightly run )
+
+
