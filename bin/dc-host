@@ -194,26 +194,26 @@ EOF
     echo "#"
   fi
   if [ "$CMD" = "upgrade" ] ; then
-    BCOUNT=$( ssh $HOST docker ps -q | wc -l )
+    BCOUNT=$( dc-host $HOST nrc )
     echo "#"
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
     dc-host $HOST check
-    _ask "Start autoremove?"
+    #_ask "Start autoremove?"
     ssh $HOST apt-get -y autoremove
-    _ask "Start apt-get update?"
+    #_ask "Start apt-get update?"
     ssh $HOST apt-get update
-    _ask "Start dist-uprade?"
+    #_ask "Start dist-uprade?"
     ssh $HOST apt-get -y dist-upgrade
-    _ask "Check, if all containers are started!"
-    NCOUNT=$( ssh $HOST docker ps -q | wc -l )
+    #_ask "Check, if all containers are started!"
+    #_ask "Show running containers!"
+    #_ask "reboot?"
+    dc-host $HOST reboot wait dc,dock
+    NCOUNT=$( dc-host $HOST nrc )
+    dc-host $HOST check
     echo "#"
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
-    _ask "Show running containers!"
-    dc-host $HOST check
-    _ask "reboot?"
-    ssh $HOST init 6
   fi
   if [ "$CMD" = "check" ] ; then
     BCOUNT=$( ssh $HOST docker ps -q | wc -l )

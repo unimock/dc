@@ -24,10 +24,10 @@ git clone https://github.com/unimock/dc.git /opt/dc
 vi /dc/etc/config
 /opt/dc/bin/dc-install   # installation
 
-# if you want to use yor dc manager host also as a docker host:
+# if you want to use your dc manager host also as a docker host:
 
 cat /root/dc/hosts/id_ed25519.pub >> /root/.ssh/authorized_keys
-dc config create host $(hostname) 127.0.0.1 dc   # 'dc config' shows param desc.
+dc host $(hostname) config create 127.0.0.1 dc   # 'dc config' shows param desc.
 dc ls hosts                                      # list registered hosts
 
 ```
@@ -43,15 +43,13 @@ dc ls hosts                                      # list registered hosts
 NAME="hugo"
 HOSTNAME="<hostname_or_ip>"
 TYPE="dc"
-dc config create host ${NAME} ${HOSTNAME} ${TYPE}   # 'dc config' shows param desc.
+dc host ${NAME} config create ${HOSTNAME} ${TYPE}   # 'dc config' shows param desc.
 dc ls
 ```
 
 
 
 # TBD:
-
-### register slave machine in docker-machine
 
 ```
 dc -h ${ABBREV} create
