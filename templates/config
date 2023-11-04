@@ -12,8 +12,8 @@ export MDE_DC_VOL_Data=${MDE_DC_VOL}/Data
 export MDE_DC_VOL_Backup=${MDE_DC_VOL}/Backup
 export MDE_DC_VOL_Projects=${MDE_DC_VOL}/Projects
 export MDE_DC_VOL_Logs=${MDE_DC_VOL}/Logs
-export MDE_DC_VOL_N_CFG="service"
-export MDE_DC_VOL_N_VAR="persistent"
+export MDE_DC_VOL_N_CFG="cfg"
+export MDE_DC_VOL_N_VAR="var"
 # yml files:
 export MDE_DC_YAML_FILE="dc-project.yml"
 export MDE_DC_YAML=/opt/dc/var/dc.yml
