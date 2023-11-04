@@ -176,9 +176,9 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     if [ "$mail_smtp_user" != "" ] ; then
       auth="  -au $mail_smtp_user -ap $mail_smtp_pass "
     fi 
-    swaks --to $mail_to \
+    swaks --to $mail_to --from $mail_sender \
           -s   $mail_smtp_host \
-          -tls $auth \
+          -tlso $auth \
           --header "Subject: $subject" \
           --attach-type "text/plain" --attach-body @$FI \
           ${attachments} -S 2
