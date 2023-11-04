@@ -106,8 +106,8 @@ for SERVICE in $project_list ; do
   fi
   S_HOST="${service_hosts[${SIDX}]}"
   T_HOST="${service_hosts[${TIDX}]}"
-  S_STATE="${service_state[0]}"        # state of primary service: active|standby
-  T_STATE="${service_state[1]}"        # state of secondary service: active|standby
+  S_STATE="${service_state[${SIDX}]}"        # state of primary service: active|standby
+  T_STATE="${service_state[${TIDX}]}"        # state of secondary service: active|standby
   if [ "$T_HOST" = "" ] ; then
     echo "error: target host (second) definition missing."
     exit 1
@@ -160,7 +160,8 @@ for SERVICE in $project_list ; do
       dc_command stop    $SERVICE $T_HOST  
     fi
     dc_command   pause   $SERVICE $S_HOST
-    copy_data                 $SERVICE $S_HOST $T_HOST
+    sync
+    copy_data            $SERVICE $S_HOST $T_HOST
     dc_command   unpause $SERVICE $S_HOST
     # copy remove taget containers
     # copy images
