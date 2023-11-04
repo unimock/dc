@@ -79,12 +79,12 @@ _help() {
 
   mkdir -p ${MDE_DC_CONFIG_DIR}
   # establish dc-crontab
-  if [ ! -f ${MDE_DC_CONFIG_DIR}/dc-crontab ] ; then
-    cp /opt/dc/templates/create/config/dc-crontab ${MDE_DC_CONFIG_DIR}
+  if [ ! -f ${MDE_DC_CONFIG_DIR}/crontab ] ; then
+    cp /opt/dc/templates/create/config/crontab ${MDE_DC_CONFIG_DIR}
   fi
   if [ ! -f /etc/cron.d/dc-crontab ] ; then
-    ln -s ${MDE_DC_CONFIG_DIR}/dc-crontab /etc/cron.d/dc-crontab
-    echo "$IAM: create <${MDE_DC_CONFIG_DIR}/dc-crontab>"
+    ln -s ${MDE_DC_CONFIG_DIR}/crontab /etc/cron.d/dc-crontab
+    echo "$IAM: create <${MDE_DC_CONFIG_DIR}/crontab>"
   fi
 
   # other yml configs

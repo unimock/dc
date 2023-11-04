@@ -142,7 +142,11 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   echo "#"                                     >> $FI
   E_FI=""
   for ((idx=0; idx<${checks}; ++idx)); do
-    printf "%5s %s  %s %s (%s)\n" ${R_RESULT[idx]}  ${R_FILE[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
+    sym="❌"
+    if [ "${R_RESULT[idx]}" = "OK" ] ; then
+      sym="✅"
+    fi
+    printf " %s %-5s %-25s  %s %s (%s)\n" "$sym" ${R_RESULT[idx]}  ${R_FILE[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
     E_FI="${E_FI} ${MDE_DC_LOG_DIR}/$JOB_NAME/${R_FILE[$idx]}"
   done
   if [ -f ${MDE_DC_LOG_DIR}/$JOB_NAME/body ] ; then 
