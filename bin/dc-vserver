@@ -92,7 +92,7 @@ if [ "$CMD" = "create" ] ; then
   echo "################################################################################"
   ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
   ssh-keyscan -H ${IP} >> /root/.ssh/known_hosts
-  rm -f /opt/dc/var/ss/control/${dc_host}
+  rm -f $HOME/.dc/var/ssh/control/${dc_host}
   # place IP or hostname in host.yml definition and rebuild
   dc-yq -i '.host.hostname = "'$IP'"'  $host_dir/host.yml
   dc config refresh

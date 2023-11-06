@@ -109,7 +109,7 @@ fi
 ####################################################################################################################################
 # hosts
 ####################################################################################################################################
-HOST_DATA_DIR=/opt/dc/var/hosts
+HOST_DATA_DIR=$HOME/.dc/var/hosts
 mkdir -p $HOST_DATA_DIR
 if [ "$opt_group" != "" ] ; then
   list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
@@ -170,6 +170,7 @@ for host in $list ; do
   state=$( dc-host ${host} state )
   if [ "$state" = "$typ" ] ; then
     if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
+      rm $host_data_file
       if [ "$os" = "ubuntu" ] ; then
         os_ver=$( ssh $host lsb_release -d -s 2>/dev/null | cut -d " " -f2)
         os_ver=${os_ver:0:8}
