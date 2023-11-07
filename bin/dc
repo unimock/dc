@@ -26,7 +26,6 @@ show_help() {
   echo "   cluster-commands:"
   echo ""
   echo "     readme                        # show README.md"
-  echo "     update                        # update dc environment"
   echo "     versions                      # show versions"
   echo "     completion                    # source bash completion like: echo 'source <(dc completion)' >> ~/.bash_aliases"
   echo "     ssh-control-reset             # remove ssh control sockets"
@@ -81,21 +80,6 @@ if [ "${1}" = "versions" ] ; then
  exit 0
 fi
 
-
-
-if [ "${1}" = "update" ] ; then
-  version=$( cat /opt/dc/VERSION )
-  if [ -d /opt/.dc-$version ] ; then
-    echo "backaup /opt/.dc-$version already exists"
-    exit 0
-  fi
-  cp -rf /opt/dc /opt/.dc-$version
-  echo "backup /opt/.dc-$version created"
-  (cd /opt/dc && git pull )
-  . /opt/dc/funcs/bash-completion
-  dc config rebuild
-  exit 0
-fi
 if [ "${1}" = "readme" ] ; then
   if [ "${2}" = "" ] ; then
     cat /opt/dc/README.md
@@ -139,7 +123,7 @@ if [ "$1" = "mounts" ] ; then
   exit 0 
 fi
 if [ "$1" = "ssh-control-reset" ] ; then
-  rm -fv  /opt/dc/var/ssh/control/*
+  rm -fv  $HOME/.dc/var/ssh/control/*
   exit 0
 fi
 wrapper_list="inspect host project install vserver batch list manage config ls server hcloud"

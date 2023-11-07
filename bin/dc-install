@@ -24,56 +24,56 @@ _help() {
 #fi
 
   if [ ! -d /opt/dc ] ; then
-    git clone https://github.com/unimock/dc.git /opt/dc
-  else
-    (cd /opt/dc && git pull)
+    sudo git clone https://github.com/unimock/dc.git /opt/dc
+  #else
+  #  (cd /opt/dc && git pull)
   fi
-  if [ ! -f /opt/dc/etc/config ] ; then
+  if [ ! -f $HOME/.dc/etc/config ] ; then
     echo ""
-    echo "# Main configuration file </opt/dc/etc/config> does not exists."
+    echo "# Main configuration file <$HOME/.dc/etc/config> does not exists."
     echo "# Default configuration from template directory was activated."
     echo "# You can change it and then re-call dc-install"
     echo ""
-    mkdir -p /opt/dc/etc
-    cp /opt/dc/templates/config /opt/dc/etc/config
+    mkdir -p $HOME/.dc/etc
+    cp /opt/dc/templates/config $HOME/.dc/etc
     exit 0
   fi
-  source /opt/dc/etc/config
+  source $HOME/.dc/etc/config
   echo "$IAM: create directories <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."
   mkdir -vp ${MDE_DC_PROJ_DIR} ${MDE_DC_HOST_DIR}
-  if [ ! -f /root/dc/hosts/id_ed25519 ] ; then
-    echo "$IAM: create dc ssh keys in </root/dc/hosts/>..."
-    ssh-keygen -q -N "" -o -a 100 -t ed25519 -f /root/dc/hosts/id_ed25519 -C 'dc'
+  if [ ! -f ${MDE_DC_HOST_DIR}/id_ed25519 ] ; then
+    echo "$IAM: create dc ssh keys in <${MDE_DC_HOST_DIR}/>..."
+    ssh-keygen -q -N "" -o -a 100 -t ed25519 -f ${MDE_DC_HOST_DIR}/id_ed25519 -C 'dc'
   fi
-  # create dc prfile file
+  # create dc profile file
   echo "$IAM: create </etc/profile.d/dc-profile.sh>..."
-  echo 'source /opt/dc/etc/config'         >  /etc/profile.d/dc-profile.sh
-  echo 'export PATH=/opt/dc/bin:$PATH'     >> /etc/profile.d/dc-profile.sh
-  chmod a+x /etc/profile.d/dc-profile.sh
+  printf 'PATH=/opt/dc/bin:$PATH\n' | sudo tee /etc/profile.d/dc-profile.sh >/dev/null
+  #printf 'source /opt/dc/etc/config\nexport PATH=/opt/dc/bin:$PATH\n' | sudo tee /etc/profile.d/dc-profile.sh >/dev/null
+  sudo chmod a+x /etc/profile.d/dc-profile.sh
 
   # modify other files
-  FI=/root/.bashrc
+  FI=${HOME}/.bashrc
   echo "$IAM: modify <$FI>..."
   touch $FI
   sed -i '/#dc-install/d' $FI        
-  sed -i '1 i\source /opt/dc/etc/config #dc-install'     $FI
+  sed -i '1 i\source ${HOME}/.dc/etc/config #dc-install'     $FI
   sed -i '1 i\export PATH=/opt/dc/bin:$PATH #dc-install' $FI
-  FI=/root/.bash_aliases
+  FI=${HOME}/.bash_aliases
   echo "$IAM: modify <$FI>..."
   touch $FI
   sed -i '/#dc-install/d' $FI
   echo 'source <(/opt/dc/bin/dc completion) #dc-install' >> $FI
-  FI=/root/.ssh/config
+  FI=${HOME}/.ssh/config
   echo "$IAM: modify <$FI>..."
   touch $FI
   sed -i '/#dc-install/d' $FI
-  echo 'Include /opt/dc/var/ssh/config/* #dc-install' >> $FI
+  echo "Include ${HOME}/.dc/var/ssh/config/* #dc-install" >> $FI
 
   # install additional apt packages
   for p in ${APT_PACKAGES} ; do
     dpkg -s $p >/dev/null 2>&1
     if [ "$?" != "0" ] ; then
-      apt-get install -y $p
+      sudo apt-get install -y $p
     fi
   done
 
@@ -83,7 +83,7 @@ _help() {
     cp /opt/dc/templates/create/config/crontab ${MDE_DC_CONFIG_DIR}
   fi
   if [ ! -f /etc/cron.d/dc-crontab ] ; then
-    ln -s ${MDE_DC_CONFIG_DIR}/crontab /etc/cron.d/dc-crontab
+    sudo ln -s ${MDE_DC_CONFIG_DIR}/crontab /etc/cron.d/dc-crontab
     echo "$IAM: create <${MDE_DC_CONFIG_DIR}/crontab>"
   fi
 
@@ -95,7 +95,7 @@ _help() {
       echo "$IAM: create <${MDE_DC_CONFIG_DIR}/`basename $i`>"
     fi
   done      
-
+  source ${HOME}/.bashrc
   dc-config rebuild
 
 exit 0

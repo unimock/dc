@@ -10,7 +10,7 @@ else
   IAM="dc-config"
 fi
 
-VARDIR="/opt/dc/var/cache"
+VARDIR="$HOME/.dc/var/cache"
 
 project_dir="$VARDIR/projects"
 hosts_dir="$VARDIR/hosts"
@@ -65,9 +65,9 @@ _config_refresh()
     list=$( find ${MDE_DC_HOST_DIR}  -name "*.yml" )
     # append hosts definition to cached host file
     echo "hosts:"                                                                               > ${hosts_dir}/hosts.yml
-    rm -rf   /opt/dc/var/ssh/config
-    mkdir -p /opt/dc/var/ssh/config
-    mkdir -p /opt/dc/var/ssh/control
+    rm -rf   $HOME/.dc/var/ssh/config
+    mkdir -p $HOME/.dc/var/ssh/config
+    mkdir -p $HOME/.dc/var/ssh/control
     for hyaml in $list ; do
       name=${hyaml#${MDE_DC_HOST_DIR}/}
       name=${name%/host.yml}
@@ -79,15 +79,15 @@ _config_refresh()
       #
       type=$( dc-yq '.host.type'  $hyaml)
       if [ "$type" = "sshd" -o "$type" = "dc" -o "$type" = "dock"  ] ; then
-        dc-yq -i '.hosts.'$name'.ssh_config.ControlPath = "/opt/dc/var/ssh/control/'$name'"'       ${hosts_dir}/hosts.yml
+        dc-yq -i '.hosts.'$name'.ssh_config.ControlPath = "$HOME/.dc/var/ssh/control/'$name'"'       ${hosts_dir}/hosts.yml
         # replace variables off IdentityFile
         IdentityFile=$( dc-yq '.hosts.'$name'.ssh_config.IdentityFile'                              ${hosts_dir}/hosts.yml | envsubst)
         dc-yq -i '.hosts.'$name'.ssh_config.IdentityFile = "'$IdentityFile'"'                      ${hosts_dir}/hosts.yml
-        echo "Host $name"                                                                  > /opt/dc/var/ssh/config/$name
-        echo "    HostName $(dc-yq '.host.hostname'  $hyaml)"                             >> /opt/dc/var/ssh/config/$name
-        echo "    Port $(dc-yq '.host.port'      $hyaml)"                                 >> /opt/dc/var/ssh/config/$name
-        echo "    ControlPath /opt/dc/var/ssh/control/%n"                                 >> /opt/dc/var/ssh/config/$name
-        dc-yq '.host.ssh_config' $hyaml | sed -e 's|: | |g' -e 's|^|    |g'               >> /opt/dc/var/ssh/config/$name
+        echo "Host $name"                                                                  > $HOME/.dc/var/ssh/config/$name
+        echo "    HostName $(dc-yq '.host.hostname'  $hyaml)"                             >> $HOME/.dc/var/ssh/config/$name
+        echo "    Port $(dc-yq '.host.port'      $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
+        echo "    ControlPath $HOME/.dc/var/ssh/control/%n"                                 >> $HOME/.dc/var/ssh/config/$name
+        dc-yq '.host.ssh_config' $hyaml | sed -e 's|: | |g' -e 's|^|    |g'               >> $HOME/.dc/var/ssh/config/$name
       fi
     done
     config_change="1"
@@ -294,8 +294,8 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       fi
       echo "TBD in $0 : do not allow, if hcloud server is assigned an running!"
       rm -rv ${MDE_DC_HOST_DIR}/$name
-      rm -f /opt/dc/var/ssh/control/$name
-      rm -f /opt/dc/var/ssh/config/$name
+      rm -f $HOME/.dc/var/ssh/control/$name
+      rm -f $HOME/.dc/var/ssh/config/$name
       exit 0
     fi
     if [ "$CMD" = "create" ] ; then
@@ -371,9 +371,9 @@ fi
 if [ "$CMD" = "check" ] ; then
   echo " ✅ dc version: $( cat /opt/dc/VERSION)"
   echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
-  grep "Include /opt/dc/var/ssh/config/\*"  ~/.ssh/config >/dev/null 2>&1
+  grep "Include $HOME/.dc/var/ssh/config/\*"  ~/.ssh/config >/dev/null 2>&1
   if [ "$?" != "0" ] ; then
-    echo " ❌ missing ssh config dir: <Include /opt/dc/var/ssh/config/\*> in ~/.ssh/config"
+    echo " ❌ missing ssh config dir: <Include $HOME/.dc/var/ssh/config/\*> in ~/.ssh/config"
   fi
   hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $hosts ; do
