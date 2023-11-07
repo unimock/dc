@@ -21,14 +21,15 @@ The management on the master includes ssh definitions for accessing the slaves a
 git clone https://github.com/unimock/dc.git /opt/dc
 /opt/dc/bin/dc-install   # prepare config file /dc/etc/config
 # Check whether the created config file /dc/etc/config fits your needs
-vi /dc/etc/config
+vi ${HOME}/.dc/etc/config
 /opt/dc/bin/dc-install   # installation
 
 # if you want to use your dc manager host also as a docker host:
 
-cat /root/dc/hosts/id_ed25519.pub >> /root/.ssh/authorized_keys
-dc host $(hostname) config create 127.0.0.1 dc   # 'dc config' shows param desc.
-dc ls hosts                                      # list registered hosts
+cat ${HOME}/dc/hosts/id_ed25519.pub >> ${HOME}/.ssh/authorized_keys # allow dc ssh access
+dc host $(hostname) config create 127.0.0.1 dc                      # 'dc config' shows param desc.
+dc host $(hostname) edit                                            # add/change properties 
+dc ls hosts                                                         # list registered hosts
 
 ```
 
