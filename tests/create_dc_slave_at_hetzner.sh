@@ -9,7 +9,7 @@ DC_HOST="test-host"
 SERVER="karl"
 PROJECT="test-project"
 
-. /opt/dc/etc/config
+source ${HOME}/.dc/etc/config
 
 if [ "$1" = "" -o "$1" = "create" ] ; then
   dc host    ${DC_HOST} config  create test.intra dc  # create new host definition with hostname test.intra and type "dc"

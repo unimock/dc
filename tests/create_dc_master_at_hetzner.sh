@@ -8,7 +8,7 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 DC_HOST="tmaster"
 SERVER="hugo"
 
-. /opt/dc/etc/config
+source ${HOME}/.dc/etc/config
 
 if [ "$1" = "" -o "$1" = "create" ] ; then
 
