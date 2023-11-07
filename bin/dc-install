@@ -95,7 +95,7 @@ _help() {
       echo "$IAM: create <${MDE_DC_CONFIG_DIR}/`basename $i`>"
     fi
   done      
-  source .bashrc
+  source ${HOME}/.bashrc
   dc-config rebuild
 
 exit 0
