@@ -71,7 +71,18 @@ _dc() {
     COMPREPLY=( $(compgen -W "-t $list" -- "$2") )
   elif [[  "${COMP_WORDS[1]}" == "host"  ]] ; then 
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
-      COMPREPLY=( $(compgen -W "config ports state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
+      COMPREPLY=( $(compgen -W "vserver config ports state upgrade update nrc reboot large_files dir_entries cmd image prune list check start stop rm rmup up ps" -- "$2") )
+    elif [[ "${COMP_WORDS[3]}" == "vserver" ]] ; then
+      # dc host <name> vserver
+      if [[ "$COMP_CWORD" == "4" ]] ; then
+        COMPREPLY=( $(compgen -W "create delete assign rebuild install" -- "$2") )
+      elif [[ "${COMP_WORDS[4]}" == "assign" ]] ; then
+        if [[ "$COMP_CWORD" == "5" ]] ; then
+          COMPREPLY=( $(compgen -W "<vserver_name>" -- "$2") )
+        elif [[ "$COMP_CWORD" == "6" ]] ; then
+          COMPREPLY=( $(compgen -W "$(ls -1 /opt/dc/templates/create/vserver/ | sed -e "s|.yml||g")" -- "$2") )
+        fi
+      fi 
     elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
       if [[ "$COMP_CWORD" == "4" ]] ; then
         COMPREPLY=( $(compgen -W "create delete yq edit" -- "$2") )
@@ -130,10 +141,8 @@ _dc() {
   # dc ls .. 
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
     COMPREPLY=( $(compgen -W "projects hosts" -- "$2") )
-  elif [[ "${COMP_WORDS[1]}" = "ls" ]] ; then
-    if [[ "${COMP_WORDS[2]}" == "projects" ]] ; then
+  elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" == "3" ]] ; then
       COMPREPLY=( $(compgen -W "--inspect" -- "$2") )
-    fi
   # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
     COMPREPLY=( $(compgen -W "hosts projects" -- "$2") )
@@ -142,7 +151,6 @@ _dc() {
     COMPREPLY=( $(compgen -W "all dc used" -- "$2") )
   # dc vserver
   elif [[  "$COMP_CWORD" == "2" && "$3" == "vserver" ]] ; then
-
     COMPREPLY=( $(compgen -W "reboot install assign create info list delete" -- "$2") )
   fi
 }

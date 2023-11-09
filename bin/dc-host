@@ -107,7 +107,7 @@ fi
 if [ "$CMD" = "state" ] ; then
   for HOST in $hlist ; do
     state=""
-    hname=$( dc-yq '.hosts.'$HOST'.hostname' ${MDE_DC_YAML} ) 
+    hname=$( dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML} ) 
     ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
     if [ "$?" = "0" ] ; then
       state="ping"

@@ -7,7 +7,7 @@ host:
   type: <type>
   state: active
   # hostname or ip
-  hostname: <hostname_or_ip> 
+  fqdn: <hostname_or_ip> 
   # sshd port 
   port: "22"
   groups:
@@ -22,12 +22,3 @@ host:
     UserKnownHostsFile: /dev/null
     ControlMaster: auto
     ControlPersist: yes
-  # if host is homed in Hetzner Cloud
-  vserver:
-    hcoud:
-      name:
-      init:
-        type:
-        image:
-        location:
-        ssh-key:

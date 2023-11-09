@@ -84,9 +84,9 @@ _config_refresh()
         IdentityFile=$( dc-yq '.hosts.'$name'.ssh_config.IdentityFile'                              ${hosts_dir}/hosts.yml | envsubst)
         dc-yq -i '.hosts.'$name'.ssh_config.IdentityFile = "'$IdentityFile'"'                      ${hosts_dir}/hosts.yml
         echo "Host $name"                                                                  > $HOME/.dc/var/ssh/config/$name
-        echo "    HostName $(dc-yq '.host.hostname'  $hyaml)"                             >> $HOME/.dc/var/ssh/config/$name
+        echo "    HostName $(dc-yq '.host.fqdn'  $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
         echo "    Port $(dc-yq '.host.port'      $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
-        echo "    ControlPath $HOME/.dc/var/ssh/control/%n"                                 >> $HOME/.dc/var/ssh/config/$name
+        echo "    ControlPath $HOME/.dc/var/ssh/control/%n"                               >> $HOME/.dc/var/ssh/config/$name
         dc-yq '.host.ssh_config' $hyaml | sed -e 's|: | |g' -e 's|^|    |g'               >> $HOME/.dc/var/ssh/config/$name
       fi
     done

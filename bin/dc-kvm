@@ -1,0 +1,117 @@
+#!/bin/bash
+
+source /opt/dc/funcs/global
+
+_help() {
+  echo "  `basename $0`  server establish|delete"
+  exit 0
+}
+
+CMD="$2"
+if [ "$1" != "server" -o "$2" = ""  ] ; then
+  _help
+  exit 1
+fi
+
+name="$3"
+
+if [ "$CMD" = "establish" ] ; then
+  hname="$3"
+  yaml="$4"
+  if [ "$yaml" = "" -o ! -f $yaml ] ; then
+    echo "error: yaml config file <$ymal> does not exist!"
+    exit 1
+  fi
+  cloud_type=$(dc-yq '.type'          ${yaml} )
+  if [ "$cloud_type" != "kvm"  ] ; then
+    echo "error: type!=hcloud in <${yaml}>!"
+    exit 1
+  fi
+
+  name=$(        dc-yq '.name'            $yaml )
+
+  cloud_image=$( dc-yq '.kvm.cloud_image' $yaml )
+  image_name=$(  dc-yq '.kvm.image_name'  $yaml )
+  size=$(        dc-yq '.kvm.size'        $yaml )
+  memory=$(      dc-yq '.kvm.memory'      $yaml )
+  vcpus=$(       dc-yq '.kvm.vcpus'       $yaml )
+
+  IMG="/xxx/${image_name}.img"
+  if [ ! -f "$IMG" ] ; then
+    wget -O $IMG $cloud_image
+    rm -f /xxx/${image_name}.qcow2
+    qemu-img convert -f qcow2 -O qcow2 $IMG /xxx/${image_name}.qcow2
+    sudo virt-customize -a /xxx/${image_name}.qcow2  --install qemu-guest-agent
+    _size=$(stat -Lc%s /xxx/${image_name}.qcow2 )
+    virsh vol-create-as default ${image_name}.qcow2 ${_size} --format raw
+    virsh vol-upload --pool default ${image_name}.qcow2 /xxx/${image_name}.qcow2
+  fi
+
+  echo "#cloud-config"                               > /xxx/${name}.cfg
+  dc-yq '.cloud-config' $yaml                       >> /xxx/${name}.cfg
+  cloud-localds /xxx/${name}.iso                       /xxx/${name}.cfg
+
+  _size=$(stat -Lc%s /xxx/${name}.iso)
+  virsh vol-create-as default ${name}.iso ${_size} --format raw
+
+
+  virsh vol-upload --pool default ${name}.iso          /xxx/${name}.iso
+
+  virsh vol-create-as default ${name}.qcow2 $size \
+  --format qcow2 \
+  --backing-vol /var/lib/libvirt/images/${image_name}.qcow2 \
+  --backing-vol-format qcow2
+
+  virt-install \
+  --noautoconsole \
+  --autostart \
+  --name $name \
+  --memory $memory --vcpus $vcpus \
+  --disk vol=default/${name}.qcow2,device=disk,bus=virtio \
+  --disk vol=default/${name}.iso,device=cdrom \
+  --os-variant ubuntu22.04 \
+  --virt-type kvm \
+  --graphics none \
+  --import
+
+  while true ; do
+    printf "."
+    sleep 1
+    ip=$(virsh guestinfo --domain $name --interface 2>/dev/null  | grep "if.1.addr.0.addr" | awk '{ print $3 }' )
+    #ip=$( virsh domifaddr $name | grep "ipv4" | awk '{print $4}' | sed 's/\/24//' )
+    if [ "$ip" != "" ] ; then
+      printf "\nip=$ip\n"
+      break
+    fi
+  done
+  # virsh guestinfo --domain karl --interface | grep "if.1.addr.0.addr" | awk '{ print $3 }'
+
+  exit 0
+fi
+
+if [ "$CMD" = "ip" ] ; then
+  virsh domifaddr $name | grep "ipv4" | awk '{print $4}' | sed 's/\/24//'
+  exit 0
+fi
+
+
+
+if [ "$CMD" = "delete" ] ; then
+  virsh shutdown $name
+  virsh undefine $name
+  virsh vol-delete --pool default ${name}.qcow2
+  virsh vol-delete --pool default ${name}.iso  2>/dev/null
+fi
+
+
+if [ "$CMD" = "remiso" ] ; then
+  targetDrive=$(virsh domblklist ${name} | grep ${name}.iso  | awk {' print $1 '})
+  virsh change-media $name --path $targetDrive --eject --force
+  virsh vol-delete --pool default ${name}.iso
+fi
+
+if [ "$CMD" = "list" ] ; then
+  virsh list
+  exit 0
+fi
+

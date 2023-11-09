@@ -2,103 +2,108 @@
 
 . /opt/dc/funcs/global
 
+VSERVER="hcloud kvm"
+
 if [ "$1" = "" ] ; then
   echo ""
   echo "TBD"
   exit 0
 fi
-
-dc_host="$1"
+DC_HOST="$1"
 shift
 
 CMD="$1"
-
-###################################################################
-# install
-###################################################################
-if [ "$CMD" = "install" ] ; then
-  echo "################################################################################"
-  echo "# install docker, set timezone, dist-upgrade on host <$dc_host>"
-  echo "################################################################################"
-  image=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'     ${MDE_DC_YAML} )
-  if [ ! -f /opt/dc/helper/hcloud-${image}.sh ] ; then
-    echo "error: missing installation script </opt/dc/helper/hcloud-${image}.sh>"
-    exit 1
-  fi
-  scp /opt/dc/helper/hcloud-${image}.sh ${dc_host}:/tmp/dc-install
-  ssh ${dc_host} /tmp/dc-install >/dev/null
-  exit $?
-fi
+shift
 
 ###################################################################
 # list 
 ###################################################################
-if [ "$CMD" = "list" ] ; then
-  dc-hcloud server list
-  echo "TBD: show assiggnment host <-> vhost"
-  #dc-hcloud image list
-  #dc-hcloud location list
-  #dc-hcloud server-type list
-  exit 0
-fi
-
-###################################################################
-# assign
-###################################################################
-if [ "$CMD" = "assign" ] ; then
-  shift
-  echo "################################################################################"
-  echo "# assing hcloud options to host <${dc_host}> definition"
-  echo "################################################################################"
-  if [ "$1" != "hcloud" ] ; then
-    echo "error unsupported server provider <$1> given!"
-    exit 1
-  fi
-  shift
-  host_dir=$( dc-yq '.hosts.'${dc_host}'.host_dir' ${MDE_DC_YAML} )
-  for i in $* ; do
-    key=${i%=*}
-    val=${i#*=}
-    dc-yq -i '.host.vserver.hcoud.'$key' = "'${val}'"'   $host_dir/host.yml
+if [ "$CMD" = "" -a "$DC_HOST" = "list" ] ; then
+  for i in $VSERVER ; do
+    dc-$i server list
   done
-  dc config refresh
-  dc-yq '.hosts.'${dc_host}'.vserver' ${MDE_DC_YAML}
+  echo "TBD: show assignment host <-> vhost"
   exit 0
 fi
 
-hname=$(dc-yq '.hosts.'${dc_host}'.vserver.hcoud.name' ${MDE_DC_YAML} )
-if [ "$hname" = "" -o "$hname" = "null" ] ; then
-  echo "error: missing hcloud server name in <.hosts.${1}.vserver.hcoud.name>"
-  exit 1
-fi
+host_dir=$( dc-yq '.hosts.'${DC_HOST}'.host_dir' ${MDE_DC_YAML} )
+yaml=${host_dir}/vserver.yml
 
 ###################################################################
 # create
 ###################################################################
 if [ "$CMD" = "create" ] ; then
+  if [ ! -f ${yaml} ] ; then
+    echo "error: yaml config <${yaml}> missing!"
+    exit 1
+  fi
+  vs_type=$( dc-yq '.type' ${yaml} )
+  vs_name=$( dc-yq '.name' ${yaml} )
   echo "################################################################################"
-  echo "# create vserver based on host definition in ${MDE_DC_YAML}"
+  echo "# create vserver <$vs_name> based on definition in ${yaml}"
   echo "################################################################################"
-  host_dir=$( dc-yq '.hosts.'${dc_host}'.host_dir' ${MDE_DC_YAML} )
-  typ=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.type'     ${MDE_DC_YAML} )
-  img=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'    ${MDE_DC_YAML} )
-  loc=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.location' ${MDE_DC_YAML} )
-  key=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.ssh-key'  ${MDE_DC_YAML} )
-  echo server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
-  dc-hcloud server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
-  IP=$(dc-hcloud server ip ${hname} )  
+  dc-${vs_type} server establish ${vs_name} ${yaml}
+  IP=$( dc-${vs_type} server ip ${vs_name} )  
   echo "################################################################################"
-  echo "# assign vserver HostName <$IP> to host <${dc_host}> definition"
+  echo "# assign vserver fqdn <$IP> to host <${DC_HOST}> definition"
   echo "################################################################################"
-  ssh-keygen -f "/root/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
-  ssh-keyscan -H ${IP} >> /root/.ssh/known_hosts
-  rm -f $HOME/.dc/var/ssh/control/${dc_host}
+  ssh-keygen -f "${HOME}/.ssh/known_hosts" -R ${IP} >/dev/null 2>&1
+  ssh-keyscan -H ${IP} >> ${HOME}/.ssh/known_hosts
+  rm -f $HOME/.dc/var/ssh/control/${DC_HOST}
   # place IP or hostname in host.yml definition and rebuild
-  dc-yq -i '.host.hostname = "'$IP'"'  $host_dir/host.yml
-  dc config refresh
-  #dc-yq '.hosts.'${dc_host} ${MDE_DC_YAML}
-  dc-yq '.' $host_dir/host.yml
-  dc-host ${dc_host} state wait "sshd"
+  dc-yq -i '.host.fqdn = "'$IP'"'  $host_dir/host.yml
+  dc-config refresh
+  dc-host ${DC_HOST} state wait "sshd"
+  if [ "${vs_type}" = "kvm" ] ; then
+    echo "# check cloud-init state"
+    ssh ${DC_HOST} cloud-init status --wait
+    dc-${vs_type} server remiso ${vs_name}
+  fi
+  exit 0
+fi
+
+###################################################################
+# install (gehört in dc-host)
+###################################################################
+if [ "$CMD" = "install" ] ; then
+  echo "################################################################################"
+  echo "# install docker, set timezone, dist-upgrade on host <$DC_HOST>"
+  echo "################################################################################"
+  if [ ! -f /opt/dc/helper/hcloud-ubuntu-22.04.sh ] ; then
+    echo "error: missing installation script </opt/dc/helper/hcloud-ubuntu-22.04.sh>"
+    exit 1
+  fi
+  scp /opt/dc/helper/hcloud-ubuntu-22.04.sh ${DC_HOST}:/tmp/dc-install
+  ssh ${DC_HOST} /tmp/dc-install >/dev/null
+  exit $?
+fi
+
+
+###################################################################
+# assign
+###################################################################
+if [ "$CMD" = "assign" ] ; then
+  vname=$1
+  templ=$2
+  echo "################################################################################"
+  echo "# assing vserver <$vname> definitions from template <$templ> host <${DC_HOST}>"
+  echo "################################################################################"
+  if [ ! -f /opt/dc/templates/create/vserver/${templ}.yml ] ; then
+    echo "error: template file </opt/dc/templates/create/vserver/${temp}.yml> does not exist!"
+    exit 1
+  fi
+  if [ ! -d ${MDE_DC_HOST_DIR}/${DC_HOST} ] ; then
+    echo "error: host definition directory <${MDE_DC_HOST_DIR}/${DC_HOST}> does not exist!"
+    exit 1
+  fi
+  cp /opt/dc/templates/create/vserver/${templ}.yml                ${yaml}
+    sed -i "s|<vserver_name>|$vname|g"                            ${yaml}
+  pub_key=$( dc-yq '.hosts.'${DC_HOST}'.ssh_config.IdentityFile' )
+  pub_key=${pub_key}.pub
+  pub_key_name=$( cat ${pub_key} | awk '{ print $3 }')
+  sed -i "s|<ssh_pub_key>|`cat $pub_key`|g"                       ${yaml} 
+  sed -i "s|<hostname>|$(dc-yq '.hosts.'${DC_HOST}'.fqdn')|g" ${yaml}
+  sed -i "s|<ssh_pub_key_name>|$pub_key_name|g"                   ${yaml}
   exit 0
 fi
 
@@ -107,38 +112,44 @@ fi
 ###################################################################
 
 if [ "$CMD" = "rebuild" ] ; then
+  vs_type=$( dc-yq '.type' ${yaml} )
+  vs_name=$( dc-yq '.name' ${yaml} )
   echo "################################################################################"
-  echo "# rebuild vserver b${hname} based on host definition in ${MDE_DC_YAML}"
+  echo "# rebuild vserver <$vs_name> of host <${DC_HOST}>"
   echo "################################################################################"
-  img=$( dc-yq '.hosts.'${dc_host}'.vserver.hcoud.init.image'    ${MDE_DC_YAML} )
-  echo "dc-hcloud server rebuild ${hname} --image $img"
-  dc-hcloud server rebuild ${hname} --image $img
-  dc-host ${dc_host} state wait "sshd"
+  img=$( dc-yq '.hcloud.image' ${yaml} )
+  echo "dc-hcloud server rebuild ${vs_name} --image $img"
+  dc-${vs_type} server rebuild ${vs_name} --image $img
+  dc-host ${DC_HOST} state wait "sshd"
 fi
 
 ###################################################################
 # info
 ###################################################################
 if [ "$CMD" = "info" ] ; then
-  dc-hcloud server describe ${hname}
+  vs_type=$( dc-yq '.type' ${yaml} )
+  vs_name=$( dc-yq '.name' ${yaml} )
+  dc-${vs_type} server describe ${vs_name}
 fi
 
 ###################################################################
 # delete
 ###################################################################
 if [ "$CMD" = "delete" ] ; then
+  vs_type=$( dc-yq '.type' ${yaml} )
+  vs_name=$( dc-yq '.name' ${yaml} )
   echo "################################################################################"
-  echo "# delete Hetzner cloud server <$hname>"
+  echo "# delete vserver <$vs_name> of host <${DC_HOST}>"
   echo "################################################################################"
   # check if projects are defined for the host then error and exit
-  project_list=$( dc-list projects -h ${dc_host}  )
+  project_list=$( dc-list projects -h ${DC_HOST}  )
   if [ "$project_list" != "" ] ; then
-    echo "projects assigned to <${dc_host}>:"
-    dc-list projects -h ${dc_host} | sed "s|^|  - |g"
-    echo "error: unable to delete server <$hname>"
+    echo "projects assigned to <${DC_HOST}>:"
+    dc-list projects -h ${DC_HOST} | sed "s|^|  - |g"
+    echo "error: unable to delete vserver <$vs_name>"
     exit 1
   fi
-  dc-hcloud server delete $hname
+  dc-${vs_type} server delete $vs_name
   exit $?
 fi
 

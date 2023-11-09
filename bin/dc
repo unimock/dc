@@ -126,7 +126,7 @@ if [ "$1" = "ssh-control-reset" ] ; then
   rm -fv  $HOME/.dc/var/ssh/control/*
   exit 0
 fi
-wrapper_list="inspect host project install vserver batch list manage config ls server hcloud"
+wrapper_list="inspect host project install vserver batch list manage config ls vserver hcloud kvm"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift

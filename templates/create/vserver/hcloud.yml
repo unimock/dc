@@ -1,0 +1,11 @@
+type: hcloud
+name: <vserver_name>
+hcloud:
+  # dc-hcloud server-type list
+  type: cx11
+  # dc-hcloud image list
+  image: ubuntu-22.04
+  #dc-hcloud location list
+  location: fsn1
+  #dc-hcloud ssh-key list
+  ssh-key: <ssh_pub_key_name> 
