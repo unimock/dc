@@ -1,10 +1,25 @@
 #!/bin/bash
-
 source /opt/dc/funcs/global
+
+# TODO:
+# check if image exists in pool, otherwise create template
+#  define template-pool and qwoc2 pool in yaml
+#  define virt-customize parameter in yaml
+#  define target host in yaml
+
 
 _help() {
   echo "  `basename $0`  server establish|delete"
   exit 0
+}
+
+_create_pool() {
+  virsh pool-info --pool dc >/dev/null 2>&1
+  if [ "$?" != "0" ] ; then
+    virsh pool-define-as --name $1 --type dir --target $2
+    virsh pool-start --build $1
+    virsh pool-autostart $1
+  fi
 }
 
 CMD="$2"
@@ -27,65 +42,70 @@ if [ "$CMD" = "establish" ] ; then
     echo "error: type!=hcloud in <${yaml}>!"
     exit 1
   fi
-
   name=$(        dc-yq '.name'            $yaml )
-
   cloud_image=$( dc-yq '.kvm.cloud_image' $yaml )
   image_name=$(  dc-yq '.kvm.image_name'  $yaml )
   size=$(        dc-yq '.kvm.size'        $yaml )
-  memory=$(      dc-yq '.kvm.memory'      $yaml )
-  vcpus=$(       dc-yq '.kvm.vcpus'       $yaml )
-
-  IMG="/xxx/${image_name}.img"
-  if [ ! -f "$IMG" ] ; then
-    wget -O $IMG $cloud_image
-    rm -f /xxx/${image_name}.qcow2
-    qemu-img convert -f qcow2 -O qcow2 $IMG /xxx/${image_name}.qcow2
-    sudo virt-customize -a /xxx/${image_name}.qcow2  --install qemu-guest-agent
-    _size=$(stat -Lc%s /xxx/${image_name}.qcow2 )
-    virsh vol-create-as default ${image_name}.qcow2 ${_size} --format raw
-    virsh vol-upload --pool default ${image_name}.qcow2 /xxx/${image_name}.qcow2
+  POOL=$(        dc-yq '.kvm.pool.name'   $yaml )
+  TARGET=$(      dc-yq '.kvm.pool.target' $yaml )
+  _create_pool $POOL $TARGET
+  #
+  # check if image exists in pool
+  #
+  TMP=$( mktemp -d)
+  virsh vol-info --pool $POOL ${image_name}.qcow2 >/dev/null 2>&1
+  if [ "$?" != "0" ] ; then
+    wget -O ${TMP}/${image_name}.img $cloud_image
+    qemu-img convert -f qcow2 -O qcow2  ${TMP}/${image_name}.img ${TMP}/${image_name}.qcow2
+    customize=$( dc-yq '.kvm.virt-customize[]' $yaml | tr '\n' ' ' )
+    if [ "$customize" != "" -a "$customize" != "null" ] ; then
+      sudo virt-customize -a  ${TMP}/${image_name}.qcow2 ${customize}
+    fi
+    _size=$(stat -Lc%s ${TMP}/${image_name}.qcow2 )
+    virsh vol-create-as $POOL ${image_name}.qcow2 ${_size} --format raw
+    virsh vol-upload --pool $POOL ${image_name}.qcow2 ${TMP}/${image_name}.qcow2
   fi
-
-  echo "#cloud-config"                               > /xxx/${name}.cfg
-  dc-yq '.cloud-config' $yaml                       >> /xxx/${name}.cfg
-  cloud-localds /xxx/${name}.iso                       /xxx/${name}.cfg
-
-  _size=$(stat -Lc%s /xxx/${name}.iso)
-  virsh vol-create-as default ${name}.iso ${_size} --format raw
-
-
-  virsh vol-upload --pool default ${name}.iso          /xxx/${name}.iso
-
-  virsh vol-create-as default ${name}.qcow2 $size \
-  --format qcow2 \
-  --backing-vol /var/lib/libvirt/images/${image_name}.qcow2 \
-  --backing-vol-format qcow2
-
-  virt-install \
-  --noautoconsole \
-  --autostart \
-  --name $name \
-  --memory $memory --vcpus $vcpus \
-  --disk vol=default/${name}.qcow2,device=disk,bus=virtio \
-  --disk vol=default/${name}.iso,device=cdrom \
-  --os-variant ubuntu22.04 \
-  --virt-type kvm \
-  --graphics none \
-  --import
+  #
+  # create cloud-config iso and store it in pool
+  #
+  echo "#cloud-config"                               > $TMP/${name}.cfg
+  dc-yq '.cloud-config' $yaml                       >> $TMP/${name}.cfg
+  cloud-localds $TMP/${name}.iso                       $TMP/${name}.cfg
+  _size=$(stat -Lc%s $TMP/${name}.iso)
+  virsh vol-create-as $POOL ${name}.iso ${_size} --format raw
+  virsh vol-upload --pool $POOL ${name}.iso          $TMP/${name}.iso
+  #
+  # clone and resize image
+  #
+  virsh vol-clone  --pool $POOL ${image_name}.qcow2  ${name}.qcow2
+  virsh vol-resize --pool $POOL ${name}.qcow2 $size
+  #
+  # cleanup temp directory
+  #
+  rm -Rf $TMP
+  #
+  # start VM
+  #
+  para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
+  virt-install $para \
+    --noautoconsole \
+    --autostart \
+    --name $name \
+    --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
+    --disk vol=$POOL/${name}.iso,device=cdrom \
+    --virt-type kvm \
+    --graphics none \
+    --import
 
   while true ; do
     printf "."
     sleep 1
     ip=$(virsh guestinfo --domain $name --interface 2>/dev/null  | grep "if.1.addr.0.addr" | awk '{ print $3 }' )
-    #ip=$( virsh domifaddr $name | grep "ipv4" | awk '{print $4}' | sed 's/\/24//' )
     if [ "$ip" != "" ] ; then
       printf "\nip=$ip\n"
       break
     fi
   done
-  # virsh guestinfo --domain karl --interface | grep "if.1.addr.0.addr" | awk '{ print $3 }'
-
   exit 0
 fi
 
@@ -94,20 +114,16 @@ if [ "$CMD" = "ip" ] ; then
   exit 0
 fi
 
-
-
 if [ "$CMD" = "delete" ] ; then
-  virsh shutdown $name
-  virsh undefine $name
-  virsh vol-delete --pool default ${name}.qcow2
-  virsh vol-delete --pool default ${name}.iso  2>/dev/null
+  virsh destroy  $name
+  virsh undefine $name --remove-all-storage
 fi
 
-
 if [ "$CMD" = "remiso" ] ; then
+  POOL=
   targetDrive=$(virsh domblklist ${name} | grep ${name}.iso  | awk {' print $1 '})
   virsh change-media $name --path $targetDrive --eject --force
-  virsh vol-delete --pool default ${name}.iso
+  sudo rm -f $targetDrive
 fi
 
 if [ "$CMD" = "list" ] ; then

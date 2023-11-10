@@ -79,7 +79,7 @@ _config_refresh()
       #
       type=$( dc-yq '.host.type'  $hyaml)
       if [ "$type" = "sshd" -o "$type" = "dc" -o "$type" = "dock"  ] ; then
-        dc-yq -i '.hosts.'$name'.ssh_config.ControlPath = "$HOME/.dc/var/ssh/control/'$name'"'       ${hosts_dir}/hosts.yml
+        dc-yq -i '.hosts.'$name'.ssh_config.ControlPath = "'$HOME'/.dc/var/ssh/control/'$name'"' ${hosts_dir}/hosts.yml
         # replace variables off IdentityFile
         IdentityFile=$( dc-yq '.hosts.'$name'.ssh_config.IdentityFile'                              ${hosts_dir}/hosts.yml | envsubst)
         dc-yq -i '.hosts.'$name'.ssh_config.IdentityFile = "'$IdentityFile'"'                      ${hosts_dir}/hosts.yml

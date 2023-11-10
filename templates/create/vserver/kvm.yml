@@ -2,12 +2,18 @@ type: kvm
 name: <vserver_name>
 
 kvm:
-  cloud_image: https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img
+  cloud_image: https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img
   image_name: ubuntu-22.04-server
   size: 15G
-  memory: 2048
-  vcpus: 2
-
+  virt-install:
+    - --os-variant ubuntu22.04
+    - --memory 2048
+    - --vcpus 2
+  virt-customize:
+    - --install qemu-guest-agent
+  pool:
+    name: dc
+    target: /var/lib/dc-kvm
 cloud-config:
   #system_info:
   #  default_user:
