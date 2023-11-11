@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo "$0 : dist-upgrade" 1>&2
+
+DEBIAN_FRONTEND=noninteractive \
+  apt-get \
+  -o Dpkg::Options::=--force-confold \
+  -o Dpkg::Options::=--force-confdef \
+  -y --allow-downgrades --allow-remove-essential --allow-change-held-packages \
+  dist-upgrade
+exit $?

@@ -1,0 +1,147 @@
+#!/bin/bash
+
+_help() {
+  echo "  `basename $0`  server provide|delete|ip|list <vm-name>>"
+  exit 0
+}
+
+
+
+_create_pool() {
+  virsh pool-info --pool dc >/dev/null 2>&1
+  if [ "$?" != "0" ] ; then
+    virsh pool-define-as --name $1 --type dir --target $2
+    virsh pool-start --build $1
+    virsh pool-autostart $1
+  fi
+}
+RES="$1"
+CMD="$2"
+if [ "$RES" != "server" -o "$CMD" = ""  ] ; then
+  _help
+  exit 1
+fi
+
+name="$3"
+
+if [[ "$name" == *\@* ]] ; then
+  # delegate to
+  remhost=${name#*\@}
+  name=${name%\@*}
+  shift ; shift ; shift
+  if [ "$CMD" = "provide" ] ; then
+    yaml="$1"
+    scp /opt/dc/external/yq ${remhost}:/usr/local/bin/dc-yq
+    scp /opt/dc/bin/dc-kvm  ${remhost}:/usr/local/bin/
+    scp $yaml               ${remhost}:/tmp/${name}.yml
+    ssh $remhost dc-kvm $RES $CMD $name /tmp/${name}.yml
+  else
+    ssh $remhost dc-kvm $RES $CMD $name $@
+  fi
+  exit $?
+fi
+
+
+
+if [ "$CMD" = "provide" ] ; then
+  yaml="$4"
+  if [ "$yaml" = "" -o ! -f $yaml ] ; then
+    echo "error: yaml config file <$ymal> does not exist!"
+    exit 1
+  fi
+  cloud_type=$(dc-yq '.type'          ${yaml} )
+  if [ "$cloud_type" != "kvm"  ] ; then
+    echo "error: type!=hcloud in <${yaml}>!"
+    exit 1
+  fi
+#  name=$(        dc-yq '.name'            $yaml )
+  cloud_image=$( dc-yq '.kvm.cloud_image' $yaml )
+  image_name=$(  dc-yq '.kvm.image_name'  $yaml )
+  size=$(        dc-yq '.kvm.size'        $yaml )
+  POOL=$(        dc-yq '.kvm.vol-pool.name'   $yaml )
+  TARGET=$(      dc-yq '.kvm.vol-pool.target' $yaml )
+  _create_pool $POOL $TARGET
+  #
+  # check if image exists in pool
+  #
+  TMP=$( mktemp -d)
+  virsh vol-info --pool $POOL ${image_name}.qcow2 >/dev/null 2>&1
+  if [ "$?" != "0" ] ; then
+    wget --no-check-certificate -O ${TMP}/${image_name}.img $cloud_image
+    qemu-img convert -f qcow2 -O qcow2  ${TMP}/${image_name}.img ${TMP}/${image_name}.qcow2
+    customize=$( dc-yq '.kvm.virt-customize[]' $yaml | tr '\n' ' ' )
+    if [ "$customize" != "" -a "$customize" != "null" ] ; then
+      sudo virt-customize -a  ${TMP}/${image_name}.qcow2 ${customize}
+    fi
+    _size=$(stat -Lc%s ${TMP}/${image_name}.qcow2 )
+    virsh vol-create-as $POOL ${image_name}.qcow2 ${_size} --format raw
+    virsh vol-upload --pool $POOL ${image_name}.qcow2 ${TMP}/${image_name}.qcow2
+  fi
+  #
+  # create cloud-config iso and store it in pool
+  #
+  echo "#cloud-config"                               > $TMP/${name}.cfg
+  dc-yq '.cloud-config' $yaml                       >> $TMP/${name}.cfg
+  cloud-localds $TMP/${name}.iso                       $TMP/${name}.cfg
+  _size=$(stat -Lc%s $TMP/${name}.iso)
+  virsh vol-create-as $POOL ${name}.iso ${_size} --format raw
+  virsh vol-upload --pool $POOL ${name}.iso          $TMP/${name}.iso
+  #
+  # clone and resize image
+  #
+  virsh vol-clone  --pool $POOL ${image_name}.qcow2  ${name}.qcow2
+  virsh vol-resize --pool $POOL ${name}.qcow2 $size
+  #
+  # cleanup temp directory
+  #
+  rm -Rf $TMP
+  #
+  # start VM
+  #
+  para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
+  virt-install $para \
+    --noautoconsole \
+    --autostart \
+    --name $name \
+    --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
+    --disk vol=$POOL/${name}.iso,device=cdrom \
+    --channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0 \
+    --virt-type kvm \
+    --graphics none \
+    --import
+
+  while true ; do
+    printf "."
+    sleep 1
+    #ip=$(virsh guestinfo --domain $name --interface 2>/dev/null  | grep "if.1.addr.0.addr" | awk '{ print $3 }' )
+    ip=$(virsh domifaddr $name  --source agent 2>/dev/null | grep "ipv4" | grep -v "127.0.0.1"  | awk '{print $4}' | sed 's/\/24//')
+    if [ "$ip" != "" ] ; then
+      printf "\nip=$ip\n"
+      break
+    fi
+  done
+  exit 0
+fi
+
+if [ "$CMD" = "ip" ] ; then
+  #virsh domifaddr $name | grep "ipv4" | awk '{print $4}' | sed 's/\/24//'
+  virsh domifaddr $name  --source agent | grep "ipv4" | grep -v "127.0.0.1"  | awk '{print $4}' | sed 's/\/24//'
+  exit 0
+fi
+
+if [ "$CMD" = "delete" ] ; then
+  virsh destroy  $name
+  virsh undefine $name --remove-all-storage
+fi
+
+if [ "$CMD" = "remiso" ] ; then
+  targetDrive=$(virsh domblklist ${name} | grep ${name}.iso  | awk {' print $1 '})
+  virsh change-media $name --path $targetDrive --eject --force
+  sudo rm -f $targetDrive
+fi
+
+if [ "$CMD" = "list" ] ; then
+  virsh list
+  exit 0
+fi
+

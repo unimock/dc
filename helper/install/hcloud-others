@@ -1,0 +1,13 @@
+#!/bin/bash
+echo "$0 : hcloud kann noch kein cloud-init, deshalb hier" 1>&2
+
+echo "$0 : set timezone" 1>&2
+timedatectl set-timezone Europe/Berlin
+
+echo "$0 : disable PasswordAuthentication in sshd_config" 1>&2
+sed -i  's|#PasswordAuthentication.*|PasswordAuthentication no|g' /etc/ssh/sshd_config
+
+echo "$0 : unset root password" 1>&2
+usermod -p ! root
+
+exit 0

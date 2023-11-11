@@ -1,1 +1,37 @@
-../external/hcloud
+#!/bin/bash
+
+source /opt/dc/funcs/global
+
+if [ "$1" = "" ] ; then
+  /opt/dc/external/hcloud
+  echo ""
+  echo "  server provide <server_name> <yaml-file>"
+  exit 0
+fi
+
+if [ "$1" = "server" -a "$2" = "provide" ] ; then
+  hname="$3"
+  yaml="$4"
+  if [ "$yaml" = "" -o ! -f $yaml ] ; then
+    echo "error: yaml config file <$ymal> does not exist!"
+    exit 1
+  fi
+  cloud_type=$(dc-yq '.type'          ${yaml} )
+  if [ "$cloud_type" != "hcloud"  ] ; then
+    echo "error: type!=hcloud in <${yaml}>!"
+    exit 1
+  fi
+  #hname=$(dc-yq '.name'           ${yaml} )
+  typ=$(  dc-yq '.hcloud.type'     ${yaml} )
+  img=$(  dc-yq '.hcloud.image'    ${yaml} )
+  loc=$(  dc-yq '.hcloud.location' ${yaml} )
+  key=$(  dc-yq '.hcloud.ssh-key'  ${yaml} )
+  echo server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
+  /opt/dc/external/hcloud server create --name ${hname} --type $typ --image $img --location $loc --ssh-key $key
+  /opt/dc/external/hcloud server ip   ${hname} 
+  exit 0
+else
+  /opt/dc/external/hcloud $@
+  exit $?
+fi
+

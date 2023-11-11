@@ -86,17 +86,34 @@ fi
 # dc-host <host> state wait dc,dock
 #################################################################
 if [ "$CMD" = "state" -a "$1" = "wait" ] ; then
-  wait_state=",${2},"
-  printf "# wait until host reaches state: ${2}"
+  wait_state="$2"
+  printf "# wait for host-state=<${2}> "
+  reached=0
   while true ; do
     state=$( dc-host ${hlist} state )
-    if [ "$state" = "" ] ; then printf "." ; fi
-    if [ "$state" = "ping" ] ; then printf "p" ; fi
-    if [ "$state" = "sshd" ] ; then printf "s" ; fi
-    if [ "$state" = "dock" ] ; then printf "d" ; fi
-    if [ "$state" = "dc" ]   ; then printf "D" ; fi
-    if [[ $wait_state == *",${state},"* ]] ; then
-      printf "\n# host has reached state: $state\n"
+    if [ "$state" = "" ] ; then
+      printf "."
+    elif [ "$state" = "ping" ] ; then
+      printf "p"
+      if [ "$wait_state" = "ping" ] ; then
+        reached=1 ;
+      fi
+    elif [ "$state" = "sshd" ] ; then
+      printf "s"
+      if [ "$wait_state" = "ping" -o  "$wait_state" = "sshd" ] ; then
+        reached=1 ;
+      fi
+    elif [ "$state" = "dock" ] ; then
+      printf "d"
+      if [ "$wait_state" = "ping" -o  "$wait_state" = "sshd"  -o  "$wait_state" = "dock" ] ; then
+        reached=1 ;
+      fi
+    elif [ "$state" = "dc" ]   ; then
+      printf "D"
+      reached=1 ;
+    fi
+    if [ "$reached" = "1" ] ; then
+      printf "\n# host reached state: $state\n"
       break
     fi
     sleep 1
@@ -107,7 +124,7 @@ fi
 if [ "$CMD" = "state" ] ; then
   for HOST in $hlist ; do
     state=""
-    hname=$( dc-yq '.hosts.'$HOST'.hostname' ${MDE_DC_YAML} ) 
+    hname=$( dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML} ) 
     ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
     if [ "$?" = "0" ] ; then
       state="ping"
@@ -208,7 +225,7 @@ EOF
     #_ask "Check, if all containers are started!"
     #_ask "Show running containers!"
     #_ask "reboot?"
-    dc-host $HOST reboot wait dc,dock
+    dc-host $HOST reboot wait dock
     NCOUNT=$( dc-host $HOST nrc )
     dc-host $HOST check
     echo "#"
