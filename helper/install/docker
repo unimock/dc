@@ -15,23 +15,4 @@ echo \
 apt-get -y update
 apt-get -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin >/dev/null 2>&1
 
-echo "$0 : dist-upgrade" 1>&2
-
-DEBIAN_FRONTEND=noninteractive \
-  apt-get \
-  -o Dpkg::Options::=--force-confold \
-  -o Dpkg::Options::=--force-confdef \
-  -y --allow-downgrades --allow-remove-essential --allow-change-held-packages \
-  dist-upgrade
-
-
-echo "$0 : set timezone" 1>&2
-timedatectl set-timezone Europe/Berlin
-
-echo "$0 : disable PasswordAuthentication in sshd_config" 1>&2
-sed -i  's|#PasswordAuthentication.*|PasswordAuthentication no|g' /etc/ssh/sshd_config
-
-echo "$0 : unset root password" 1>&2
-usermod -p ! root
-
 exit 0

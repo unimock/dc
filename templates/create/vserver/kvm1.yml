@@ -10,12 +10,11 @@ kvm:
     target: /var/lib/dc-kvm
   size: 5G
   virt-install:
-    - --os-variant ubuntu22.04
     - --memory 2048
     - --vcpus 2
-    #- --os-variant ubuntu16.04
-    #- --os-type linux
-    #- --network bridge=guest-net,model=virtio
+    - --os-variant ubuntu16.04
+    - --os-type linux
+    - --network bridge=guest-net,model=virtio
 cloud-config:
   #system_info:
   #  default_user:
@@ -46,10 +45,10 @@ cloud-config:
   #  condition: True
   #runcmd:
   #  - [ reboot ]
-
 dc-install:
   dc:
     #- dist-upgrade
     #- docker
   apt:
     #- tree
+

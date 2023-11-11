@@ -20,7 +20,7 @@ shift
 ###################################################################
 if [ "$CMD" = "" -a "$DC_HOST" = "list" ] ; then
   for i in $VSERVER ; do
-    dc-$i server list
+    dc-${VSERVER} $i server list
   done
   echo "TBD: show assignment host <-> vhost"
   exit 0
@@ -37,12 +37,12 @@ if [ "$CMD" = "create" ] ; then
     echo "error: yaml config <${yaml}> missing!"
     exit 1
   fi
+  vs_name=$( dc-yq '.hosts.'${DC_HOST}'.vserver.name' ${MDE_DC_YAML} )
   vs_type=$( dc-yq '.type' ${yaml} )
-  vs_name=$( dc-yq '.name' ${yaml} )
   echo "################################################################################"
   echo "# create vserver <$vs_name> based on definition in ${yaml}"
   echo "################################################################################"
-  dc-${vs_type} server establish ${vs_name} ${yaml}
+  dc-${vs_type} server provide ${vs_name} ${yaml}
   IP=$( dc-${vs_type} server ip ${vs_name} )  
   echo "################################################################################"
   echo "# assign vserver fqdn <$IP> to host <${DC_HOST}> definition"
@@ -51,13 +51,40 @@ if [ "$CMD" = "create" ] ; then
   ssh-keyscan -H ${IP} >> ${HOME}/.ssh/known_hosts
   rm -f $HOME/.dc/var/ssh/control/${DC_HOST}
   # place IP or hostname in host.yml definition and rebuild
-  dc-yq -i '.host.fqdn = "'$IP'"'  $host_dir/host.yml
+  dc-yq -i '.host.fqdn = "'$IP'"'           $host_dir/host.yml
   dc-config refresh
   dc-host ${DC_HOST} state wait "sshd"
   if [ "${vs_type}" = "kvm" ] ; then
     echo "# check cloud-init state"
     ssh ${DC_HOST} cloud-init status --wait
     dc-${vs_type} server remiso ${vs_name}
+  fi
+  reboot_required=0
+  docker_install=0
+  inst_list=$( dc-yq '.dc-install.dc[]' ${yaml})
+  for i in $inst_list ; do
+    if [ "$i" = "dist-upgrade" ] ; then
+      reboot_required=1
+    fi
+    if [ "$i" = "docker" ] ; then
+      docker_install=1
+      continue
+    fi
+    echo "# dc-install: <${i}> ..." 
+    scp /opt/dc/helper/install/${i}  ${DC_HOST}:/tmp/dc-install
+    ssh ${DC_HOST} /tmp/dc-install >/dev/null
+  done
+
+  host_type=$( dc-yq '.hosts.'${DC_HOST}'.type' ${MDE_DC_YAML} )
+
+  if [[ "$docker_install" == "1" || "$host_type" == "dock" || "$host_type" = "dc" ]] ; then
+    # install docker if a dock or dc host is requested
+    echo "# dc-install: <docker> ..." 
+    scp /opt/dc/helper/install/docker ${DC_HOST}:/tmp/dc-install
+    ssh ${DC_HOST} /tmp/dc-install >/dev/null
+  fi
+  if [ "$reboot_required" = "1" ] ; then
+    dc-host ${DC_HOST} reboot wait $host_typ
   fi
   exit 0
 fi
@@ -97,13 +124,16 @@ if [ "$CMD" = "assign" ] ; then
     exit 1
   fi
   cp /opt/dc/templates/create/vserver/${templ}.yml                ${yaml}
-    sed -i "s|<vserver_name>|$vname|g"                            ${yaml}
   pub_key=$( dc-yq '.hosts.'${DC_HOST}'.ssh_config.IdentityFile' )
   pub_key=${pub_key}.pub
   pub_key_name=$( cat ${pub_key} | awk '{ print $3 }')
+  vserver_name=${vname%\@*}  # if remote kvm, then: test@kvm1 -> test
+  sed -i "s|<vserver_name>|$vserver_name|g"                       ${yaml}
   sed -i "s|<ssh_pub_key>|`cat $pub_key`|g"                       ${yaml} 
-  sed -i "s|<hostname>|$(dc-yq '.hosts.'${DC_HOST}'.fqdn')|g" ${yaml}
+  sed -i "s|<hostname>|$(dc-yq '.hosts.'${DC_HOST}'.fqdn')|g"     ${yaml}
   sed -i "s|<ssh_pub_key_name>|$pub_key_name|g"                   ${yaml}
+
+  dc-yq -i '.host.vserver.name = "'${vname}'"' $host_dir/host.yml
   exit 0
 fi
 
@@ -112,8 +142,8 @@ fi
 ###################################################################
 
 if [ "$CMD" = "rebuild" ] ; then
+  vs_name=$( dc-yq '.hosts.'${DC_HOST}'.vserver.name' ${MDE_DC_YAML} )
   vs_type=$( dc-yq '.type' ${yaml} )
-  vs_name=$( dc-yq '.name' ${yaml} )
   echo "################################################################################"
   echo "# rebuild vserver <$vs_name> of host <${DC_HOST}>"
   echo "################################################################################"
@@ -127,8 +157,8 @@ fi
 # info
 ###################################################################
 if [ "$CMD" = "info" ] ; then
+  vs_name=$( dc-yq '.hosts.'${DC_HOST}'.vserver.name' ${MDE_DC_YAML} )
   vs_type=$( dc-yq '.type' ${yaml} )
-  vs_name=$( dc-yq '.name' ${yaml} )
   dc-${vs_type} server describe ${vs_name}
 fi
 
@@ -136,8 +166,9 @@ fi
 # delete
 ###################################################################
 if [ "$CMD" = "delete" ] ; then
+  vs_name=$( dc-yq '.hosts.'${DC_HOST}'.vserver.name' ${MDE_DC_YAML} )
   vs_type=$( dc-yq '.type' ${yaml} )
-  vs_name=$( dc-yq '.name' ${yaml} )
+
   echo "################################################################################"
   echo "# delete vserver <$vs_name> of host <${DC_HOST}>"
   echo "################################################################################"

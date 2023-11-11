@@ -5,11 +5,11 @@ source /opt/dc/funcs/global
 if [ "$1" = "" ] ; then
   /opt/dc/external/hcloud
   echo ""
-  echo "  server establish <server_name> <yaml-file>"
+  echo "  server provide <server_name> <yaml-file>"
   exit 0
 fi
 
-if [ "$1" = "server" -a "$2" = "establish" ] ; then
+if [ "$1" = "server" -a "$2" = "provide" ] ; then
   hname="$3"
   yaml="$4"
   if [ "$yaml" = "" -o ! -f $yaml ] ; then

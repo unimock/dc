@@ -62,7 +62,7 @@ _config_refresh()
     rm -rf ${hosts_dir}
     mkdir ${hosts_dir}
     echo "$last" | awk '{ print $2 }' > ${hosts_dir}/modified.${stamp}
-    list=$( find ${MDE_DC_HOST_DIR}  -name "*.yml" )
+    list=$( find ${MDE_DC_HOST_DIR}  -name "host.yml" )
     # append hosts definition to cached host file
     echo "hosts:"                                                                               > ${hosts_dir}/hosts.yml
     rm -rf   $HOME/.dc/var/ssh/config

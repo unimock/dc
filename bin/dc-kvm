@@ -1,17 +1,11 @@
 #!/bin/bash
-source /opt/dc/funcs/global
-
-# TODO:
-# check if image exists in pool, otherwise create template
-#  define template-pool and qwoc2 pool in yaml
-#  define virt-customize parameter in yaml
-#  define target host in yaml
-
 
 _help() {
-  echo "  `basename $0`  server establish|delete"
+  echo "  `basename $0`  server provide|delete|ip|list <vm-name>>"
   exit 0
 }
+
+
 
 _create_pool() {
   virsh pool-info --pool dc >/dev/null 2>&1
@@ -21,17 +15,35 @@ _create_pool() {
     virsh pool-autostart $1
   fi
 }
-
+RES="$1"
 CMD="$2"
-if [ "$1" != "server" -o "$2" = ""  ] ; then
+if [ "$RES" != "server" -o "$CMD" = ""  ] ; then
   _help
   exit 1
 fi
 
 name="$3"
 
-if [ "$CMD" = "establish" ] ; then
-  hname="$3"
+if [[ "$name" == *\@* ]] ; then
+  # delegate to
+  remhost=${name#*\@}
+  name=${name%\@*}
+  shift ; shift ; shift
+  if [ "$CMD" = "provide" ] ; then
+    yaml="$1"
+    scp /opt/dc/external/yq ${remhost}:/usr/local/bin/dc-yq
+    scp /opt/dc/bin/dc-kvm  ${remhost}:/usr/local/bin/
+    scp $yaml               ${remhost}:/tmp/${name}.yml
+    ssh $remhost dc-kvm $RES $CMD $name /tmp/${name}.yml
+  else
+    ssh $remhost dc-kvm $RES $CMD $name $@
+  fi
+  exit $?
+fi
+
+
+
+if [ "$CMD" = "provide" ] ; then
   yaml="$4"
   if [ "$yaml" = "" -o ! -f $yaml ] ; then
     echo "error: yaml config file <$ymal> does not exist!"
@@ -42,12 +54,12 @@ if [ "$CMD" = "establish" ] ; then
     echo "error: type!=hcloud in <${yaml}>!"
     exit 1
   fi
-  name=$(        dc-yq '.name'            $yaml )
+#  name=$(        dc-yq '.name'            $yaml )
   cloud_image=$( dc-yq '.kvm.cloud_image' $yaml )
   image_name=$(  dc-yq '.kvm.image_name'  $yaml )
   size=$(        dc-yq '.kvm.size'        $yaml )
-  POOL=$(        dc-yq '.kvm.pool.name'   $yaml )
-  TARGET=$(      dc-yq '.kvm.pool.target' $yaml )
+  POOL=$(        dc-yq '.kvm.vol-pool.name'   $yaml )
+  TARGET=$(      dc-yq '.kvm.vol-pool.target' $yaml )
   _create_pool $POOL $TARGET
   #
   # check if image exists in pool
@@ -55,7 +67,7 @@ if [ "$CMD" = "establish" ] ; then
   TMP=$( mktemp -d)
   virsh vol-info --pool $POOL ${image_name}.qcow2 >/dev/null 2>&1
   if [ "$?" != "0" ] ; then
-    wget -O ${TMP}/${image_name}.img $cloud_image
+    wget --no-check-certificate -O ${TMP}/${image_name}.img $cloud_image
     qemu-img convert -f qcow2 -O qcow2  ${TMP}/${image_name}.img ${TMP}/${image_name}.qcow2
     customize=$( dc-yq '.kvm.virt-customize[]' $yaml | tr '\n' ' ' )
     if [ "$customize" != "" -a "$customize" != "null" ] ; then
@@ -93,6 +105,7 @@ if [ "$CMD" = "establish" ] ; then
     --name $name \
     --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
     --disk vol=$POOL/${name}.iso,device=cdrom \
+    --channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0 \
     --virt-type kvm \
     --graphics none \
     --import
@@ -100,7 +113,8 @@ if [ "$CMD" = "establish" ] ; then
   while true ; do
     printf "."
     sleep 1
-    ip=$(virsh guestinfo --domain $name --interface 2>/dev/null  | grep "if.1.addr.0.addr" | awk '{ print $3 }' )
+    #ip=$(virsh guestinfo --domain $name --interface 2>/dev/null  | grep "if.1.addr.0.addr" | awk '{ print $3 }' )
+    ip=$(virsh domifaddr $name  --source agent 2>/dev/null | grep "ipv4" | grep -v "127.0.0.1"  | awk '{print $4}' | sed 's/\/24//')
     if [ "$ip" != "" ] ; then
       printf "\nip=$ip\n"
       break
@@ -110,7 +124,8 @@ if [ "$CMD" = "establish" ] ; then
 fi
 
 if [ "$CMD" = "ip" ] ; then
-  virsh domifaddr $name | grep "ipv4" | awk '{print $4}' | sed 's/\/24//'
+  #virsh domifaddr $name | grep "ipv4" | awk '{print $4}' | sed 's/\/24//'
+  virsh domifaddr $name  --source agent | grep "ipv4" | grep -v "127.0.0.1"  | awk '{print $4}' | sed 's/\/24//'
   exit 0
 fi
 
@@ -120,7 +135,6 @@ if [ "$CMD" = "delete" ] ; then
 fi
 
 if [ "$CMD" = "remiso" ] ; then
-  POOL=
   targetDrive=$(virsh domblklist ${name} | grep ${name}.iso  | awk {' print $1 '})
   virsh change-media $name --path $targetDrive --eject --force
   sudo rm -f $targetDrive

@@ -9,3 +9,9 @@ hcloud:
   location: fsn1
   #dc-hcloud ssh-key list
   ssh-key: <ssh_pub_key_name> 
+dc-install:
+  dc:
+    - hcloud-others
+    #- docker
+  apt:
+    #- tree
