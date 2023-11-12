@@ -64,7 +64,16 @@ if [ "$CMD" = "create" ] ; then
   inst_list=$( dc-yq '.dc-install.dc[]' ${yaml})
   for i in $inst_list ; do
     if [ "$i" = "dist-upgrade" ] ; then
+      echo "# dc-install: <${i}> ..." 
+      scp /opt/dc/helper/install/${i}  ${DC_HOST}:/tmp/dc-install
+      ssh ${DC_HOST} /tmp/dc-install >/dev/null
       reboot_required=1
+      break
+    fi
+  done
+  for i in $inst_list ; do
+    if [ "$i" = "dist-upgrade" ] ; then
+      continue
     fi
     if [ "$i" = "docker" ] ; then
       docker_install=1
@@ -74,9 +83,7 @@ if [ "$CMD" = "create" ] ; then
     scp /opt/dc/helper/install/${i}  ${DC_HOST}:/tmp/dc-install
     ssh ${DC_HOST} /tmp/dc-install >/dev/null
   done
-
   host_type=$( dc-yq '.hosts.'${DC_HOST}'.type' ${MDE_DC_YAML} )
-
   if [[ "$docker_install" == "1" || "$host_type" == "dock" || "$host_type" = "dc" ]] ; then
     # install docker if a dock or dc host is requested
     echo "# dc-install: <docker> ..." 

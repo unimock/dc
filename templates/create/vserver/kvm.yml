@@ -10,11 +10,9 @@ kvm:
     target: /var/lib/dc-kvm
   size: 5G
   virt-install:
-    - --os-variant ubuntu22.04
     - --memory 2048
     - --vcpus 2
-    #- --os-variant ubuntu16.04
-    #- --os-type linux
+    - --os-variant ubuntu22.04
     #- --network bridge=guest-net,model=virtio
 cloud-config:
   #system_info:

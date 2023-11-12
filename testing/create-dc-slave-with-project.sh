@@ -7,8 +7,8 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 ################################################################################
 source ${HOME}/.dc/etc/config
 HOST="test"
-VSERVER="karl"
-PROJECT="test-project"
+VSERVER="test"
+PROJECT="tproject"
 TEMPL="kvm"
 
 if [ "$1" = "" -o "$1" = "create" ] ; then

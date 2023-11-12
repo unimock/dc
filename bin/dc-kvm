@@ -98,22 +98,37 @@ if [ "$CMD" = "provide" ] ; then
   #
   # start VM
   #
-  para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
-  virt-install $para \
-    --noautoconsole \
-    --autostart \
-    --name $name \
-    --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
-    --disk vol=$POOL/${name}.iso,device=cdrom \
-    --channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0 \
-    --virt-type kvm \
-    --graphics none \
-    --import
-
+  if [ -d /tsp0/images ] ; then # my kvm server
+    virt-install \
+      --network bridge=guest-net,model=virtio \
+      --os-variant ubuntu16.04 \
+      --os-type linux \
+      --channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0 \
+      --memory 2048 \
+      --vcpus 2 \
+      --noautoconsole \
+      --autostart \
+      --name $name \
+      --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
+      --disk vol=$POOL/${name}.iso,device=cdrom \
+      --virt-type kvm \
+      --graphics none \
+      --import
+  else
+    para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
+    virt-install $para \
+      --noautoconsole \
+      --autostart \
+      --name $name \
+      --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
+      --disk vol=$POOL/${name}.iso,device=cdrom \
+      --virt-type kvm \
+      --graphics none \
+      --import
+  fi
   while true ; do
     printf "."
     sleep 1
-    #ip=$(virsh guestinfo --domain $name --interface 2>/dev/null  | grep "if.1.addr.0.addr" | awk '{ print $3 }' )
     ip=$(virsh domifaddr $name  --source agent 2>/dev/null | grep "ipv4" | grep -v "127.0.0.1"  | awk '{print $4}' | sed 's/\/24//')
     if [ "$ip" != "" ] ; then
       printf "\nip=$ip\n"

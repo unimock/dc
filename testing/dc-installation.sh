@@ -6,7 +6,7 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 # dc-hcloud ssh-key create --name dc --public-key-from-file dc/hosts/id_ed25519.pub
 ################################################################################
 
-HOST="dc-test"
+HOST="test"
 VSERVER="test"
 SLAVE="dc-slave"
 TEMPL="kvm"
@@ -25,7 +25,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   # lets play around on the new dc cluster manager
   ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub > /root/.ssh/authorized_keys'
   ssh $HOST dc host $SLAVE config create $IP dc
-  ssh $HOST dc ls hosts
+  ssh $HOST dc ls hosts --inspect
   ssh $HOST dc project filebrowser config create $SLAVE filebrowser /root/dc/projects/filebrowser
   ssh $HOST dc -p filebrowser up
   ssh $HOST dc ls projects --inspect
