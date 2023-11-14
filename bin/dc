@@ -1,5 +1,9 @@
 #!/bin/bash
 
+printf "%-60s # %s %s\n" "dc $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> /tmp/.dc-history
+
+
+
 if [ "$1" = "install" ] ; then
   shift
   /opt/dc/bin/dc-install $@
