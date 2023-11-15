@@ -40,7 +40,7 @@ _help() {
   #else
   #  (cd /opt/dc && git pull)
   fi
-  if [  -f $HOME/.dc/etc/config ] ; then
+  if [ !  -f $HOME/.dc/etc/config ] ; then
     if [ "$opt_force" = "0" ] ; then
       echo ""
       echo "# Main configuration file <$HOME/.dc/etc/config> does not exists."

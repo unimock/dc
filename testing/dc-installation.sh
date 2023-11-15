@@ -20,8 +20,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   IP=$(dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML})
   echo "IP=$IP"
   ssh $HOST git clone https://github.com/unimock/dc.git /opt/dc
-  ssh $HOST /opt/dc/bin/dc-install
-  ssh $HOST /opt/dc/bin/dc-install
+  ssh $HOST /opt/dc/bin/dc-install --force
   # lets play around on the new dc cluster manager
   ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub > /root/.ssh/authorized_keys'
   ssh $HOST dc host $SLAVE config create $IP dc
