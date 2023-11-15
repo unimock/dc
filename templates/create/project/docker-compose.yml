@@ -6,7 +6,7 @@ services:
     container_name: ${DC_ENV_NAME}
     hostname: ${DC_ENV_NAME}
     ports:
-      - "54321:80"
+      - "54321:8000"
 #    labels:
     
 #    environment:

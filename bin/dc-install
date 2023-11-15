@@ -7,13 +7,25 @@ if [ "$(ps -o comm= $PPID)" = "dc" ] ; then
   IAM="dc install"
 fi
 
+opt_force=0
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --force) shift ; opt_force=1 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
+
+
+
 _help() {
   echo ""
   echo " usage: $IAM  base|.."
   echo ""
   echo " common config commands:"
   echo ""
-  echo "$IAM     # dc managment basi installation"
+  echo "$IAM     # dc managment base installation"
   echo ""
   echo ""
 }
@@ -28,15 +40,19 @@ _help() {
   #else
   #  (cd /opt/dc && git pull)
   fi
-  if [ ! -f $HOME/.dc/etc/config ] ; then
-    echo ""
-    echo "# Main configuration file <$HOME/.dc/etc/config> does not exists."
-    echo "# Default configuration from template directory was activated."
-    echo "# You can change it and then re-call dc-install"
-    echo ""
+  if [  -f $HOME/.dc/etc/config ] ; then
+    if [ "$opt_force" = "0" ] ; then
+      echo ""
+      echo "# Main configuration file <$HOME/.dc/etc/config> does not exists."
+      echo "# Default configuration from template directory was activated."
+      echo "# You can change it and then re-call: $0"
+      echo ""
+    fi
     mkdir -p $HOME/.dc/etc
     cp /opt/dc/templates/config $HOME/.dc/etc
-    exit 0
+    if [ "$opt_force" = "0" ] ; then
+      exit 0
+    fi
   fi
   source $HOME/.dc/etc/config
   echo "$IAM: create directories <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."

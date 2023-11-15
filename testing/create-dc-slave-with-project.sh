@@ -17,13 +17,14 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   #dc host   $HOST vserver rebuild                # only useful for hetznercloud
   dc host    $HOST vserver create                 # create assigned hetzner cloud server
   dc host    $HOST state                          # check if host returns dc
-  # install, start and test filebrowser template project for the host
-  dc project $PROJECT config create $HOST filebrowser ${MDE_DC_PROJ_DIR}/$PROJECT
+  # install, start and test hello-world template project for the host
+  dc project $PROJECT config create $HOST hello-world ${MDE_DC_PROJ_DIR}/$PROJECT
   dc -p ${PROJECT} up                             # start project service
   sleep 2
+fi
+if [ "$1" = "" -o "$1" = "test" ] ; then
   ip=$(dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML})
-  port=$( dc-yq '.projects.'$PROJECT'.compose.services.filebrowser.ports.[0].published'  ${MDE_DC_YAML} )
-  sleep 1
+  port=$( dc-yq '.projects.'$PROJECT'.compose.services.hello-world.ports.[0].published'  ${MDE_DC_YAML} )
   netcat -vz $ip $port
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 

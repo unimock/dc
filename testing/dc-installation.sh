@@ -26,16 +26,18 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub > /root/.ssh/authorized_keys'
   ssh $HOST dc host $SLAVE config create $IP dc
   ssh $HOST dc ls hosts --inspect
-  ssh $HOST dc project filebrowser config create $SLAVE filebrowser /root/dc/projects/filebrowser
-  ssh $HOST dc -p filebrowser up
+  ssh $HOST dc project hello-world config create $SLAVE hello-world /root/dc/projects/hello-world
+  ssh $HOST dc -p hello-world up
+fi
+if [ "$1" = "" -o "$1" = "test" ] ; then
   ssh $HOST dc ls projects --inspect
-  PORT=$(ssh $HOST dc-yq '.projects.filebrowser.compose.services.filebrowser.ports.[0].published')
+  PORT=$(ssh $HOST dc-yq '.projects.hello-world.compose.services.hello-world.ports.[0].published')
   sleep 1
   netcat -vz $IP $PORT
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  ssh $HOST dc -p filebrowser rm                 # stop and remove filebrowser project services
-  ssh $HOST dc project filebrowser config delete # remove filebrowser project definition
+  ssh $HOST dc -p hello-world rm                 # stop and remove hello-world project services
+  ssh $HOST dc project hello-world config delete # remove hello-world project definition
   ssh $HOST dc host $SLAVE config delete         # delete host config definition
   dc host $HOST vserver delete                   # delete assigned Hetzner cloud server
   dc host $HOST config  delete                   # delete host definition

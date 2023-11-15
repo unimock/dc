@@ -166,7 +166,7 @@ if [ "$1" = "" ] ; then
   echo "# create/delete a sample project:"
   echo "" 
   echo "#$IAM create project <name>       <host> <main_service> <project_dir>"
-  echo "$IAM  create project test-project apps0  filebrowser ${MDE_DC_PROJ_DIR}/test-project"
+  echo "$IAM  create project test-project apps0  hello-world ${MDE_DC_PROJ_DIR}/test-project"
   echo "$IAM  delete project test-project"
   echo ""
   echo "# create/delete a host definition"
@@ -244,7 +244,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       main_service="$3"    # keep it simple, like: git,...
       conf_dir="$4"
       traefik_net="traefik_default"
-      image="filebrowser/filebrowser:v2.25.0"
+      image="crccheck/hello-world"
       if [ -d ${conf_dir} ] ; then
         echo "error: ${conf_dir} exists!"
         exit 1
