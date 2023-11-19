@@ -258,13 +258,21 @@ EOF
     done
   fi 
   ####################################################################################################################
-  if [ "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "rmup"  ] ; then
-    list=$( dc-list projects -h $HOST )
-    for i in $list ; do
-      dc -h $HOST -p $i $CMD
-    done
+  if [    "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
+    list=$( dc-list projects -h $HOST --sort run_level)    # 4 5 6
+    rlist=$(echo "$list" | tr ' ' '\n' | tac)              # 6 5 4
+    if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
+      for i in $list ; do
+        dc -h $HOST -p $i $CMD
+      done
+    else
+      for i in $rlist ; do
+        dc -h $HOST -p $i $CMD
+      done
+    fi
   fi
 
+  ####################################################################################################################
   if [ "$CMD" = "reboot"   ] ; then
     ssh $HOST "init 6"
     if [ "$1" != "" ] ; then
