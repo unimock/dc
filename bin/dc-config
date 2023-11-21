@@ -2,7 +2,6 @@
 
 . /opt/dc/funcs/global
 
-
 call_from="$(ps -o comm= $PPID)"
 if [ "$call_from" == "dc" ] ; then
   IAM="dc config"
@@ -385,7 +384,7 @@ if [ "$CMD" = "check" ] ; then
     fi
   done
 
-  projects=$( dc-yq '(.projects.* | path )  [-1]'  ${MDE_DC_YAML} | sort )
+  projects=$( dc-yq '(.projects.[] | path )  [-1]'  ${MDE_DC_YAML} | sort )
   for p in $projects ; do
     ignore_vol_check=$( dc-yq '.projects.'$p'.dc.ignore_volume_check' ${MDE_DC_YAML} )
     p_on_hosts=( `dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML}` )   # Array

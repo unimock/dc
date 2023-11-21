@@ -100,7 +100,7 @@ _dc() {
 
   # dc config ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "config" ]] ; then
-    COMPREPLY=( $(compgen -W "show refresh rebuild create delete yq edit" -- "$2") )
+    COMPREPLY=( $(compgen -W "show refresh rebuild create delete yq edit check" -- "$2") )
   # dc config <> ...
   elif [[ "${COMP_WORDS[1]}" = "config" ]] ; then
     # dc config delete|  ..
