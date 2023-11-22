@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.4"
+VERSION="0.0.5"
 IAM="stsync"
 
 ####################################################################################
@@ -77,7 +77,7 @@ check_dependencies
 
 source /usr/local/include/addapps.funcs
 
-SYNC_ST_OPT="--homedir /Docker/Services/syncthing/service"
+SYNC_ST_OPT="--homedir /Volumes/Projects/syncthing/cfg"
 
 CMD="$1"
 shift
