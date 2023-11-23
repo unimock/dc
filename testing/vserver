@@ -8,22 +8,26 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 source ${HOME}/.dc/etc/config
 HOST="test"
 
-dc host    $HOST config  create test.intra sshd    # create new host definition with hostname test.intra and type "dc"
-  VSERVER="test" ; TEMPL="kvm"
-  dc host    $HOST vserver assign $VSERVER $TEMPL  # assign virtual server to host
-  dc host    $HOST vserver create                  # create assigned hetzner cloud server
-  ssh $HOST hostname ; ssh $HOST uptime
-  dc host    $HOST vserver delete                  # delete assigned virtual server
-  VSERVER="test@kvm1" ; TEMPL="kvm1"
-  dc host    $HOST vserver assign $VSERVER $TEMPL  # assign virtual server to host
-  dc host    $HOST vserver create                  # create assigned hetzner cloud server
-  ssh $HOST hostname ; ssh $HOST uptime
-  dc host    $HOST vserver delete                  # delete assigned virtual server
-  #VSERVER="test" ; TEMPL="hcloud"
-  #dc host    $HOST vserver assign $VSERVER $TEMPL # assign virtual server to host
-  #dc host    $HOST vserver create                 # create assigned hetzner cloud server
-  #ssh $HOST hostname ; ssh $HOST uptime
-dc host    $HOST config  delete                    # delete host definition
+dc host    $HOST config  create test.intra sshd  # create new host definition with hostname test.intra and type "dc"
+
+VSERVER="test" ; TEMPL="kvm"                     #
+dc host    $HOST vserver assign $VSERVER $TEMPL  # assign local kvm machine to host
+dc host    $HOST vserver create                  # create local kvm machine
+ssh $HOST hostname ; ssh $HOST uptime            # login into the new machine
+dc host    $HOST vserver delete                  # delete local kvm machine
+
+VSERVER="test@kvm1" ; TEMPL="kvm"                # 
+dc host    $HOST vserver assign $VSERVER $TEMPL  # assign remote kvm machine @kvm1 to host
+dc host    $HOST vserver create                  # create remote kvm machine @kvm1 server
+ssh $HOST hostname ; ssh $HOST uptime            # login into the new machine
+dc host    $HOST vserver delete                  # delete remote kvm machine @kvm1 server
+
+#VSERVER="test" ; TEMPL="hcloud"
+#dc host    $HOST vserver assign $VSERVER $TEMPL  # assign remote hetzner cloud machine to host
+#dc host    $HOST vserver create                  # create remote hetzner cloud machine
+#ssh $HOST hostname ; ssh $HOST uptime            # login into the new hetzner cloud machine
+
+dc host    $HOST config  delete                  # delete host definition
 echo "error_detect=$error_detect"
 exit $error_detect
 

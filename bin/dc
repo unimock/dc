@@ -15,7 +15,8 @@ fi
 ####################################################################################################################################
 show_help() {
   echo ""
-  echo "docker cluster management"
+  echo "docker cluster manager"
+  echo ""
   echo ""
   echo " usage: `basename $0` [<options>] [<cluster-command>|<project-command>|<container-command>] ..."
   echo ""
@@ -69,6 +70,19 @@ show_help() {
   echo "     ovw push                      # push the content of </service/ovw> to </> within the container."
   echo "     ovw fetch                     # copy a file or directory from </> to </service/ovw/> within the container."
   echo "     ovw diff <file>               # compare a overwrite file"
+  echo ""
+  echo ""
+  echo "important user commands:"
+  echo ""
+  echo "  dc versions                                # show versions"
+  echo "  dc ssh-control-reset                       # remove ssh control sockets"
+  echo ""
+  echo "  dc ls hosts [--inspect]                    # show defined hosts (check state with --inspect)"
+  echo "  dc ls projects [--inspect]                 # show defined project services (check state with --inspect)"
+  echo ""
+  echo "  dc host <name> config create <hname_or_ip> # define new host from template"
+  echo "  dc host <name> config edit                 # modify host definition file"
+  echo "  dc host <name> config delete               # delete host"
   echo ""
   exit 0
 }

@@ -9,7 +9,7 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 HOST="test"
 VSERVER="test"
 SLAVE="dc-slave"
-TEMPL="kvm"
+TEMPL="hcloud"
 
 if [ "$1" = "" -o "$1" = "create" ] ; then
   dc host $HOST config create test.intra dock  # create new host definition with hostname test.intra and type "dc"
