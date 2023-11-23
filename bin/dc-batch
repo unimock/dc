@@ -1,5 +1,7 @@
 #!/bin/bash
-. /opt/dc/funcs/global
+
+. ${HOME}/.dc/etc/config
+
 . /opt/dc/funcs/script_funcs
 
 if [ "${MDE_DC_BATCH_DIR}" = "" ] ; then echo "MDE_DC_BATCH_DIR not set in ${HOME}/.dc/etc/config" ; exit 0 ; fi
