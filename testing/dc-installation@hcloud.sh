@@ -19,12 +19,12 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   dc host $HOST state                          # check if host returns dc
   ssh $HOST git clone https://github.com/unimock/dc.git /opt/dc
   ssh $HOST /opt/dc/bin/dc-install --force
+  ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub >> /root/.ssh/authorized_keys'
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
   IP=$(dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML})
   echo "IP=$IP"
   # lets play around on the new dc cluster manager
-  ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub > /root/.ssh/authorized_keys'
   ssh $HOST dc host $SLAVE config create $IP dc
   ssh $HOST dc ls hosts --inspect
   ssh $HOST dc project hello-world config create $SLAVE hello-world /root/dc/projects/hello-world
