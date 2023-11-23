@@ -11,12 +11,13 @@ fi
 
 VARDIR="$HOME/.dc/var/cache"
 
-project_dir="$VARDIR/projects"
-hosts_dir="$VARDIR/hosts"
-config_dir="$VARDIR/config"
 ############################################################################################################################################
 _config_refresh()
 {
+  project_dir="$VARDIR/projects"
+  hosts_dir="$VARDIR/hosts"
+  config_dir="$VARDIR/config"
+
   config_change="0"
   mkdir -p $project_dir
   #
@@ -126,7 +127,9 @@ _config_refresh()
     mkdir -p `dirname ${MDE_DC_YAML}`
     echo "re-create: ${MDE_DC_YAML}"
     cp $config_dir/config.yml                                                        ${MDE_DC_YAML}
-    cat $hosts_dir/hosts.yml                                                      >> ${MDE_DC_YAML}
+    if [ -f $hosts_dir/hosts.yml ] ; then
+      cat $hosts_dir/hosts.yml                                                    >> ${MDE_DC_YAML}
+    fi
     #
     # projects
     #
