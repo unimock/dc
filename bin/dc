@@ -213,7 +213,7 @@ if [ "${SERVICE}" != "" ] ; then
     exit 1
   fi
 fi
-if [[ "$project_dir" = "" && -f ./${MDE_DC_YAML_FILE} ]] ; then
+if [[ "$project_dir" == "" && -f ./${MDE_DC_YAML_FILE} ]] ; then
   project_dir="$(pwd)"
 fi
 if [[ "$project_dir" == "" ]] ; then
