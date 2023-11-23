@@ -275,7 +275,7 @@ case "$CMD" in
     exit $?
     ;;
   up)
-    docker compose up -d
+    docker compose up --quiet-pull -d
     ;;
   rm)
     docker compose stop ; docker compose rm -f
@@ -284,7 +284,7 @@ case "$CMD" in
     docker compose down
     ;;
   rmup)
-    docker compose stop ; docker compose rm -f ; docker compose up -d
+    docker compose stop ; docker compose rm -f ; docker compose up --quiet-pull -d
     ;;
   pull)
     docker compose pull
