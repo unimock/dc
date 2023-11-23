@@ -139,8 +139,8 @@ if [ "$CMD" = "assign" ] ; then
   sed -i "s|<ssh_pub_key>|`cat $pub_key`|g"                       ${yaml} 
   sed -i "s|<hostname>|$(dc-yq '.hosts.'${DC_HOST}'.fqdn')|g"     ${yaml}
   sed -i "s|<ssh_pub_key_name>|$pub_key_name|g"                   ${yaml}
-
   dc-yq -i '.host.vserver.name = "'${vname}'"' $host_dir/host.yml
+  dc-config refresh
   exit 0
 fi
 
