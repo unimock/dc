@@ -57,7 +57,7 @@ _config_refresh()
   #
   last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "host.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
-  if [ ! -f ${hosts_dir}/modified.${stamp} ] ; then
+  if [ "$stamp" != "" -a  ! -f ${hosts_dir}/modified.${stamp} ] ; then
     rm -rf ${hosts_dir}
     mkdir ${hosts_dir}
     echo "$last" | awk '{ print $2 }' > ${hosts_dir}/modified.${stamp}
