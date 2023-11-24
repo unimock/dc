@@ -83,6 +83,7 @@ show_help() {
   echo "  dc host <name> config create <hname_or_ip> # define new host from template"
   echo "  dc host <name> config edit                 # modify host definition file"
   echo "  dc host <name> config delete               # delete host"
+  echo "  dc host <name> ip|state                    # get fqdn, state of host"
   echo ""
   exit 0
 }

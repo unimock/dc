@@ -23,7 +23,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   sleep 2
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
-  ip=$(dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML})
+  ip=$(dc host $HOST ip)
   port=$( dc-yq '.projects.'$PROJECT'.compose.services.hello-world.ports.[0].published'  ${MDE_DC_YAML} )
   netcat -vz $ip $port
 fi

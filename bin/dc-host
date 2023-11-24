@@ -39,6 +39,7 @@ if [ "$1" = "" ] ; then
   echo "                        #   sshd ... reachable via sshd"
   echo "                        #   ping ... pingable"
   echo "                        #   off .... not pingable and host.state==standby"
+  echo "    ip                  # show fqdn of host"
   echo "    ports               # show ports"
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
@@ -121,6 +122,20 @@ if [ "$CMD" = "state" -a "$1" = "wait" ] ; then
   exit 0
 fi
 
+if [ "$CMD" = "ip" ] ; then
+  ret=0
+  for HOST in $hlist ; do
+    ip=$(dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML})
+    if [ "$ip" != "" -a "$ip" != "null" ] ; then
+      echo "$ip"
+    else
+      echo "error get ip/fqdn for host <$HOST> from ${MDE_DC_YAML}"
+      ret=1
+    fi
+  done
+  exit $ret
+fi 
+  
 if [ "$CMD" = "state" ] ; then
   for HOST in $hlist ; do
     state=""

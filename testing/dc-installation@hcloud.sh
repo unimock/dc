@@ -22,7 +22,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub >> /root/.ssh/authorized_keys'
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
-  IP=$(dc-yq '.hosts.'$HOST'.fqdn' ${MDE_DC_YAML})
+  IP=$(dc host $HOST)
   echo "IP=$IP"
   # lets play around on the new dc cluster manager
   ssh $HOST dc host $SLAVE config create $IP dc
