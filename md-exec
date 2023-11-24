@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.0"
+VERSION="0.0.1"
 
 show_help() {
   echo ""
@@ -98,8 +98,8 @@ if [ "$CMD" != "run" -a "$CMD" != "show" -a "$CMD" != "list"  ] ; then
 fi
 TAG="$3"
 
-#script=$(mktemp)
-script=/tmp/x
+script=$(mktemp)
+#script=/tmp/x
 
 ret=0
 if [ "$TAG" = "" ] ; then
@@ -123,5 +123,5 @@ if [ "$CMD" = "run" ] ; then
   $script  
   ret=$?
 fi
-#rm $script
+rm $script
 exit $ret
