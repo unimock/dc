@@ -1,10 +1,10 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.1"
+VERSION="0.1.0"
 
 show_help() {
   echo ""
-  echo "# usage: $(basename $0) <md-file> show|list|run|create [tag]"
+  echo "# usage: $(basename $0) <md-file> show|list|run|create [section] [-o <var>=<val>].."
   echo ""
   echo ""
   echo "# example:"
@@ -16,16 +16,23 @@ show_help() {
   echo ""
   echo ""
   echo "`basename $0` ./new-file.md run          # execute all sections"
-  echo "`basename $0` ./new-file.md run  create  # execute create tagged section"
-  echo "`basename $0` ./new-file.md run  test    # execute test   tagged section"
-  echo "`basename $0` ./new-file.md run  delete  # execute delete tagged section"
+  echo "`basename $0` ./new-file.md run  create  # execute 'create' section"
+  echo "`basename $0` ./new-file.md run  test    # execute 'test'   section"
+  echo "`basename $0` ./new-file.md run  delete  # execute 'delete' section"
+  echo ""
+  echo "# overwrite variable values:"
+  echo ""
+  echo "`basename $0` ./new-file.md run                  # use values from md-file"
+  echo ""
   echo ""
 }
+
+declare -A opt_args
 
 ####################################################################################
 # magic main
 ####################################################################################
-options=$(getopt -l "help,version" -o "hv:" -a -- "$@")
+options=$(getopt -l "help,version,overwrite" -o "hvo:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -37,6 +44,9 @@ while true ; do
     echo "$VERSION"
     exit 0
     ;;
+  -o|--overwrite)
+    opt_args+=($2)
+    ;;
   --)
     shift
     break;;
@@ -44,7 +54,8 @@ while true ; do
   shift
 done
 
-echo "$*"
+echo "$@"
+
 
 if [ "$1" = "" ] ; then
   show_help
@@ -115,6 +126,13 @@ else
     cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'  > $script
   fi
 fi
+for arg in "${!opt_args[@]}" ; do
+  var=${arg%=*}
+  val=${arg#*=}
+  #echo "overwrite: <$var> <$val>"
+  sed -i "/^[[:blank:]]*${var}=*/c\\${var}=\"${val}\"" $script
+done
+
 if [ "$CMD" = "list" -o "$CMD" = "show" ] ; then
   cat $script
 fi
