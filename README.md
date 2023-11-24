@@ -17,7 +17,7 @@ The management on the master includes ssh definitions for accessing the slaves a
 
 ## dc manager installation
 
-```
+```bash
 git clone https://github.com/unimock/dc.git /opt/dc
 /opt/dc/bin/dc-install   # prepare config file /dc/etc/config
 # Check whether the created config file /dc/etc/config fits your needs
