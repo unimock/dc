@@ -93,7 +93,7 @@ _help() {
   for p in ${APT_PACKAGES} ; do
     dpkg -s $p >/dev/null 2>&1
     if [ "$?" != "0" ] ; then
-      sudo apt-get install -y $p
+      sudo apt-get -qq install -y $p
     fi
   done
 
@@ -111,7 +111,7 @@ _help() {
     if [[ "$version" != "$ver" ]] ; then
       echo "dc install: external <$name>"
       FI=$(mktemp)
-      wget -O $FI $url
+      wget -nv -O $FI $url
       rm -f /opt/dc/external/${name}
       if [[ $url == *".tar.gz" ]] ; then
         tar -C /opt/dc/external/ -xzf $FI
