@@ -1,8 +1,8 @@
-# dc  ... docker cluster controller
+# dc  ... docker cluster manager
 
 ## Description
 
-dc environment contains a couple of bash scripts to manage docker compose projects
+dc environment contains a couple of bash scripts to manage ssh connections and docker compose projects
 for different docker hosts (slaves) from a central host (master).
 
 It only works as a wrapper for the docker and docker compose commands for convenient usage.
@@ -12,7 +12,7 @@ The management on the master includes ssh definitions for accessing the slaves a
 
 ## Requirements for master and slaves
 
- * ubuntu-server >= 22.04
+ * ubuntu-server >= 20.04
  * openssh-server (pubkey mode)
 
 ## dc manager installation
@@ -52,12 +52,6 @@ dc ls
 
 # TBD:
 
-```
-dc -h ${ABBREV} create
-dc ls
-dc -h ${ABBREV} ssh mkdir -p ${MDE_DC_VOL_Backup}  ${MDE_DC_VOL_Cache}  ${MDE_DC_VOL_Data}  ${MDE_DC_VOL_Logs}  ${MDE_DC_VOL_Projects}
-dc -h ${ABBREV} ssh chmod -R a+rwx ${MDE_DC_VOL}
-```
 
 ### join slave machine to swarm with rdc support
 ```

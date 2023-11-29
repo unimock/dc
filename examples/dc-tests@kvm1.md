@@ -1,5 +1,9 @@
 # test @ kvm1
 
+## Create, install, test and delte a new dc cluster manager on a virtual machine
+
+
+
 [//]: # (md-exec: global commands)
 ```global
 . /opt/dc/funcs/script_funcs
@@ -15,13 +19,13 @@ TEMPL="kvm"              # vserver template which includes kvm-/cloud-config-/dc
 
 [//]: # (md-exec: create test env)
 ```create
-dc host $HOST config create test.intra dock  # create new host definition with hostname test.intra and type "dc"
-dc host $HOST vserver assign $VSERVER $TEMPL # assign virtual server to host
-dc host $HOST vserver create                 # create assigned hetzner cloud server
-dc host $HOST state                          # check if host returns dc
+dc host $HOST config create test.intra dock  # create new host definition with hostname test.intra and type="dock"
+dc host $HOST vserver assign $VSERVER $TEMPL # assign virtual server to the new host
+dc host $HOST vserver create                 # create assigned machine
+dc host $HOST state                          # check if new host returns dc
 # install dc
 ssh $HOST git clone https://github.com/unimock/dc.git /opt/dc
-ssh $HOST /opt/dc/bin/dc-install --force
+ssh $HOST /opt/dc/bin/dc-install --force     # --force .. do not change default settings
 ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub >> /root/.ssh/authorized_keys'
 ```
 

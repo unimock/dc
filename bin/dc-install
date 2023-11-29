@@ -1,4 +1,8 @@
 #!/bin/bash
+EXTERNALS="
+hcloud;Hetzner-Cloud CLI;1.40.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-amd64.tar.gz
+yq;yaml processor;4.40.3;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_amd64
+"
 
 APT_PACKAGES="sshfs libnet-ssleay-perl swaks"
 
@@ -92,6 +96,33 @@ _help() {
       sudo apt-get install -y $p
     fi
   done
+
+  # install external utilities
+  mkdir -p /opt/dc/external
+  while read -r i ; do
+    name=$( echo "$i"     | cut -d";" -f1)
+    ver=$(  echo "$i"     | cut -d";" -f3)
+    ver_cmd=$(  echo "$i" | cut -d";" -f4)
+    url=$(  echo "$i"     | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g")
+    version=""
+    if [ -e /opt/dc/external/$name ] ; then
+      version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
+    fi
+    if [[ "$version" != "$ver" ]] ; then
+      echo "dc install: external <$name>"
+      FI=$(mktemp)
+      wget -O $FI $url
+      rm -f /opt/dc/external/${name}
+      if [[ $url == *".tar.gz" ]] ; then
+        tar -C /opt/dc/external/ -xzf $FI
+      else
+        cp $FI /opt/dc/external/$name
+      fi
+      chmod a+x /opt/dc/external/$name
+      rm -f $FI
+    fi  
+  done <<< "$(echo "$EXTERNALS")"
+
 
   mkdir -p ${MDE_DC_CONFIG_DIR}
   # establish dc-crontab
