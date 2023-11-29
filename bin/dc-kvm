@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#
+# requirements:
+# sudo access
+# virsh qemu-img convert virt-customize virt-install cloud-localds
+#
+
 _help() {
   echo "  `basename $0`  server provide|delete|ip|list <vm-name>>"
   exit 0
@@ -31,9 +37,9 @@ if [[ "$name" == *\@* ]] ; then
   shift ; shift ; shift
   if [ "$CMD" = "provide" ] ; then
     yaml="$1"
-    scp /opt/dc/external/yq ${remhost}:/usr/local/bin/dc-yq
-    scp /opt/dc/bin/dc-kvm  ${remhost}:/usr/local/bin/
-    scp $yaml               ${remhost}:/tmp/${name}.yml
+    rsync -azS -e ssh /opt/dc/external/yq ${remhost}:/usr/local/bin/dc-yq
+    rsync -azS -e ssh /opt/dc/bin/dc-kvm  ${remhost}:/usr/local/bin/dc-kvm
+    scp $yaml                             ${remhost}:/tmp/${name}.yml
     ssh $remhost dc-kvm $RES $CMD $name /tmp/${name}.yml
   else
     ssh $remhost dc-kvm $RES $CMD $name $@
@@ -54,7 +60,6 @@ if [ "$CMD" = "provide" ] ; then
     echo "error: type!=hcloud in <${yaml}>!"
     exit 1
   fi
-#  name=$(        dc-yq '.name'            $yaml )
   cloud_image=$( dc-yq '.kvm.cloud_image' $yaml )
   image_name=$(  dc-yq '.kvm.image_name'  $yaml )
   size=$(        dc-yq '.kvm.size'        $yaml )
