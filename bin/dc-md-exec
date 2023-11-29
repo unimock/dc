@@ -1,0 +1,146 @@
+#!/bin/bash
+# remember to call "./addapps .getver" after version modifications!
+VERSION="0.1.1"
+
+show_help() {
+  echo ""
+  echo "# usage: $(basename $0) <md-file> show|list|run|create [section] [-o <var>=<val>].."
+  echo ""
+  echo ""
+  echo "# example:"
+  echo ""
+  echo "`basename $0` ./new-file.md create      # create template md file"
+  echo "`basename $0` ./new-file.md list        # list commands"
+  echo "`basename $0` ./new-file.md run         # execute commands"
+  echo "`basename $0` ./new-file.md show        # show relevant content"
+  echo ""
+  echo ""
+  echo "`basename $0` ./new-file.md run          # execute all sections"
+  echo "`basename $0` ./new-file.md run  create  # execute 'create' section"
+  echo "`basename $0` ./new-file.md run  test    # execute 'test'   section"
+  echo "`basename $0` ./new-file.md run  delete  # execute 'delete' section"
+  echo ""
+  echo "# overwrite variable values:"
+  echo ""
+  echo "`basename $0` ./new-file.md run                   # use values from md-file"
+  echo "`basename $0` ./new-file.md run -o X=\"new value\"  # overwrite value"
+  echo ""
+  echo ""
+}
+
+declare -A opt_args
+
+####################################################################################
+# magic main
+####################################################################################
+options=$(getopt -l "help,version,overwrite" -o "hvo:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help)
+    show_help
+    exit 0
+    ;;
+  -v|--version)
+    echo "$VERSION"
+    exit 0
+    ;;
+  -o|--overwrite)
+    opt_args+=($2)
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+echo "$@"
+
+
+if [ "$1" = "" ] ; then
+  show_help
+  exit 0
+fi
+
+FI="$1"
+if [ "$2" = "create" ] ; then
+  if [ -f $FI ] ; then
+    echo "error: file alrady exist"
+    exit 1
+  fi
+  cat >$FI <<EOF
+# md-exec template
+
+[//]: # (md-exec: global)
+\`\`\`global
+X="my_global_var"
+echo "set global variables"
+\`\`\`
+
+[//]: # (md-exec: create test env)
+\`\`\`create
+echo "execute create with X=\$X"
+\`\`\`
+
+[//]: # (md-exec: execute test)
+\`\`\`test
+echo "execute test with X=\$X"
+\`\`\`
+
+[//]: # (md-exec: delete test env)
+\`\`\`delete
+echo "execute delete with X=\$X"
+\`\`\`
+EOF
+  echo ""
+  echo "$FI created"
+  echo ""
+  exit 0
+fi
+  
+if [ "$FI" = "" -o ! -f "$FI" ] ; then
+  echo "error: file <$FI> does not exist!"
+  exit 1
+fi
+CMD="$2"
+if [ "$CMD" != "run" -a "$CMD" != "show" -a "$CMD" != "list"  ] ; then
+  echo "error unkown command given"
+  exit 1
+fi
+TAG="$3"
+
+script=$(mktemp)
+#script=/tmp/x
+
+ret=0
+if [ "$TAG" = "" ] ; then
+  if [ "$CMD" = "show" ] ; then
+    cat $FI | sed  -n '/```/,/```/p'                    | sed 's/ *$//g' | sed '/^$/d'                    > $script
+  else
+    cat $FI | sed  -n '/```/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'                    > $script
+  fi
+else
+  if [ "$CMD" = "show" ] ; then
+    cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p'                    | sed 's/ *$//g' | sed '/^$/d'  > $script
+  else
+    cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'  > $script
+  fi
+fi
+for arg in "${!opt_args[@]}" ; do
+  var=${arg%=*}
+  val=${arg#*=}
+  #echo "overwrite: <$var> <$val>"
+  sed -i "/^[[:blank:]]*${var}=*/c\\${var}=\"${val}\"" $script
+done
+
+if [ "$CMD" = "list" -o "$CMD" = "show" ] ; then
+  cat $script
+fi
+if [ "$CMD" = "run" ] ; then
+  chmod a+x $script
+  $script  
+  ret=$?
+fi
+rm $script
+exit $ret
