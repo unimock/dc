@@ -23,7 +23,7 @@ show_help() {
   echo "# overwrite variable values:"
   echo ""
   echo "`basename $0` ./new-file.md run                   # use values from md-file"
-  echo "`basename $0` ./new-file.md run -o X="new value"  # overwrite value"
+  echo "`basename $0` ./new-file.md run -o X=\"new value\"  # overwrite value"
   echo ""
   echo ""
 }
