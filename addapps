@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.2.i5"
+VERSION="0.2.5"
 
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
