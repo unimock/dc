@@ -170,7 +170,8 @@ for host in $list ; do
     state=$( dc-host ${host} state )
     if [ "$state" = "$typ" ] ; then
       if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
-        if [ "$os" = "ubuntu" ] ; then
+if [ "$os" != "android" ] ; then 
+       if [ "$os" = "ubuntu" ] ; then
           os_ver=$( ssh $host lsb_release -d -s 2>/dev/null | cut -d " " -f2)
           os_ver=${os_ver:0:8}
         else
@@ -178,8 +179,6 @@ for host in $list ; do
           eval $( ssh $host "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
           os_ver="$VERSION_ID"
           os_ver=${os_ver%_*}
-
-
         fi
         dock_ver=""
         if [ "$state" = "dock" -o "$state" = "dc" ] ; then
@@ -213,6 +212,7 @@ for host in $list ; do
           fi
         fi
       fi
+fi
     fi
     #
     # store latest inspection data
