@@ -36,6 +36,8 @@ dc ls hosts                                                         # list regis
 ### create a dc project service 
 
 ```
+
+
 ```
 
 ### register a dc slave host 
@@ -50,8 +52,20 @@ dc ls
 
 
 
-# TBD:
 
+### Create, install, test and delte a new dc cluster manager on a virtual machine
+
+[example: dc-tests@kvm.md](./examples/dc-tests@kvm.md)
+
+You can also use the md code executer to execute examples directly:
+
+```
+dc-md-exec /opt/dc/examples/dc-tests@kvm.md run
+dc-md-exec /opt/dc/examples/dc-tests@kvm.md run -o VSERVER="test@kvm1"
+
+```
+
+# TBD:
 
 ### join slave machine to swarm with rdc support
 ```

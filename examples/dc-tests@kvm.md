@@ -1,7 +1,6 @@
-# test @ kvm1
+# test @ kvm
 
 ## Create, install, test and delte a new dc cluster manager on a virtual machine
-
 
 
 [//]: # (md-exec: global commands)
@@ -12,7 +11,8 @@ error_detect=0
 err_report() { printf "!\n! Error on line $1\n!\n" ; error_detect=1 ; } ; trap 'err_report $LINENO' ERR
 
 HOST="test"              # local dc host name
-VSERVER="test@kvm1"      # machine name @ kvm server
+#VSERVER="test@kvm1"     # create remote kvm machine @kvm1 server
+VSERVER="test"           # create local kvm machine
 SLAVE="dc-slave"         # remote dc host name
 TEMPL="kvm"              # vserver template which includes kvm-/cloud-config-/dc-install settings 
 ```
