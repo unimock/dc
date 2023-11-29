@@ -234,11 +234,13 @@ fi
     col_state=$COL_LGRAY
     col_std=$COL_LGRAY
     col_size=$COL_LGRAY
-    if [ $size -gt 80 ] ; then
-       col_size=$COL_ORANGE
-    fi
-    if [ $size -gt 90 ] ; then
-      col_size=$COL_RED
+    if [ "$size" != "" ] ; then
+      if [ $size -gt 80 ] ; then
+         col_size=$COL_ORANGE
+      fi
+      if [ $size -gt 90 ] ; then
+        col_size=$COL_RED
+      fi
     fi
   elif [ "$state" = "ping" ] ; then
     col_state=$COL_DEFAULT
