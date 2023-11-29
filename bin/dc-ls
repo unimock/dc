@@ -141,9 +141,9 @@ if [ "$opt_short" = "1" ] ; then
   done 
   exit 0
 fi
-MASK="%10s|%-4s|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
+MASK="%12s|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
 printf "$MASK" "host" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "mid" "last_inspection" "description"
-printf "$MASK" "----------" "----" "----" "------" "------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
+printf "$MASK" "------------" "----" "----" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
 for host in $list ; do
   if [ "$opt_host" != "" -a "$opt_host" != "$host" ] ; then
     continue
@@ -256,6 +256,6 @@ for host in $list ; do
   if [ "${insp_last_inspect}" != "" ] ; then
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
-  MASK="${col_state}%10s${col_std}|%-4s|%-4s|%-6s|%-6s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
+  MASK="${col_state}%12s${col_std}|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
   printf "$MASK" "${host}" "${state}" "${typ}" "${group}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
