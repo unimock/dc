@@ -277,6 +277,10 @@ case "$CMD" in
     ;;
   up)
     docker compose up --quiet-pull -d
+    ret=$?
+    if [ "$ret" != "0" ] ; then
+      echo "!!! error=$ret dc up "
+    fi
     ;;
   rm)
     docker compose stop ; docker compose rm -f
@@ -285,7 +289,13 @@ case "$CMD" in
     docker compose down
     ;;
   rmup)
-    docker compose stop ; docker compose rm -f ; docker compose up --quiet-pull -d
+    docker compose stop
+    docker compose rm -f
+    docker compose up --quiet-pull -d
+    ret=$?
+    if [ "$ret" != "0" ] ; then
+      echo "!!! error=$ret dc up "
+    fi
     ;;
   pull)
     docker compose pull

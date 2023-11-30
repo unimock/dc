@@ -3,6 +3,7 @@
 ## Create, install, test and delte a new dc cluster manager on a virtual machine
 
 
+
 [//]: # (md-exec: global commands)
 ```global
 . /opt/dc/funcs/script_funcs
@@ -53,9 +54,11 @@ ssh $HOST dc project hello-world config delete # remove hello-world project defi
 ssh $HOST dc host $SLAVE config delete         # delete host config definition
 ```
 
+Delete 
+
 [//]: # (md-exec: delete test env)
 ```delete
-dc host $HOST vserver delete                   # delete assigned Hetzner cloud server
+dc host $HOST vserver delete                   # delete assigned kvm machine
 dc host $HOST config  delete                   # delete host definition
 echo "error_detect=$error_detect"
 ```
