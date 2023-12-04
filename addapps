@@ -11,7 +11,7 @@ crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
 print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
 stsync;syncting stc CLI;0.0.5;--version;https://mde.gate-7.de/addapps/stsync
 difft;difftastic;0.53.1;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-x86_64-unknown-linux-gnu.tar.gz
-yq;yaml processor;4.40.3;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_amd64
+yq;yaml processor;4.40.4;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_amd64
 drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-amd64/mc
