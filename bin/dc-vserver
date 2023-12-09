@@ -122,15 +122,21 @@ if [ "$CMD" = "assign" ] ; then
   echo "################################################################################"
   echo "# assing vserver <$vname> definitions from template <$templ> host <${DC_HOST}>"
   echo "################################################################################"
-  if [ ! -f /opt/dc/templates/create/vserver/${templ}.yml ] ; then
-    echo "error: template file </opt/dc/templates/create/vserver/${temp}.yml> does not exist!"
-    exit 1
+  vserver_yml=""
+  if [ -f "${templ}" ] ; then
+    vserver_yml="${templ}"
+  else
+    vserver_yml="/opt/dc/templates/create/vserver/${templ}.yml"
+    if [ ! -f "$vserver_yml" ] ; then
+      echo "error: template file <$vserver_yml> does not exist!"
+      exit 1
+    fi
   fi
   if [ ! -d ${MDE_DC_HOST_DIR}/${DC_HOST} ] ; then
     echo "error: host definition directory <${MDE_DC_HOST_DIR}/${DC_HOST}> does not exist!"
     exit 1
   fi
-  cp /opt/dc/templates/create/vserver/${templ}.yml                ${yaml}
+  cp "$vserver_yml"                                               ${yaml}
   pub_key=$( dc-yq '.hosts.'${DC_HOST}'.ssh_config.IdentityFile' )
   pub_key=${pub_key}.pub
   pub_key_name=$( cat ${pub_key} | awk '{ print $3 }')

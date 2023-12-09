@@ -1,0 +1,33 @@
+type: kvm
+kvm:
+  cloud_image: https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img
+  image_name: ubuntu-22.04-server
+  virt-customize:
+    - --install qemu-guest-agent
+  vol-pool:
+    name: dc
+    target: /var/lib/dc-kvm
+  size: 5G
+  virt-install:
+    - --memory 2048
+    - --vcpus 2
+    - --os-variant ubuntu22.04
+cloud-config:
+  chpasswd:
+    expire: false
+    list: |
+      root:meinpassword
+  hostname: test
+  users:
+    - name: root
+      ssh_pwauth: false
+      lock-passwd: false
+      ssh_authorized_keys:
+        - <ssh_pub_key>
+  timezone: Europe/Berlin
+dc-install:
+  dc:
+    #- dist-upgrade
+    #- docker
+  apt:
+    #- tree

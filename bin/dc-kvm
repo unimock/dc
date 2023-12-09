@@ -4,6 +4,7 @@
 # requirements:
 # sudo access
 # virsh qemu-img convert virt-customize virt-install cloud-localds
+# apt install cloud-utils cloud-image-utils virtinst libosinfo-bin
 #
 
 _help() {
@@ -11,7 +12,7 @@ _help() {
   exit 0
 }
 
-
+ubuntu=$( lsb_release -c -s)
 
 _create_pool() {
   virsh pool-info --pool dc >/dev/null 2>&1
@@ -151,7 +152,11 @@ fi
 
 if [ "$CMD" = "delete" ] ; then
   virsh destroy  $name
-  virsh undefine $name --remove-all-storage
+  if [ "$ubuntu" = "xenial" ] ; then
+    virsh undefine $name --remove-all-storage
+  else
+    virsh undefine $name --remove-all-storage --checkpoints-metadata --snapshots-metadata
+  fi
 fi
 
 if [ "$CMD" = "remiso" ] ; then
