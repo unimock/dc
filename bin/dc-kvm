@@ -12,8 +12,6 @@ _help() {
   exit 0
 }
 
-ubuntu=$( lsb_release -c -s)
-
 _create_pool() {
   virsh pool-info --pool dc >/dev/null 2>&1
   if [ "$?" != "0" ] ; then
@@ -104,34 +102,20 @@ if [ "$CMD" = "provide" ] ; then
   #
   # start VM
   #
+  my_para=""
   if [ -d /tsp0/images ] ; then # my kvm server
-    virt-install \
-      --network bridge=guest-net,model=virtio \
-      --os-variant ubuntu16.04 \
-      --os-type linux \
-      --channel unix,mode=bind,path=/var/lib/libvirt/qemu/${name}.agent,target_type=virtio,name=org.qemu.guest_agent.0 \
-      --memory 2048 \
-      --vcpus 2 \
-      --noautoconsole \
-      --autostart \
-      --name $name \
-      --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
-      --disk vol=$POOL/${name}.iso,device=cdrom \
-      --virt-type kvm \
-      --graphics none \
-      --import
-  else
-    para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
-    virt-install $para \
-      --noautoconsole \
-      --autostart \
-      --name $name \
-      --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
-      --disk vol=$POOL/${name}.iso,device=cdrom \
-      --virt-type kvm \
-      --graphics none \
-      --import
+    my_para="--network bridge=lan-net,model=virtio"
   fi
+  para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
+  virt-install $my_para $para \
+    --noautoconsole \
+    --autostart \
+    --name $name \
+    --disk vol=$POOL/${name}.qcow2,device=disk,bus=virtio \
+    --disk vol=$POOL/${name}.iso,device=cdrom \
+    --virt-type kvm \
+    --graphics none \
+    --import
   while true ; do
     printf "."
     sleep 1
@@ -152,11 +136,7 @@ fi
 
 if [ "$CMD" = "delete" ] ; then
   virsh destroy  $name
-  if [ "$ubuntu" = "xenial" ] ; then
-    virsh undefine $name --remove-all-storage
-  else
-    virsh undefine $name --remove-all-storage --checkpoints-metadata --snapshots-metadata
-  fi
+  virsh undefine $name --remove-all-storage --checkpoints-metadata --snapshots-metadata
 fi
 
 if [ "$CMD" = "remiso" ] ; then

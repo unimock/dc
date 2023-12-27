@@ -2,30 +2,7 @@
 
 . /opt/dc/funcs/global
 
-_ask()
-{
-  text="$1"
-  echo "##################################################################"
-  echo "#"
-  echo "# ${text}. Type ENTER to start."
-  echo "#"
-  read ans
-  return
-}
-opt_host=""
-verbose=""
-CURROPT=""
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    -h) opt_host="$2"             ; shift 2 ;;
-    -v) verbose="1"               ; shift 1 ;;
-    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
-  esac
-done
-eval set -- $CURROPT
-
-
-if [ "$1" = "" ] ; then
+_show_help() {
   echo ""
   echo " usage: `basename $0` <project>"
   echo ""
@@ -36,16 +13,31 @@ if [ "$1" = "" ] ; then
   echo "tbd    rm|up|rmup          # start or stop all projects on $H"
   echo "tbd    ps                  # show project containers on $H"
   echo ""
+}
+
+
+opt_host=""
+verbose=""
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -v) verbose="1"               ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
+
+if [ "$1" = "" ] ; then
+  _show_help
   exit 0
 fi
 
-
 echo $*
-
 project=$1
 shift
 CMD="$1"
 shift
+
 if [ "$CMD" = "config"  ] ; then
   cmd=$1
   shift

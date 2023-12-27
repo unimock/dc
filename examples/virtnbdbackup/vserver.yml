@@ -16,7 +16,7 @@ cloud-config:
   chpasswd:
     expire: false
     list: |
-      root:meinpassword
+      root:mypassword
   hostname: test
   users:
     - name: root

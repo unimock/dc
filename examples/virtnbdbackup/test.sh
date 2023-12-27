@@ -2,68 +2,96 @@
 error_detect=0
 err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $LINENO' ERR
 source ${HOME}/.dc/etc/config
-HOST="test"
-VSERVER="test"
+DOMAIN="test1"
 TEMPL="/opt/dc/examples/virtnbdbackup/vserver.yml"
 BDIR="~/virtnbdbackup-test"
 
+KC="usb"
+#KC=""
+
+_kc_backup() {
+  if [ "$KC" != "usb" ] ; then
+    return
+  fi
+  BDIR="/backup/virtnbd/$DOMAIN"
+  sudo /opt/kc/bin/kc-backup $*
+  return $?
+}
+
 if [ "$1" = "" -o "$1" = "create" ] ; then
-  dc host    $HOST config  create test.intra sshd  # create new host definition with hostname test.intra and type "dc"
-  dc host    $HOST vserver assign $VSERVER $TEMPL # assign virtual server to host
-  dc host    $HOST vserver create                 # create assigned hetzner cloud server
-  sudo virtnbdbackup  -d test -l auto -o $BDIR
-  virsh checkpoint-list test
+
+      
+
+  dc host tvirt1 config  create tvirt1.intra sshd  # create new host definition with hostname test.intra and type "dc"
+  dc host tvirt1 vserver assign $DOMAIN $TEMPL  # assign virtual server to host
+  dc-yq -i '.cloud-config.hostname = "'tvirt1'"' $MDE_DC_HOST_DIR/tvirt1/vserver.yml
+  dc host tvirt1 vserver create                  # create assigned machine
+  sudo smartctl -s standby,off /dev/sda
+
+  _kc_backup mount
+  sudo rm -rf $BDIR
+  #sudo virtnbdbackup  -d $DOMAIN -l auto -o $BDIR    # create first backup
+  _kc_backup umount
+  virsh checkpoint-list $DOMAIN
 fi
 
-#if [ "$1" = "" -o "$1" = "del" ] ; then 
-#  sudo rm -rvf $BDIR
-#fi
+if [ "$1" = "10g" ] ; then
+  ssh tvirt1 'head -c 10G /dev/urandom > /root/sample.txt'
+fi
 
 if [ "$1" = "" -o "$1" = "backup" ] ; then
-  ssh test touch /root/MEIN_TEST
-  sudo virtnbdbackup  -d test -l auto -o $BDIR
-  virsh checkpoint-list test
+  ssh tvirt1 touch /root/MEIN_TEST                  # change someting
+  _kc_backup mount
+  time sudo virtnbdbackup  -d $DOMAIN -l auto -o $BDIR    # do second backup
+  _kc_backup umount
+  virsh checkpoint-list $DOMAIN
 fi
 
 #if [ "$1" = "" -o "$1" = "full" ] ; then 
-#  sudo virtnbdbackup  -d test -l full -o $BDIR
-#  virsh checkpoint-list test
+#  sudo virtnbdbackup  -d $DOMAIN -l full -o $BDIR
+#  virsh checkpoint-list $DOMAIN
 #fi
 
 #if [ "$1" = "" -o "$1" = "inc" ] ; then 
-#  sudo virtnbdbackup  -d test -l inc -o $BDIR
-#  virsh checkpoint-list test
+#  sudo virtnbdbackup  -d $DOMAIN -l inc -o $BDIR
+#  virsh checkpoint-list $DOMAIN
 #fi
 
-if [ "$1" = "" -o "$1" = "verify" ] ; then 
+if [ "$1" = "shutdown" ] ; then
+  /opt/kc/bin/kc down $DOMAIN
+fi
+
+if [ "$1" = "" -o "$1" = "verify" ] ; then
+  _kc_backup mount
   sudo virtnbdrestore -i $BDIR -o verify
-  virsh checkpoint-list test
+  _kc_backup umount
+  virsh checkpoint-list $DOMAIN
 fi
 
 if [ "$1" = "" -o "$1" = "restore" ] ; then
-  name="test"
-  virsh destroy  $name
-  virsh undefine $name --remove-all-storage --checkpoints-metadata --snapshots-metadata
+  /opt/kc/bin/kc rm $DOMAIN
   sudo ls /var/lib/dc-kvm/
-  sudo virtnbdrestore -D -N $name -i $BDIR -o /var/lib/dc-kvm
+  _kc_backup mount
+  sudo virtnbdrestore -D -N $DOMAIN -i $BDIR -o /var/lib/dc-kvm
+  _kc_backup umount
+
+  sudo smartctl -s standby,now /dev/sda
   # wenn -N nicht angegeben, dann name: restore_test
   sudo sh -c 'rm -v /var/lib/dc-kvm/vmconfig.virtnbdbackup.*.xml'
-  virsh start $name
-  dc host $name state wait sshd
-  sudo rm -rf $BDIR
+  /opt/kc/bin/kc up $DOMAIN
+  dc host tvirt1 state wait sshd
 fi
 
 if [ "$1" = "" -o "$1" = "test" ] ; then
-  ssh test ls -la /root/MEIN_TEST
+  ssh tvirt1 ls -la /root/MEIN_TEST
   if [ "$?" != "0" ] ; then
     error_detect=1
   fi
 fi
 
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  dc host    $HOST vserver delete                 # delete assigned virtual server
-  dc host    $HOST config  delete                 # delete host definition
-  sudo rm -rf $BDIR
+  dc host tvirt1 vserver delete                 # delete assigned virtual server
+  dc host tvirt1 config  delete                 # delete host definition
   echo "error_detect=$error_detect"
 fi
 exit $error_detect

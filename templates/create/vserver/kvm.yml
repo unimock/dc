@@ -13,14 +13,12 @@ kvm:
     - --memory 2048
     - --vcpus 2
     - --os-variant ubuntu22.04
-    #- --network bridge=guest-net,model=virtio
+    #- --network bridge=lan-net,model=virtio
 cloud-config:
-  #system_info:
-  #  default_user:
-  #    name: karl
-  #    home: /home/karl
-  #password: xyz
-  #chpasswd: { expire: False }
+  chpasswd:
+    expire: false
+    list: |
+      root:mypassword
   hostname: <vserver_name>
   # configure sshd to allow users logging in using password 
   # rather than just keys
@@ -28,8 +26,6 @@ cloud-config:
     - name: root
       ssh_pwauth: true
       lock-passwd: false
-      passwd: xyz
-      chpasswd: { expire: False }
       ssh_authorized_keys:
         - <ssh_pub_key>
   timezone: Europe/Berlin
