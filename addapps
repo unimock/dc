@@ -15,7 +15,7 @@ yq;yaml processor;4.40.5;--version;https://github.com/mikefarah/yq/releases/down
 drone;drone CLI;1.7.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_amd64.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-amd64-linux
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-amd64/mc
-hcloud;Hetzner-Cloud CLI;1.41.1version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-amd64.tar.gz
+hcloud;Hetzner-Cloud CLI;1.41.1;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-amd64.tar.gz
 "
 ####################################################################################
 addapps_spinner() {
