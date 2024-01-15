@@ -1,7 +1,0 @@
-#!/bin/bash
-
-
-ssh kvm1 /opt/kc/bin/kc $@
-exit $?
-
-
