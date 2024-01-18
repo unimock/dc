@@ -22,10 +22,10 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
 
       
 
-  dc host tvirt1 config  create tvirt1.intra sshd  # create new host definition with hostname test.intra and type "dc"
-  dc host tvirt1 vserver assign $DOMAIN $TEMPL  # assign virtual server to host
+  dc node tvirt1 config  create tvirt1.intra sshd  # create new node definition with hostname test.intra and type "dc"
+  dc node tvirt1 vserver assign $DOMAIN $TEMPL  # assign virtual server to node
   dc-yq -i '.cloud-config.hostname = "'tvirt1'"' $MDE_DC_HOST_DIR/tvirt1/vserver.yml
-  dc host tvirt1 vserver create                  # create assigned machine
+  dc node tvirt1 vserver create                  # create assigned machine
   sudo smartctl -s standby,off /dev/sda
 
   _kc_backup mount
@@ -79,7 +79,7 @@ if [ "$1" = "" -o "$1" = "restore" ] ; then
   # wenn -N nicht angegeben, dann name: restore_test
   sudo sh -c 'rm -v /var/lib/dc-kvm/vmconfig.virtnbdbackup.*.xml'
   /opt/kc/bin/kc up $DOMAIN
-  dc host tvirt1 state wait sshd
+  dc node tvirt1 state wait sshd
 fi
 
 if [ "$1" = "" -o "$1" = "test" ] ; then
@@ -90,8 +90,8 @@ if [ "$1" = "" -o "$1" = "test" ] ; then
 fi
 
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  dc host tvirt1 vserver delete                 # delete assigned virtual server
-  dc host tvirt1 config  delete                 # delete host definition
+  dc node tvirt1 vserver delete                 # delete assigned virtual server
+  dc node tvirt1 config  delete                 # delete node definition
   echo "error_detect=$error_detect"
 fi
 exit $error_detect

@@ -7,7 +7,7 @@ DISK_USAGE_LIMIT=90 # error if >40%
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -h) on_host="$2" ; shift 2 ;;
+    -h) on_node="$2" ; shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done
@@ -21,7 +21,7 @@ if [ "$1" = "" ] ; then
   echo "print config and/or runtime informations about the dc cluster"
   echo ""
   echo ""
-  echo " usage: `basename $0` [-h <host>] runtime|config"
+  echo " usage: `basename $0` [-h <node>] runtime|config"
   echo ""
   exit 0
 fi
@@ -34,73 +34,73 @@ if [ "$1" = "config" ] ; then
 fi
 
 
-if [ "$on_host" != "" ] ; then
-  hosts="$on_host"
+if [ "$on_node" != "" ] ; then
+  nodes="$on_node"
 else
-  hosts=$( dc-list hosts used )
+  nodes=$( dc-list nodes used )
 fi
 
-host_error_marker=0
-for host in $hosts ; do
+node_error_marker=0
+for node in $nodes ; do
   
   echo "#"	
-  echo "# checking host $host ..."
+  echo "# checking node $node ..."
   echo "#"
-  echo "$host:"
-  echo "  type: $(dc-yq '.hosts.'$host'.type' ${MDE_DC_YAML} )"
+  echo "$node:"
+  echo "  type: $(dc-yq '.nodes.'$node'.type' ${MDE_DC_YAML} )"
   if [ "$check_runtime" = "1" ] ; then 	
-    host_error_marker=0
-    H_STATE=$( dc-yq '.hosts.'$host'.state' ${MDE_DC_YAML} )
+    node_error_marker=0
+    H_STATE=$( dc-yq '.nodes.'$node'.state' ${MDE_DC_YAML} )
     if [ "$H_STATE" = "active"  ] ; then
-      state=$( dc-host $host state )
+      state=$( dc-node $node state )
       if [ "$state" = "dock" -o "$state" = "dc"  ] ; then
-         host_up=1
+         node_up=1
          state="Running"
       else
-        host_up=0
-        host_error_marker=1
-        error_list="$error_list $host:not_running"
+        node_up=0
+        node_error_marker=1
+        error_list="$error_list $node:not_running"
         error=1
       fi
     else
       state=$H_STATE
-      host_up=0
+      node_up=0
     fi
     echo "  state: $state"
-    if [ $host_up = 1 ] ; then
-      os=$( dc -h $host ssh "lsb_release -s -r" )
+    if [ $node_up = 1 ] ; then
+      os=$( dc -h $node ssh "lsb_release -s -r" )
       echo "  os: $os"
-      proc=$( dc -h $host ssh df ${MDE_DC_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
+      proc=$( dc -h $node ssh df ${MDE_DC_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
       size=${proc%\%}
       size_text=""
       if [ ${size} -ge ${DISK_USAGE_LIMIT} ] ; then
         size_text=" # disk_usage>${DISK_USAGE_LIMIT} warning!!!"
-        error_list="$error_list $host:disk_size=$proc"
-        host_error_marker=1
+        error_list="$error_list $node:disk_size=$proc"
+        node_error_marker=1
         error=1
       fi
       echo "  disk: $proc $size_text"
-      version=$( dc -h $host docker version --format '{{.Server.Version}}'  )
+      version=$( dc -h $node docker version --format '{{.Server.Version}}'  )
       echo "  version: $version"
     fi
   fi
 
-  if [ "$check_runtime" = "0" -o "$host_up" = "1" ] ; then
-    projects_on_host=$( dc-yq  '( .projects.* | select(.dc.home.[].host == "'$host'" ) | .compose.name  )' ${MDE_DC_YAML}  )
-    for service in $projects_on_host ; do
+  if [ "$check_runtime" = "0" -o "$node_up" = "1" ] ; then
+    projects_on_node=$( dc-yq  '( .projects.* | select(.dc.home.[].node == "'$node'" ) | .compose.name  )' ${MDE_DC_YAML}  )
+    for service in $projects_on_node ; do
       echo "  $service:"
-      defined_state=( `dc-yq '( .projects.'$service'.dc.home.[] | select(.host == "'$host'" ) | .state) '`)
+      defined_state=( `dc-yq '( .projects.'$service'.dc.home.[] | select(.node == "'$node'" ) | .state) '`)
       echo "    state: $defined_state"
 
       if [ "$check_runtime" = "1" ] ; then
-        if [ $host_up = 1 ] ; then
+        if [ $node_up = 1 ] ; then
           project_status="Up"
           if [ "$defined_state" = "active" ] ; then
-            container_list=$(dc -h $host -p $service compose ps -q)
+            container_list=$(dc -h $node -p $service compose ps -q)
             if [ "$container_list" = "" ] ; then
               project_status="error_no_containers"
             else
-              stat_list=$( echo "$container_list" | xargs dc -h $host -p $service  docker inspect --format '{{.State.Status}}')
+              stat_list=$( echo "$container_list" | xargs dc -h $node -p $service  docker inspect --format '{{.State.Status}}')
               for stat in $stat_list ; do
                 if [ "$stat" != "running" ] ; then
                   project_status="error_incomplete_containers"
@@ -108,8 +108,8 @@ for host in $hosts ; do
               done
             fi
             if [ "$project_status" != "Up" ] ; then
-              host_error_marker=1
-              error_list="$error_list $host:$service"
+              node_error_marker=1
+              error_list="$error_list $node:$service"
               error=1
             fi
             echo "    act_state: $project_status"
@@ -127,8 +127,8 @@ for host in $hosts ; do
   fi
 
   if [ "$check_runtime" = "1" ] ; then
-    # print result for this host  
-    if [ $host_error_marker = 0 ] ; then
+    # print result for this node  
+    if [ $node_error_marker = 0 ] ; then
       echo "  checkresult: OK"
     else
       echo "  checkresult: ERROR"

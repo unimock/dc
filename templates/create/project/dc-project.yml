@@ -20,5 +20,5 @@ project:
     - type: default
       # set state to "disabled" so that project service will not be included in "dc-inspect runtime"
       state: active
-      host: <host>
+      node: <node>
 

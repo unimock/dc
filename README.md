@@ -2,16 +2,16 @@
 
 ## Description
 
-dc environment contains a couple of bash scripts to manage ssh connections and docker compose stacks for different docker hosts (slaves) from a central host (master).
+dc environment contains a couple of bash scripts to manage ssh connections and docker compose stacks for different docker nodes (slaves) from a central node (master).
 
 It only works as a wrapper for the docker and docker compose commands for convenient usage.
 
 The management on the master includes ssh definitions for accessing the slaves and the definition of the docker compose stacks.
 
-For example, if you establish a compose stack (project) under dc/projects/hello-word, you can jump into this directory and call docker or docker-compose commands from here, regardless of which host the stack is running on.
+For example, if you establish a compose stack (project) under dc/projects/hello-word, you can jump into this directory and call docker or docker-compose commands from here, regardless of which node the stack is running on.
 
 ```
-dc ls projects            # shows all registered projects and the associated hosts projects
+dc ls projects            # shows all registered projects and the associated nodes projects
 cd dc/projects/hello-word
 dc compose ...
 dc docker ....
@@ -20,11 +20,11 @@ dc ...
 
 ## Naming conventions
 
-### hosts 
+### nodes 
 
 ### projects
 
-projects are docker-compose stacks. Project names must always be unique, even if the project services run on different hosts. 
+projects are docker-compose stacks. Project names must always be unique, even if the project services run on different nodes. 
 
 ### groups 
 
@@ -43,12 +43,12 @@ vi ${HOME}/.dc/etc/config
 /opt/dc/bin/dc-install   # installation
 ```
 
-If you want to use your dc manager host also as a docker host:
+If you want to use your dc manager node also as a docker node:
 ```
-cat ${HOME}/dc/hosts/id_ed25519.pub >> ${HOME}/.ssh/authorized_keys # allow dc ssh access
-dc host $(hostname) config create 127.0.0.1 dc                      # 'dc config' shows param desc.
-dc host $(hostname) edit                                            # add/change properties 
-dc ls hosts                                                         # list registered hosts
+cat ${HOME}/dc/nodes/id_ed25519.pub >> ${HOME}/.ssh/authorized_keys # allow dc ssh access
+dc node $(hostname) config create 127.0.0.1 dc                      # 'dc config' shows param desc.
+dc node $(hostname) edit                                            # add/change properties 
+dc ls nodes                                                         # list registered nodes
 ```
 
 ### create a dc project service 
@@ -57,13 +57,13 @@ dc ls hosts                                                         # list regis
 
 ```
 
-### register a dc slave host 
+### register a dc slave node 
 
 ```
 NAME="hugo"
-HOSTNAME="<hostname_or_ip>"
+hostname="<hostname_or_ip>"
 TYPE="dc"
-dc host ${NAME} config create ${HOSTNAME} ${TYPE}   # 'dc config' shows param desc.
+dc node ${NAME} config create ${hostname} ${TYPE}   # 'dc config' shows param desc.
 dc ls
 ```
 
@@ -93,7 +93,7 @@ requirments:
 
 ```
 dc-hcloud context create dc  # creates: ~/.config/hcloud/cli.toml
-dc-hcloud ssh-key create --name dc --public-key-from-file dc/hosts/id_ed25519.pub
+dc-hcloud ssh-key create --name dc --public-key-from-file dc/nodes/id_ed25519.pub
 ```
 
 

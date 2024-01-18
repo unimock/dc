@@ -26,17 +26,17 @@ _help()
 
 copy_data()
 {
-  service=$1 ; s_host=$2 ; t_host=$3 
+  service=$1 ; s_node=$2 ; t_node=$3 
 
-  dc-rdc   $s_host rdc exec ls ${MDE_DC_VOL_Data}/$service/* >/dev/null 2>&1 
+  dc-rdc   $s_node rdc exec ls ${MDE_DC_VOL_Data}/$service/* >/dev/null 2>&1 
   if [ "$?" = "0" ] ; then
-  dc-rdc   $s_host rdc sync ${MDE_DC_VOL_Data}/$service      rdc-${t_host}:${MDE_DC_VOL_Data}/$service     real >/dev/null 2>&1
+  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Data}/$service      rdc-${t_node}:${MDE_DC_VOL_Data}/$service     real >/dev/null 2>&1
   fi
-  dc-rdc   $s_host rdc sync ${MDE_DC_VOL_Projects}/$service  rdc-${t_host}:${MDE_DC_VOL_Projects}/$service real 
+  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Projects}/$service  rdc-${t_node}:${MDE_DC_VOL_Projects}/$service real 
   ret=$?
-  echo -e "#\n# copy_data from $s_host to $t_host for $service (ret=$ret)\n#"
+  echo -e "#\n# copy_data from $s_node to $t_node for $service (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
-    echo "error: copy_data from $s_host to $t_host for $service (ret=$ret)"
+    echo "error: copy_data from $s_node to $t_node for $service (ret=$ret)"
     error_detect=1
   fi
   return $ret
@@ -44,12 +44,12 @@ copy_data()
 
 dc_command()
 {
-  cmd=$1 ; service=$2 ; host=$3  
-  dc -p $service -h $host $cmd
+  cmd=$1 ; service=$2 ; node=$3  
+  dc -p $service -h $node $cmd
   ret=$?
-  echo -e "#\n# $cmd $service at $host (ret=$ret)\n#"
+  echo -e "#\n# $cmd $service at $node (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
-    echo "error: $cmd $service at $host (ret=$ret)"
+    echo "error: $cmd $service at $node (ret=$ret)"
     error_detect=1
   fi
   return $ret
@@ -96,20 +96,20 @@ elif [ "$CMD" = "sync_group" ] ; then
 fi
 
 for SERVICE in $project_list ; do
-  service_hosts=( `dc-yq '.projects.'$SERVICE'.dc.home.[].host' ${MDE_DC_YAML} `)
+  service_nodes=( `dc-yq '.projects.'$SERVICE'.dc.home.[].node' ${MDE_DC_YAML} `)
   service_state=( `dc-yq '.projects.'$SERVICE'.dc.home.[].state' ${MDE_DC_YAML} `)
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
-    for i in "${!service_hosts[@]}"; do
-      if [[ "${service_hosts[$i]}" = "${SHST}" ]]; then SIDX="$i" ; fi
-      if [[ "${service_hosts[$i]}" = "${THST}" ]]; then TIDX="$i" ; fi
+    for i in "${!service_nodes[@]}"; do
+      if [[ "${service_nodes[$i]}" = "${SHST}" ]]; then SIDX="$i" ; fi
+      if [[ "${service_nodes[$i]}" = "${THST}" ]]; then TIDX="$i" ; fi
     done
   fi
-  S_HOST="${service_hosts[${SIDX}]}"
-  T_HOST="${service_hosts[${TIDX}]}"
+  S_HOST="${service_nodes[${SIDX}]}"
+  T_HOST="${service_nodes[${TIDX}]}"
   S_STATE="${service_state[${SIDX}]}"        # state of primary service: active|standby
   T_STATE="${service_state[${TIDX}]}"        # state of secondary service: active|standby
   if [ "$T_HOST" = "" ] ; then
-    echo "error: target host (second) definition missing."
+    echo "error: target node (second) definition missing."
     exit 1
   fi
 
@@ -128,9 +128,9 @@ for SERVICE in $project_list ; do
       echo " $SERVICE not active. Skipping!"
       continue ;
     fi
-    target_host_state=$( dc-host $T_HOST state )
-    if [ "$target_host_state" = "off" ] ; then
-      echo " target host defined as state=standby in host definition and is not reachable"
+    target_node_state=$( dc-node $T_HOST state )
+    if [ "$target_node_state" = "off" ] ; then
+      echo " target node defined as state=standby in node definition and is not reachable"
       error_detect="1"
       continue
     fi      

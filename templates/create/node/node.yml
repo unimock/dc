@@ -1,9 +1,9 @@
-host:
+node:
   # type can be:
-  #   - ping ... if host is only pingable
-  #   - sshd ... if host is accessible via ssh
-  #   - dock ... if host is accessible via ssh and has docker installed
-  #   - dc ..... if host is accessible via ssh and has docker installed and belongs to dc cluster
+  #   - ping ... if node is only pingable
+  #   - sshd ... if node is accessible via ssh
+  #   - dock ... if node is accessible via ssh and has docker installed
+  #   - dc ..... if node is accessible via ssh and has docker installed and belongs to dc cluster
   type: <type>
   state: active
   # hostname or ip

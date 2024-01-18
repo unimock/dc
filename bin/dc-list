@@ -8,7 +8,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --sort) opt_sort="$2" ; shift 2 ;;
-    -h) on_host="$2"      ; shift 2 ;;
+    -h) on_node="$2"      ; shift 2 ;;
     -g) group="$2"        ; shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -23,41 +23,41 @@ if [ "$CMD" = "" ] ; then
   echo "   options:"
   echo""
   echo "       -g ................... print projects for a group"
-  echo "       -h ................... print projects defined for a host"
+  echo "       -h ................... print projects defined for a node"
   echo ""
   echo "    commands:"
   echo ""
-  echo "       hosts all ............ list all hosts, which are defined in '${MDE_DC_HOST_DIR}/*/host.yml' as state=active|standby"
-  echo "       hosts dc ............. list all hosts, which are defined in '${MDE_DC_HOST_DIR}/*/host.yml' AND group=dc"
-  echo "       hosts used ........... list all hosts, which are used in services"
+  echo "       nodes all ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' as state=active|standby"
+  echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND group=dc"
+  echo "       nodes used ........... list all nodes, which are used in services"
   echo "       projects [-h|-g|--sort run_level]  ..... list services"
   echo ""
   exit 0
 fi
 
-if [ "$CMD" = "hosts" ] ; then
+if [ "$CMD" = "nodes" ] ; then
   if [ "$2" = "" -o  "$2" = "all" ] ; then
     dc-ls --short | sort
   elif [ "$2" = "dc" ] ; then
-    dc-yq '((.hosts.* | select (.type == "dc" )) | path) [-1]' | sort
+    dc-yq '((.nodes.* | select (.type == "dc" )) | path) [-1]' | sort
     #dc-ls --group=dc --short | sort
   elif [ "$2" = "used" ] ; then
-    dc-yq '.projects.*.dc.home.[].host'   ${MDE_DC_YAML} | sort | uniq
+    dc-yq '.projects.*.dc.home.[].node'   ${MDE_DC_YAML} | sort | uniq
   fi
   exit 0
 fi
 
 if [ "$CMD" = "projects" ] ; then
   shift
-  if [ "$on_host" != "" ] ; then
+  if [ "$on_node" != "" ] ; then
     if [ "$opt_sort" = "run_level" ] ; then
       run_levels=$( dc-yq  '.projects.*.dc.run_level' | sort | uniq  )   # 5 4     -> stop
       project_list=""
       for rl in $run_levels ; do
-        project_list="$project_list $(dc-yq '(( .projects.* | select(.dc.run_level == "'$rl'") | select(.dc.home.[].host == "'$on_host'") | path ) [-1] )')"
+        project_list="$project_list $(dc-yq '(( .projects.* | select(.dc.run_level == "'$rl'") | select(.dc.home.[].node == "'$on_node'") | path ) [-1] )')"
       done
     else
-      project_list=$( dc-yq  '(( .projects.* | select(.dc.home.[].host == "'$on_host'" ) | path ) [-1] )' ${MDE_DC_YAML} )
+      project_list=$( dc-yq  '(( .projects.* | select(.dc.home.[].node == "'$on_node'" ) | path ) [-1] )' ${MDE_DC_YAML} )
     fi
   else
     project_list=$(dc-yq '(.projects.[] | path ) [-1]'   ${MDE_DC_YAML})

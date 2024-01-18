@@ -15,15 +15,15 @@ LINE="--------------------------------------------------------------------------
 
 _help() {
   echo ""
-  echo "usage: dc-ls <options> [hosts|projects]"
+  echo "usage: dc-ls <options> [nodes|projects]"
   echo ""
   echo " options:"
   echo ""
   echo "  dc-ls --help             # show this help"
   echo "  dc-ls --active           # "
-  echo "  dc-ls --host=<host_name> # show only this host"
-  echo "  dc-ls --short            # list only host/project names"
-  echo "  dc-ls --group=<group>    # show only hosts of group=<group> in '${MDE_DC_HOST_DIR}/*/host.yml'."
+  echo "  dc-ls --node=<node_name> # show only this node"
+  echo "  dc-ls --short            # list only node/project names"
+  echo "  dc-ls --group=<group>    # show only nodes of group=<group> in '${MDE_DC_HOST_DIR}/*/node.yml'."
   echo "  dc-ls --inspect          # inspect and list"
   echo ""
 }
@@ -39,7 +39,7 @@ opt_active="0"
 opt_short="0"
 opt_inspect="0"
 opt_group=""
-opt_host=""
+opt_node=""
 COPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -47,7 +47,7 @@ while [ "$#" -gt 0 ]; do
     --help)     _help ; exit 0              ; shift ;;
     --short)    opt_short="1"               ; shift ;;
     --group=*)  opt_group=${1#"--group="}   ; shift ;;
-    --host=*)   opt_host=${1#"--host="}     ; shift ;;
+    --node=*)   opt_node=${1#"--node="}     ; shift ;;
     --inspect)  opt_inspect="1"             ; shift ;; 
     *)  COPT="$COPT \"$1\""                 ; shift ;;
   esac
@@ -64,7 +64,7 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
   printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "PROJECT" "CO" "HOSTS" "GROUPS" "DESCRIPTION" "MAIN_IMAGE" "PROJECT_DIRECTORY"
   printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
   for p in $project_list ; do
-    p_hosts=$(   dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML} )
+    p_nodes=$(   dc-yq '.projects.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
     p_desc=$(    dc-yq '.projects.'$p'.dc.desc'         ${MDE_DC_YAML} )
     p_dir=$(     dc-yq '.projects.'$p'.project_dir'     ${MDE_DC_YAML} )
     p_groups=$(  dc-yq '.projects.'$p'.dc.group.[]'     ${MDE_DC_YAML} | tr '\n' ',' )
@@ -74,14 +74,14 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
     xxx=""
     yyy=""
     ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
-    for h in $p_hosts ; do
+    for h in $p_nodes ; do
       if [ "$opt_inspect" = "1" ]  ; then
-	      host_state=$( dc-host $h state )
-	      if [ "$host_state" = "dock" -o "$host_state" = "dc"  ] ; then
+	      node_state=$( dc-node $h state )
+	      if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
           #nrc=$(dc -p $p -h $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
-          nrc=$(dc-host $h -p $p nrc)
+          nrc=$(dc-node $h -p $p nrc)
 	        color=$COL_RED
-        elif [ "$host_state" = "off" ] ; then # host is defined as state=standby in host definition
+        elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
 	        nrc=0
 	        color=$COL_GRAY
 	      fi	
@@ -112,19 +112,19 @@ if [ "$1" = "projects" -o "$1" = "p"  ] ; then
 fi
 
 ####################################################################################################################################
-# hosts
+# nodes
 ####################################################################################################################################
-HOST_DATA_DIR=$HOME/.dc/var/hosts
+HOST_DATA_DIR=$HOME/.dc/var/nodes
 mkdir -p $HOST_DATA_DIR
 
-if [ "$1" = "" ] ; then # "dc ls" list hosts with inspection
+if [ "$1" = "" ] ; then # "dc ls" list nodes with inspection
   opt_inspect="1"
 fi
 
 if [ "$opt_group" != "" ] ; then
-  list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
+  list=$(dc-yq '(.nodes.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
 else
-  list=$(dc-yq '(.hosts.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} | sort )
+  list=$(dc-yq '(.nodes.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} | sort )
 fi
 
 if [ "$opt_short" = "1" ] ; then
@@ -142,21 +142,21 @@ if [ "$opt_short" = "1" ] ; then
   exit 0
 fi
 MASK="%12s|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-printf "$MASK" "host" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "mid" "last_inspection" "description"
+printf "$MASK" "node" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "mid" "last_inspection" "description"
 printf "$MASK" "------------" "----" "----" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
-for host in $list ; do
-  if [ "$opt_host" != "" -a "$opt_host" != "$host" ] ; then
+for node in $list ; do
+  if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
   fi
-  desc=$(  dc-yq '.hosts.'$host'.desc'       ${MDE_DC_YAML} )
-  group=$( dc-yq '.hosts.'$host'.groups.[]'  ${MDE_DC_YAML} | tr '\r\n' ' ' )
+  desc=$(  dc-yq '.nodes.'$node'.desc'       ${MDE_DC_YAML} )
+  group=$( dc-yq '.nodes.'$node'.groups.[]'  ${MDE_DC_YAML} | tr '\r\n' ' ' )
   group=${group% }
-  os=$(    dc-yq '.hosts.'$host'.os'         ${MDE_DC_YAML} )
-  mid=$(   dc-yq '.hosts.'$host'.machine_id' ${MDE_DC_YAML} )
-  hname=$( dc-yq '.hosts.'$host'.fqdn  '     ${MDE_DC_YAML} )
-  typ=$(   dc-yq '.hosts.'$host'.type  '     ${MDE_DC_YAML} )
+  os=$(    dc-yq '.nodes.'$node'.os'         ${MDE_DC_YAML} )
+  mid=$(   dc-yq '.nodes.'$node'.machine_id' ${MDE_DC_YAML} )
+  hname=$( dc-yq '.nodes.'$node'.fqdn  '     ${MDE_DC_YAML} )
+  typ=$(   dc-yq '.nodes.'$node'.type  '     ${MDE_DC_YAML} )
   if  [ "$hname" = "" ] ; then
-    hname="$host"
+    hname="$node"
   fi
   dock_ver=""
   mde_ver=""
@@ -167,33 +167,33 @@ for host in $list ; do
   serial=""
 
   if [ "$opt_inspect" = "1" ] ; then
-    state=$( dc-host ${host} state )
+    state=$( dc-node ${node} state )
     if [ "$state" = "$typ" ] ; then
       if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
 if [ "$os" != "android" ] ; then 
        if [ "$os" = "ubuntu" ] ; then
-          os_ver=$( ssh $host lsb_release -d -s 2>/dev/null | cut -d " " -f2)
+          os_ver=$( ssh $node lsb_release -d -s 2>/dev/null | cut -d " " -f2)
           os_ver=${os_ver:0:8}
         else
           VERSION_ID=""
-          eval $( ssh $host "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
+          eval $( ssh $node "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
           os_ver="$VERSION_ID"
           os_ver=${os_ver%_*}
         fi
         dock_ver=""
         if [ "$state" = "dock" -o "$state" = "dc" ] ; then
-          dock_ver=$( DOCKER_HOST="ssh://$host" docker version --format '{{.Server.Version}}' 2>/dev/null )
+          dock_ver=$( DOCKER_HOST="ssh://$node" docker version --format '{{.Server.Version}}' 2>/dev/null )
         fi
         # get mde_patch
-        mde_patch=$( ssh $host cat /etc/mde/patch 2>/dev/null )
+        mde_patch=$( ssh $node cat /etc/mde/patch 2>/dev/null )
         size=0
-        size_list=$(ssh $host df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
+        size_list=$(ssh $node df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
         for x in $size_list ; do
           if (( $x >= $size )) ; then
             let size=$x
           fi
         done
-        x=$( ssh $host cat /etc/machine-id 2>/dev/null )
+        x=$( ssh $node cat /etc/machine-id 2>/dev/null )
         if [ "$x" = "" ] ; then
           serial="!!"
         elif [ "$x" = "$mid" ] ; then
@@ -201,12 +201,12 @@ if [ "$os" != "android" ] ; then
         else
           serial="$x"
         fi
-        mde_ver=$( ssh $host dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
+        mde_ver=$( ssh $node dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
         if [ "$mde_ver" = "" ] ; then
           mde_ver=""
           mde_monitor=""
         else
-          x=$( ssh $host pgrep mde-monitor 2>/dev/null)
+          x=$( ssh $node pgrep mde-monitor 2>/dev/null)
           if [ "$x" != "" ] ; then
             mde_monitor="M"
           fi
@@ -218,18 +218,18 @@ fi
     # store latest inspection data
     #
   fi
-  host_data_file=$HOST_DATA_DIR/$host
-  if [[ ( "$opt_inspect" == "1" && "$state" == "$typ" ) || ! -f $host_data_file  ]] ; then
-    echo "insp_os_ver=\"${os_ver}\""            > $host_data_file
-    echo "insp_dock_ver=\"${dock_ver}\""       >> $host_data_file
-    echo "insp_mde_ver=\"${mde_ver}\""         >> $host_data_file
-    echo "insp_mde_monitor=\"${mde_monitor}\"" >> $host_data_file
-    echo "insp_mde_patch=\"${mde_patch}\""     >> $host_data_file
-    echo "insp_hd_size=\"${size}\""            >> $host_data_file
-    echo "insp_machine_id=\"${serial}\""       >> $host_data_file
-    echo "insp_last_inspect=$(date +%s)"       >> $host_data_file
+  node_data_file=$HOST_DATA_DIR/$node
+  if [[ ( "$opt_inspect" == "1" && "$state" == "$typ" ) || ! -f $node_data_file  ]] ; then
+    echo "insp_os_ver=\"${os_ver}\""            > $node_data_file
+    echo "insp_dock_ver=\"${dock_ver}\""       >> $node_data_file
+    echo "insp_mde_ver=\"${mde_ver}\""         >> $node_data_file
+    echo "insp_mde_monitor=\"${mde_monitor}\"" >> $node_data_file
+    echo "insp_mde_patch=\"${mde_patch}\""     >> $node_data_file
+    echo "insp_hd_size=\"${size}\""            >> $node_data_file
+    echo "insp_machine_id=\"${serial}\""       >> $node_data_file
+    echo "insp_last_inspect=$(date +%s)"       >> $node_data_file
   fi
-  eval `cat $host_data_file`
+  eval `cat $node_data_file`
   if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     col_state=$COL_LGRAY
     col_std=$COL_LGRAY
@@ -259,5 +259,5 @@ fi
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
   MASK="${col_state}%12s${col_std}|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-  printf "$MASK" "${host}" "${state}" "${typ}" "${group}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  printf "$MASK" "${node}" "${state}" "${typ}" "${group}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done

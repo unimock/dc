@@ -11,32 +11,32 @@ sf_start
 error_detect=0
 err_report() { printf "!\n! Error on line $1\n!\n" ; error_detect=1 ; } ; trap 'err_report $LINENO' ERR
 
-HOST="test"              # local dc host name
+HOST="test"              # local dc node name
 VSERVER="test@tkvm1"     # create remote kvm machine @kvm1 server
 #VSERVER="test"           # create local kvm machine
-SLAVE="dc-slave"         # remote dc host name
+SLAVE="dc-slave"         # remote dc node name
 TEMPL="kvm"              # vserver template which includes kvm-/cloud-config-/dc-install settings 
 ```
 
 [//]: # (md-exec: create test env)
 ```create
-dc host $HOST config create test.intra dock  # create new host definition with hostname test.intra and type="dock"
-dc host $HOST vserver assign $VSERVER $TEMPL # assign virtual server to the new host
-dc host $HOST vserver create                 # create assigned machine
-dc host $HOST state                          # check if new host returns dc
+dc node $HOST config create test.intra dock  # create new node definition with hostname test.intra and type="dock"
+dc node $HOST vserver assign $VSERVER $TEMPL # assign virtual server to the new node
+dc node $HOST vserver create                 # create assigned machine
+dc node $HOST state                          # check if new node returns dc
 # install dc
 ssh $HOST git clone https://github.com/unimock/dc.git /opt/dc
 ssh $HOST /opt/dc/bin/dc-install --force     # --force .. do not change default settings
-ssh $HOST 'cat /root/dc/hosts/id_ed25519.pub >> /root/.ssh/authorized_keys'
+ssh $HOST 'cat /root/dc/nodes/id_ed25519.pub >> /root/.ssh/authorized_keys'
 ```
 
 [//]: # (md-exec: execute tests)
 ```test
-IP=$(dc host $HOST ip)
+IP=$(dc node $HOST ip)
 echo "IP=$IP"
 # lets play around on the new dc cluster manager
-ssh $HOST dc host $SLAVE config create $IP dc
-state=$(ssh $HOST dc host $SLAVE state)
+ssh $HOST dc node $SLAVE config create $IP dc
+state=$(ssh $HOST dc node $SLAVE state)
 if [ "$state" != "dc" ] ; then
   sf_set_error
 fi
@@ -51,15 +51,15 @@ if [ "$?" != "0" ] ; then
 fi
 ssh $HOST dc -p hello-world rm                 # stop and remove hello-world project services
 ssh $HOST dc project hello-world config delete # remove hello-world project definition
-ssh $HOST dc host $SLAVE config delete         # delete host config definition
+ssh $HOST dc node $SLAVE config delete         # delete node config definition
 ```
 
 Delete 
 
 [//]: # (md-exec: delete test env)
 ```delete
-dc host $HOST vserver delete                   # delete assigned kvm machine
-dc host $HOST config  delete                   # delete host definition
+dc node $HOST vserver delete                   # delete assigned kvm machine
+dc node $HOST config  delete                   # delete node definition
 echo "error_detect=$error_detect"
 ```
 

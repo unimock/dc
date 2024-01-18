@@ -103,7 +103,8 @@ if [ "$CMD" = "provide" ] ; then
   # start VM
   #
   my_para=""
-  if [ -d /tsp0/images ] ; then # my kvm server
+  if [ -f /tsp0/config/additional_virt_install_options.conf ] ; then # my kvm server
+    my_para=$(cat /tsp0/config/additional_virt_install_options.conf | egrep '^[[:blank:]]*[^[:blank:]#]')
     my_para="--network bridge=lan-net,model=virtio"
   fi
   para=$( dc-yq '.kvm.virt-install[]' $yaml | tr '\n' ' ' )
