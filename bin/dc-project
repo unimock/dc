@@ -16,7 +16,6 @@ _show_help() {
 }
 
 
-opt_host=""
 verbose=""
 CURROPT=""
 while [ "$#" -gt 0 ]; do

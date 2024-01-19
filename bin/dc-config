@@ -15,7 +15,7 @@ VARDIR="$HOME/.dc/var/cache"
 _config_refresh()
 {
   project_dir="$VARDIR/projects"
-  hosts_dir="$VARDIR/hosts"
+  nodes_dir="$VARDIR/nodes"
   config_dir="$VARDIR/config"
 
   config_change="0"
@@ -45,7 +45,7 @@ _config_refresh()
     mkdir ${config_dir}
     echo "$last" | awk '{ print $2 }' > ${config_dir}/modified.${stamp}
     list=$( find ${MDE_DC_CONFIG_DIR} -maxdepth 1  -name "*.yml" )
-    # append config definition to cached host file
+    # append config definition to cached node file
     echo "config:"                                                                               > ${config_dir}/config.yml
     for yaml in $list ; do
       grep -o '^[^#]*' $yaml | sed "s|^|  |g"                          >> ${config_dir}/config.yml
@@ -54,40 +54,40 @@ _config_refresh()
   fi
 
   #
-  # check for changed hosts configurations
+  # check for changed nodes configurations
   #
-  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "host.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "node.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
-  if [ "$stamp" != "" -a  ! -f ${hosts_dir}/modified.${stamp} ] ; then
-    rm -rf ${hosts_dir}
-    mkdir ${hosts_dir}
-    echo "$last" | awk '{ print $2 }' > ${hosts_dir}/modified.${stamp}
-    list=$( find ${MDE_DC_HOST_DIR}  -name "host.yml" )
-    # append hosts definition to cached host file
-    echo "hosts:"                                                                               > ${hosts_dir}/hosts.yml
+  if [ "$stamp" != "" -a  ! -f ${nodes_dir}/modified.${stamp} ] ; then
+    rm -rf ${nodes_dir}
+    mkdir ${nodes_dir}
+    echo "$last" | awk '{ print $2 }' > ${nodes_dir}/modified.${stamp}
+    list=$( find ${MDE_DC_HOST_DIR}  -name "node.yml" )
+    # append nodes definition to cached node file
+    echo "nodes:"                                                                               > ${nodes_dir}/nodes.yml
     rm -rf   $HOME/.dc/var/ssh/config
     mkdir -p $HOME/.dc/var/ssh/config
     mkdir -p $HOME/.dc/var/ssh/control
     for hyaml in $list ; do
       name=${hyaml#${MDE_DC_HOST_DIR}/}
-      name=${name%/host.yml}
-      echo "  $name:"                                                                           >> ${hosts_dir}/hosts.yml
-      echo "    host_dir: ${MDE_DC_HOST_DIR}/$name"                                             >> ${hosts_dir}/hosts.yml
-      sed "s|^host:||g" $hyaml | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d'    >> ${hosts_dir}/hosts.yml
+      name=${name%/node.yml}
+      echo "  $name:"                                                                           >> ${nodes_dir}/nodes.yml
+      echo "    node_dir: ${MDE_DC_HOST_DIR}/$name"                                             >> ${nodes_dir}/nodes.yml
+      sed "s|^node:||g" $hyaml | sed "s|^|  |g" | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d'    >> ${nodes_dir}/nodes.yml
       #
-      # create ssh config file for this host
+      # create ssh config file for this node
       #
-      type=$( dc-yq '.host.type'  $hyaml)
+      type=$( dc-yq '.node.type'  $hyaml)
       if [ "$type" = "sshd" -o "$type" = "dc" -o "$type" = "dock"  ] ; then
-        dc-yq -i '.hosts.'$name'.ssh_config.ControlPath = "'$HOME'/.dc/var/ssh/control/'$name'"' ${hosts_dir}/hosts.yml
+        dc-yq -i '.nodes.'$name'.ssh_config.ControlPath = "'$HOME'/.dc/var/ssh/control/'$name'"' ${nodes_dir}/nodes.yml
         # replace variables off IdentityFile
-        IdentityFile=$( dc-yq '.hosts.'$name'.ssh_config.IdentityFile'                              ${hosts_dir}/hosts.yml | envsubst)
-        dc-yq -i '.hosts.'$name'.ssh_config.IdentityFile = "'$IdentityFile'"'                      ${hosts_dir}/hosts.yml
+        IdentityFile=$( dc-yq '.nodes.'$name'.ssh_config.IdentityFile'                              ${nodes_dir}/nodes.yml | envsubst)
+        dc-yq -i '.nodes.'$name'.ssh_config.IdentityFile = "'$IdentityFile'"'                      ${nodes_dir}/nodes.yml
         echo "Host $name"                                                                  > $HOME/.dc/var/ssh/config/$name
-        echo "    HostName $(dc-yq '.host.fqdn'  $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
-        echo "    Port $(dc-yq '.host.port'      $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
+        echo "    HostName $(dc-yq '.node.fqdn'  $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
+        echo "    Port $(dc-yq '.node.port'      $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
         echo "    ControlPath $HOME/.dc/var/ssh/control/%n"                               >> $HOME/.dc/var/ssh/config/$name
-        dc-yq '.host.ssh_config' $hyaml | sed -e 's|: | |g' -e 's|^|    |g'               >> $HOME/.dc/var/ssh/config/$name
+        dc-yq '.node.ssh_config' $hyaml | sed -e 's|: | |g' -e 's|^|    |g'               >> $HOME/.dc/var/ssh/config/$name
       fi
     done
     config_change="1"
@@ -114,7 +114,7 @@ _config_refresh()
       echo "rebuild dc project for $i"
       cp $i ${project_dir}/${relPath}/
       docker compose -f ${MDE_DC_PROJ_DIR}/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
-      # overrule project name, if host is mailcowdockerized
+      # overrule project name, if node is mailcowdockerized
       project_name=$(dc-yq '.project.overrule_compose_name'  $i)
       if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
         dc-yq -i '.name = "'$project_name'"' ${project_dir}/${relPath}/compose.yml
@@ -127,8 +127,8 @@ _config_refresh()
     mkdir -p `dirname ${MDE_DC_YAML}`
     echo "re-create: ${MDE_DC_YAML}"
     cp $config_dir/config.yml                                                        ${MDE_DC_YAML}
-    if [ -f $hosts_dir/hosts.yml ] ; then
-      cat $hosts_dir/hosts.yml                                                    >> ${MDE_DC_YAML}
+    if [ -f $nodes_dir/nodes.yml ] ; then
+      cat $nodes_dir/nodes.yml                                                    >> ${MDE_DC_YAML}
     fi
     #
     # projects
@@ -167,15 +167,15 @@ if [ "$1" = "" ] ; then
   echo ""
   echo "# create/delete a sample project:"
   echo "" 
-  echo "#$IAM create project <name>       <host> <main_service> <project_dir>"
+  echo "#$IAM create project <name>       <node> <main_service> <project_dir>"
   echo "$IAM  create project test-project apps0  hello-world ${MDE_DC_PROJ_DIR}/test-project"
   echo "$IAM  delete project test-project"
   echo ""
-  echo "# create/delete a host definition"
+  echo "# create/delete a node definition"
   echo ""
-  echo "#$IAM create host    <host>     [<hostname_or_ip] [type]"
-  echo "$IAM  create host    test-host  localhost         ping|sshd|dock|dc # default=dc"
-  echo "$IAM  delete host    test-host"
+  echo "#$IAM create node    <node>     [<hostname_or_ip] [type]"
+  echo "$IAM  create node    test-node  localhost         ping|sshd|dock|dc # default=dc"
+  echo "$IAM  delete node    test-node"
   echo ""
   exit 0
 fi
@@ -214,9 +214,9 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         echo "error: project <$project_name> did not exist!"
         exit 1
       fi
-      project_hosts=$( dc-yq '.projects.'$project_name'.dc.home.[].host' ${MDE_DC_YAML} )
-      for i in $project_hosts ; do
-        nrc=$(dc-host $i -p $project_name nrc)
+      project_nodes=$( dc-yq '.projects.'$project_name'.dc.home.[].node' ${MDE_DC_YAML} )
+      for i in $project_nodes ; do
+        nrc=$(dc-node $i -p $project_name nrc)
         found=0
         if [ "$nrc" != "0" ] ; then
           echo " $nrc containers still running on <$i> for this project"
@@ -227,16 +227,16 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         echo "error: do: dc -p ..."
         exit 1
       fi
-      echo "TBD: check volumes of project on target host"
+      echo "TBD: check volumes of project on target node"
       rm -rvf $project_dir
       exit 0
     elif [ "$CMD" = "create" ] ; then
       echo "################################################################################"
       echo "# create project <$project_name>"
       echo "################################################################################"
-      host="$2"
-      if [ "$(dc-yq '.hosts.'$host'.state' ${MDE_DC_YAML})" = "null" ] ; then
-        echo "error: host <$host> did not exist!"
+      node="$2"
+      if [ "$(dc-yq '.nodes.'$node'.state' ${MDE_DC_YAML})" = "null" ] ; then
+        echo "error: node <$node> did not exist!"
         exit 1
       fi
       if [ "$project_dir" != "null" ] ;then
@@ -258,7 +258,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       for i in $flist ; do
         sed -i "s|<project_name>|${project_name}|g"   $i
         sed -i "s|<main_service>|${main_service}|g"   $i
-        sed -i "s|<host>|${host}|g"                   $i
+        sed -i "s|<node>|${node}|g"                   $i
         sed -i "s|<image>|${image}|g"                 $i
         sed -i "s|<traefik_net>|${traefik_net}|g"     $i
         echo "$i"
@@ -268,25 +268,25 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
     _config_refresh
   fi
   #######################
-  # host
+  # node
   #######################
-  if [ "$TYP" = "host" ] ; then
+  if [ "$TYP" = "node" ] ; then
     name="$1"
     if [ "$name" = "" ] ; then
-      echo "error: invalid host name <$name> given!"
+      echo "error: invalid node name <$name> given!"
       exit 1
     fi
-    host_dir=$( dc-yq '.hosts.'$name'.host_dir' ${MDE_DC_YAML} )
+    node_dir=$( dc-yq '.nodes.'$name'.node_dir' ${MDE_DC_YAML} )
     if [ "$CMD" = "delete" ] ; then
       echo "################################################################################"
-      echo "# delete host <$name> definition"
+      echo "# delete node <$name> definition"
       echo "################################################################################"
-      if [ "$host_dir" = "null" ] ; then
-         echo "error: host <$name> did not exist!"
+      if [ "$node_dir" = "null" ] ; then
+         echo "error: node <$name> did not exist!"
          exit 1
       fi
       if [ "$( dc-list projects -h $name)" != "" ] ; then
-        echo "error: the following projects still defined for host <$name> :"
+        echo "error: the following projects still defined for node <$name> :"
         dc-list projects -h $name | sed "s|^| - |g" 
         exit 1
       fi
@@ -298,10 +298,10 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
     fi
     if [ "$CMD" = "create" ] ; then
       echo "################################################################################"
-      echo "# create host <${name}> definition"
+      echo "# create node <${name}> definition"
       echo "################################################################################"
-      if [  "$host_dir" != "null"  ] ; then
-        echo "error: host <$name> already exist!"
+      if [  "$node_dir" != "null"  ] ; then
+        echo "error: node <$name> already exist!"
         exit 1
       fi
       if [ -d ${MDE_DC_HOST_DIR}/$name ] ; then
@@ -318,7 +318,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         typ="$3"
       fi
       mkdir -p ${MDE_DC_HOST_DIR}/$name
-      cp  /opt/dc/templates/create/host/*     ${MDE_DC_HOST_DIR}/$name
+      cp  /opt/dc/templates/create/node/*     ${MDE_DC_HOST_DIR}/$name
       flist=$(find ${MDE_DC_HOST_DIR}/$name -type f)
       for i in $flist ; do
           sed -i "s|<name>|${name}|g"                 $i
@@ -333,8 +333,8 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
 fi
 
 if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
-  if [[ "$1" == "" || ( "$1" != "host" &&  "$1" != "project" ) ]] ; then
-    echo "error: unkown type given. Use host or project!"
+  if [[ "$1" == "" || ( "$1" != "node" &&  "$1" != "project" ) ]] ; then
+    echo "error: unkown type given. Use node or project!"
     exit 1
   fi
   TYP="$1" ; shift
@@ -344,9 +344,9 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
   fi
   name="$1" ; shift
   rest=$@
-  if [ "$TYP" = "host" ] ; then
-    config_dir=$( dc-yq '.hosts.'$name'.host_dir' ${MDE_DC_YAML}  )
-    file="host.yml"
+  if [ "$TYP" = "node" ] ; then
+    config_dir=$( dc-yq '.nodes.'$name'.node_dir' ${MDE_DC_YAML}  )
+    file="node.yml"
   else
     config_dir=$( dc-yq '.projects.'$name'.project_dir' ${MDE_DC_YAML}  )
     file="docker-compose.yml"
@@ -374,21 +374,21 @@ if [ "$CMD" = "check" ] ; then
   if [ "$?" != "0" ] ; then
     echo " ❌ missing ssh config dir: <Include $HOME/.dc/var/ssh/config/\*> in ~/.ssh/config"
   fi
-  hosts=$( dc-yq  '.projects.*.dc.home.[].host'   ${MDE_DC_YAML}  | sort | uniq)
-  for h in $hosts ; do
-    res=$(  dc-yq '.hosts.'$h'.state' ${MDE_DC_YAML} ) 
+  nodes=$( dc-yq  '.projects.*.dc.home.[].node'   ${MDE_DC_YAML}  | sort | uniq)
+  for h in $nodes ; do
+    res=$(  dc-yq '.nodes.'$h'.state' ${MDE_DC_YAML} ) 
     if [ "$res" = "null" ] ; then
-      echo " ❌ missing host definition \".hosts.$h.state:\" in <${MDE_DC_YAML}>"
+      echo " ❌ missing node definition \".nodes.$h.state:\" in <${MDE_DC_YAML}>"
     elif [ "$res" != "active" ] ; then
-      echo " 💡 \".hosts.$h.state:\" != active"
+      echo " 💡 \".nodes.$h.state:\" != active"
     fi
   done
 
   projects=$( dc-yq '(.projects.[] | path )  [-1]'  ${MDE_DC_YAML} | sort )
   for p in $projects ; do
     ignore_vol_check=$( dc-yq '.projects.'$p'.dc.ignore_volume_check' ${MDE_DC_YAML} )
-    p_on_hosts=( `dc-yq '.projects.'$p'.dc.home.[].host' ${MDE_DC_YAML}` )   # Array
-    s_on_hosts=( `dc-yq '.projects.'$p'.dc.home.[].state' ${MDE_DC_YAML}` )  # Array
+    p_on_nodes=( `dc-yq '.projects.'$p'.dc.home.[].node' ${MDE_DC_YAML}` )   # Array
+    s_on_nodes=( `dc-yq '.projects.'$p'.dc.home.[].state' ${MDE_DC_YAML}` )  # Array
     cfg=$( dc-yq '.projects.'$p'.compose_yml' ${MDE_DC_YAML} )
     #
     # check for not unique project names
@@ -407,13 +407,13 @@ if [ "$CMD" = "check" ] ; then
 
     vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
 
-    for h in "${!p_on_hosts[@]}"; do
-      if [ "${s_on_hosts[$h]}" != "active" ] ; then
-         echo " 💡 [$p] home.[$h].state: ${s_on_hosts[$h]} != active in $cfg"
+    for h in "${!p_on_nodes[@]}"; do
+      if [ "${s_on_nodes[$h]}" != "active" ] ; then
+         echo " 💡 [$p] home.[$h].state: ${s_on_nodes[$h]} != active in $cfg"
       fi
-      ssh ${p_on_hosts[$h]} exit 0 >/dev/null 2>&1
+      ssh ${p_on_nodes[$h]} exit 0 >/dev/null 2>&1
       if [ "$?" != "0" ] ; then
-        echo " ❌ [$p] error host <${p_on_hosts[$h]}> not reachable, so volume check not possible"
+        echo " ❌ [$p] error node <${p_on_nodes[$h]}> not reachable, so volume check not possible"
       else
         # do volume check
         if [ "$ignore_vol_check" != "true" ] ; then
@@ -428,10 +428,10 @@ if [ "$CMD" = "check" ] ; then
                   "$vol" == "${MDE_DC_VOL_Data}/$p"         || \
                   "$vol" == "${MDE_DC_VOL_Data}/$p/"*          \
                ]] ; then
-              # check if $vol exists on host
-              ssh ${p_on_hosts[$h]} ls -d $vol >/dev/null 2>&1
+              # check if $vol exists on node
+              ssh ${p_on_nodes[$h]} ls -d $vol >/dev/null 2>&1
               if [ "$?" != "0" ] ; then
-                echo " ❌ [$p] missing volume directory <$vol> on host <${p_on_hosts[$h]}>"
+                echo " ❌ [$p] missing volume directory <$vol> on node <${p_on_nodes[$h]}>"
               fi
             else
               echo " 💡 [$p] volume config <$vol> in $cfg" 
