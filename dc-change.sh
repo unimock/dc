@@ -1,33 +1,48 @@
 #!/bin/bash
 
-cd
-mv dc dc-orig
-rm -R            dc-temp
-cp -Rf  dc-orig  dc-temp
-ln -s dc-temp dc
-rm -r            dc-temp/logs/*
+cd /opt/dc
+git pull
+git fetch -a
+git checkout rename-hosts-to-nodes
 
-list=$(find dc-temp -name host.yml)
+
+
+cd /root
+
+cp -r dc dc-backup
+
+list=$(find dc -name host.yml)
 for i in $list ; do
   sed -i "s|^host:|node:|g"  $i
   sed -i "s| host | node |g" $i
   mv $i `dirname $i`/node.yml
 done 
-mv dc-temp/hosts dc-temp/nodes
+mv dc/hosts dc/nodes
 
-list=$(find dc-temp -name dc-project.yml)
+
+list=$(find dc -name dc-project.yml)
 for i in $list ; do
   sed -i "s| host: | node: |g"  $i
 done 
 
-grep -r host dc-temp | grep -v "hostname" | grep host
+list=$(find ./dc/batch ./utils ./scripts -type f)
+for i in $list ; do
+  sed -i "s|hostname|_HOSTNAME_|g"  $i
+  sed -i "s|localhost|_LOCALHOST_|g" $i
+  #echo "##########################################################"
+  #echo "# check $i :"
+  #echo "##########################################################"
+  #grep "host" $i
+  sed -i "s|host|node|g" $i
+
+  sed -i "s|_HOSTNAME_|hostname|g" $i
+  sed -i "s|_LOCALHOST_|localhost|g" $i
+done
 
 rm -rvf .dc/var
 sed -i "s|hosts|nodes|g" .dc/etc/config
 . /opt/dc/funcs/bash-completion
 dc config rebuild
-
-
 
 #
 # dc package itself:
