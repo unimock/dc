@@ -22,7 +22,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   ssh $HOST 'cat /root/dc/nodes/id_ed25519.pub >> /root/.ssh/authorized_keys'
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
-  IP=$(dc node $HOST)
+  IP=$(dc node $HOST ip)
   echo "IP=$IP"
   # lets play around on the new dc cluster manager
   ssh $HOST dc node $SLAVE config create $IP dc
