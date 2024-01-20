@@ -32,7 +32,7 @@ copy_data()
   if [ "$?" = "0" ] ; then
   dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Data}/$service      rdc-${t_node}:${MDE_DC_VOL_Data}/$service     real >/dev/null 2>&1
   fi
-  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Projects}/$service  rdc-${t_node}:${MDE_DC_VOL_Projects}/$service real 
+  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Stacks}/$service  rdc-${t_node}:${MDE_DC_VOL_Stacks}/$service real 
   ret=$?
   echo -e "#\n# copy_data from $s_node to $t_node for $service (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then

@@ -1,5 +1,33 @@
 #!/bin/bash
 
+# 0.9.1
+cd /opt/dc
+git status
+git pull
+
+cd /root
+
+replace-helper dc          "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper .dc/etc     "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper dc/batch/   "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper dc/config/  "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper dc/swarm/   "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper utils       "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper scripts     "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+replace-helper kvm-testing "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
+
+rm -rvf .dc/var
+exit 
+
+. /opt/dc/funcs/bash-completion
+dc config rebuild
+
+exit
+
+
+
+
+
 # 0.9.0
 cd /opt/dc
 git status

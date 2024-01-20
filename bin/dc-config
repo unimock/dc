@@ -422,8 +422,8 @@ if [ "$CMD" = "check" ] ; then
             #echo "  $vol" 
             if [[ "$vol" == "${MDE_DC_VOL_Logs}/$p"         || \
                   "$vol" == "${MDE_DC_VOL_Logs}/$p/"*       || \
-                  "$vol" == "${MDE_DC_VOL_Projects}/$p"     || \
-                  "$vol" == "${MDE_DC_VOL_Projects}/$p/"*   || \
+                  "$vol" == "${MDE_DC_VOL_Stacks}/$p"     || \
+                  "$vol" == "${MDE_DC_VOL_Stacks}/$p/"*   || \
                   "$vol" == "${MDE_DC_VOL_Cache}/$p"        || \
                   "$vol" == "${MDE_DC_VOL_Cache}/$p/"*      || \
                   "$vol" == "${MDE_DC_VOL_Data}/$p"         || \

@@ -30,7 +30,7 @@ if [ "$CMD" = "sync" ] ; then
   if [ "$2" = "" ] ; then
     _help
   fi
-  dc-rdc $HOST rdc sync ${MDE_DC_VOL_Projects}/${SERVICE} rdc-${NODE}:${MDE_DC_VOL_Projects}/${SERVICE} ${REAL}
+  dc-rdc $HOST rdc sync ${MDE_DC_VOL_Stacks}/${SERVICE} rdc-${NODE}:${MDE_DC_VOL_Stacks}/${SERVICE} ${REAL}
   dc-rdc $HOST rdc sync ${MDE_DC_VOL_Data}/${SERVICE}     rdc-${NODE}:${MDE_DC_VOL_Data}/${SERVICE}     ${REAL}
   exit 0
 fi
@@ -43,9 +43,9 @@ if [ "$CMD" = "pull" -o "$CMD" = "push" ] ; then
     _help
   fi
   if [ "$CMD" = "pull" ] ; then
-    dc-rdc $HOST rdc sync rdc-${NODE}:${MDE_DC_VOL_Projects}/${SERVICE}/${DIR}   ${MDE_DC_VOL_Data}/root/Swarm/${SERVICE}/${DIR}    ${REAL}
+    dc-rdc $HOST rdc sync rdc-${NODE}:${MDE_DC_VOL_Stacks}/${SERVICE}/${DIR}   ${MDE_DC_VOL_Data}/root/Swarm/${SERVICE}/${DIR}    ${REAL}
   elif [ "$CMD" = "push" ] ; then
-    dc-rdc $HOST rdc sync ${MDE_DC_VOL_Data}/root/Swarm/${SERVICE}/${DIR}      rdc-${NODE}:${MDE_DC_VOL_Projects}/${SERVICE}/${DIR} ${REAL}
+    dc-rdc $HOST rdc sync ${MDE_DC_VOL_Data}/root/Swarm/${SERVICE}/${DIR}      rdc-${NODE}:${MDE_DC_VOL_Stacks}/${SERVICE}/${DIR} ${REAL}
   fi
   exit 0
 fi

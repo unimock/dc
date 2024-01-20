@@ -306,7 +306,7 @@ case "$CMD" in
     project_name=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      sshfs $HNAME:/${MDE_DC_VOL_Projects}/${project_name} ./data
+      sshfs $HNAME:/${MDE_DC_VOL_Stacks}/${project_name} ./data
       exit $?
     fi
     if [ "$scmd" = "umount" ] ; then
@@ -326,17 +326,17 @@ case "$CMD" in
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh ${HNAME}  mkdir -p /${MDE_DC_VOL_Projects}/${project_name}
+        ssh ${HNAME}  mkdir -p /${MDE_DC_VOL_Stacks}/${project_name}
         rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL_Projects}/${project_name}/$TYPE
-        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Projects}/${project_name}/$TYPE>)"
+               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE
+        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
-        ssh ${HNAME} ls -d /${MDE_DC_VOL_Projects}/${project_name}/$TYPE >/dev/null 2>&1
+        ssh ${HNAME} ls -d /${MDE_DC_VOL_Stacks}/${project_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
           rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-                  ${HNAME}:/${MDE_DC_VOL_Projects}/${project_name}/$TYPE/ ${LDIR}
-          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Projects}/${project_name}/$TYPE>) TO <./${TYPE}> done." 
+                  ${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE/ ${LDIR}
+          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
             echo "WARNING ./${TYPE} only exists locally!"  
