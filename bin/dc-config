@@ -246,7 +246,8 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       main_service="$3"    # keep it simple, like: git,...
       conf_dir="$4"
       traefik_net="traefik_default"
-      image="crccheck/hello-world"
+      #image="crccheck/hello-world"
+      image="unimock/hello-world-docker"
       if [ -d ${conf_dir} ] ; then
         echo "error: ${conf_dir} exists!"
         exit 1

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# 0.9.0
+cd /opt/dc
+git status
+git pull
+
 cd /root
 /opt/dc/bin/replace-helper dc/batch/   '\-h'
 /opt/dc/bin/replace-helper dc/config/  '\-h'
