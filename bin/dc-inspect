@@ -7,7 +7,7 @@ DISK_USAGE_LIMIT=90 # error if >40%
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    -h) on_node="$2" ; shift 2 ;;
+    -n) on_node="$2" ; shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
 done
@@ -21,7 +21,7 @@ if [ "$1" = "" ] ; then
   echo "print config and/or runtime informations about the dc cluster"
   echo ""
   echo ""
-  echo " usage: `basename $0` [-h <node>] runtime|config"
+  echo " usage: `basename $0` [-n <node>] runtime|config"
   echo ""
   exit 0
 fi
@@ -68,9 +68,9 @@ for node in $nodes ; do
     fi
     echo "  state: $state"
     if [ $node_up = 1 ] ; then
-      os=$( dc -h $node ssh "lsb_release -s -r" )
+      os=$( dc -n  $node ssh "lsb_release -s -r" )
       echo "  os: $os"
-      proc=$( dc -h $node ssh df ${MDE_DC_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
+      proc=$( dc -n  $node ssh df ${MDE_DC_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
       size=${proc%\%}
       size_text=""
       if [ ${size} -ge ${DISK_USAGE_LIMIT} ] ; then
@@ -80,7 +80,7 @@ for node in $nodes ; do
         error=1
       fi
       echo "  disk: $proc $size_text"
-      version=$( dc -h $node docker version --format '{{.Server.Version}}'  )
+      version=$( dc -n  $node docker version --format '{{.Server.Version}}'  )
       echo "  version: $version"
     fi
   fi
@@ -96,11 +96,11 @@ for node in $nodes ; do
         if [ $node_up = 1 ] ; then
           project_status="Up"
           if [ "$defined_state" = "active" ] ; then
-            container_list=$(dc -h $node -p $service compose ps -q)
+            container_list=$(dc -n  $node -p $service compose ps -q)
             if [ "$container_list" = "" ] ; then
               project_status="error_no_containers"
             else
-              stat_list=$( echo "$container_list" | xargs dc -h $node -p $service  docker inspect --format '{{.State.Status}}')
+              stat_list=$( echo "$container_list" | xargs dc -n  $node -p $service  docker inspect --format '{{.State.Status}}')
               for stat in $stat_list ; do
                 if [ "$stat" != "running" ] ; then
                   project_status="error_incomplete_containers"

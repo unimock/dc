@@ -285,9 +285,9 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
          echo "error: node <$name> did not exist!"
          exit 1
       fi
-      if [ "$( dc-list projects -h $name)" != "" ] ; then
+      if [ "$( dc-list projects -n $name)" != "" ] ; then
         echo "error: the following projects still defined for node <$name> :"
-        dc-list projects -h $name | sed "s|^| - |g" 
+        dc-list projects -n $name | sed "s|^| - |g" 
         exit 1
       fi
       echo "TBD in $0 : do not allow, if hcloud server is assigned an running!"

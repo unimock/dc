@@ -10,7 +10,7 @@ SHST=""  ; THST=""
 _help()
 {
   echo ""
-  echo " usage: `basename $0` [--images] [-i <source>:<target>] [-h <source>:<target>] <command>"
+  echo " usage: `basename $0` [--images] [-i <source>:<target>] [-n <source>:<target>] <command>"
   echo ""
   echo "    commands:"
   echo ""
@@ -45,7 +45,7 @@ copy_data()
 dc_command()
 {
   cmd=$1 ; service=$2 ; node=$3  
-  dc -p $service -h $node $cmd
+  dc -p $service -n $node $cmd
   ret=$?
   echo -e "#\n# $cmd $service at $node (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
@@ -63,7 +63,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -i) SIDX=${2%:*} ; TIDX=${2#*:} ; shift 2 ;;
-    -h) SHST=${2%:*} ; THST=${2#*:} ; shift 2 ;;
+    -n) SHST=${2%:*} ; THST=${2#*:} ; shift 2 ;;
     --images) with_images=1;          shift 1 ;;
     *)  CURROPT="$CURROPT \"$1\"" ;   shift 1 ;;
   esac
@@ -137,12 +137,12 @@ for SERVICE in $project_list ; do
 
     # check images
     image_mismatch=0
-    images=$( dc -p $SERVICE -h $S_HOST compose ps -q  )
+    images=$( dc -p $SERVICE -n $S_HOST compose ps -q  )
     for C in $images ; do
-      N=$( dc -p $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+      N=$( dc -p $SERVICE -n $S_HOST docker inspect --format='{{.Config.Image}}' $C )
       [[ $N != *:* ]] && N=$N:latest
-      S_ID=$( dc -p $SERVICE -h $S_HOST docker image ls -q $N )
-      T_ID=$( dc -p $SERVICE -h $T_HOST docker image ls -q $N )
+      S_ID=$( dc -p $SERVICE -n $S_HOST docker image ls -q $N )
+      T_ID=$( dc -p $SERVICE -n $T_HOST docker image ls -q $N )
       if [ "$S_ID" != "$T_ID" ] ; then
         image_mismatch=1
         echo "detect image mismatch for service: <$SERVICE> !!!!!"
@@ -168,12 +168,12 @@ for SERVICE in $project_list ; do
     # create target containers
     if [ "$image_mismatch" = "1" -a "$with_images" = "1" ] ; then
       dc_command  rm      $SERVICE $T_HOST
-      images=$( dc -p $SERVICE -h $S_HOST compose ps -q  )
+      images=$( dc -p $SERVICE -n $S_HOST compose ps -q  )
       for C in $images ; do
-        N=$( dc -p $SERVICE -h $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+        N=$( dc -p $SERVICE -n $S_HOST docker inspect --format='{{.Config.Image}}' $C )
         [[ $N != *:* ]] && N=$N:latest
-        S_ID=$( dc -p $SERVICE -h $S_HOST docker image ls -q $N )
-        T_ID=$( dc -p $SERVICE -h $T_HOST docker image ls -q $N )
+        S_ID=$( dc -p $SERVICE -n $S_HOST docker image ls -q $N )
+        T_ID=$( dc -p $SERVICE -n $T_HOST docker image ls -q $N )
         if [ "$S_ID" != "$T_ID" ] ; then
           echo "##################"
           echo "# image to sync:"
@@ -181,12 +181,12 @@ for SERVICE in $project_list ; do
           echo "#  Source-ID=<$S_ID>"
           echo "#  Target-ID=<$T_ID>"
           if [ "$T_ID" != "" ] ; then
-            dc -p $SERVICE -h $T_HOST docker image rm $N
+            dc -p $SERVICE -n $T_HOST docker image rm $N
           fi
           if [ `which pv` != "" ] ; then # show progress if pv exists
-            dc -p $SERVICE -h $S_HOST docker save $N | pv | dc -p $SERVICE -h $T_HOST docker load
+            dc -p $SERVICE -n $S_HOST docker save $N | pv | dc -p $SERVICE -n $T_HOST docker load
           else
-            dc -p $SERVICE -h $S_HOST docker save $N | dc -p $SERVICE -h $T_HOST docker load
+            dc -p $SERVICE -n $S_HOST docker save $N | dc -p $SERVICE -n $T_HOST docker load
           fi
         fi
       done
@@ -195,7 +195,7 @@ for SERVICE in $project_list ; do
       else
         echo "#ERROR: Service: <$SERVICE> is not acitivated on <$T_HOST>."
         echo "#       Please create the containers manually with:"
-        echo "#       dc -p $SERVICE -h $T_HOST up"
+        echo "#       dc -p $SERVICE -n $T_HOST up"
         error_detect=1
       fi
     fi

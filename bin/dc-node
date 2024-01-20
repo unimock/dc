@@ -198,16 +198,16 @@ EOF
   if [ "$CMD" = "prune" ] ; then
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
     ssh   ${HOST} apt-get autoremove
-    dc -h ${HOST} docker volume prune
+    dc -n  ${HOST} docker volume prune
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-    dc -h ${HOST} docker system prune -a
+    dc -n  ${HOST} docker system prune -a
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
     ssh   ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
     if [ "$opt_project" != "" ] ; then
-      dc -p $opt_project -h $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
+      dc -p $opt_project -n $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
     else
       ssh $HOST docker ps -q | wc -l
     fi
@@ -253,18 +253,18 @@ EOF
     echo "# Active containers on <$HOST> = $BCOUNT"
     echo "#"
     if [ "$1" = "details" ] ; then
-      dc-inspect -h $HOST runtime
+      dc-inspect -n $HOST runtime
     else
-      dc-inspect -h $HOST runtime | grep -e " state:" -e "^  [^ ]"
+      dc-inspect -n $HOST runtime | grep -e " state:" -e "^  [^ ]"
     fi
   fi
 
   if [ "$CMD" = "list" ] ; then
-    dc-list projects -h $HOST
+    dc-list projects -n $HOST
   fi
   if [ "$CMD" = "ports" ] ; then
     echo "dc-ssh=$(dc-yq '.nodes.'$HOST'.port')"
-    list=$( dc-list projects -h $HOST  )
+    list=$( dc-list projects -n $HOST  )
     for i in $list ; do
       ports=$(  dc-yq '.projects.'$i'.compose.services.*.ports[].published' | tr '\n' ' ' )
       if [ "$ports" != "" ] ; then
@@ -274,15 +274,15 @@ EOF
   fi 
   ####################################################################################################################
   if [    "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
-    list=$( dc-list projects -h $HOST --sort run_level)    # 4 5 6
+    list=$( dc-list projects -n $HOST --sort run_level)    # 4 5 6
     rlist=$(echo "$list" | tr ' ' '\n' | tac)              # 6 5 4
     if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
       for i in $list ; do
-        dc -h $HOST -p $i $CMD
+        dc -n  $HOST -p $i $CMD
       done
     else
       for i in $rlist ; do
-        dc -h $HOST -p $i $CMD
+        dc -n  $HOST -p $i $CMD
       done
     fi
   fi
@@ -303,7 +303,7 @@ if [ "$CMD" = "image"   ] ; then
     cmd="$1"
     if [ "$cmd" = "" ] ; then
       echo ""
-      echo "usage: `basename $0` [-h <node>] [-v] list [config]|backup|restore"
+      echo "usage: `basename $0` [-n <node>] [-v] list [config]|backup|restore"
       echo ""
       echo "`basename $0`  list        # print-format: <image> -> <remote-image-name>"
       echo "`basename $0`  list config # print-format: <image>;<directory>;<node>"
@@ -357,24 +357,24 @@ if [ "$CMD" = "image"   ] ; then
           echo "$image -> $target"
         fi
         if [ "$cmd" = "backup" ] ; then
-          dc -h ${node} docker tag ${image} ${target}
+          dc -n  ${node} docker tag ${image} ${target}
           if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi
           if [ "$verbose" = "1" ] ; then
-            dc -h ${node} docker push          ${target}
+            dc -n  ${node} docker push          ${target}
           else
-            dc -h ${node} docker push          ${target} >/dev/null
+            dc -n  ${node} docker push          ${target} >/dev/null
           fi
           if [ "$?" != "0" ] ; then
             echo "error: push image <${target}> to node <${node}>"
             exit 1
           fi
-          dc -h ${node} docker image rm -f     ${target}
+          dc -n  ${node} docker image rm -f     ${target}
           if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
         fi
         if [ "$cmd" = "restore" ] ; then
-          dc -h ${node} docker pull     ${target}
-          dc -h ${node} docker tag      ${target}  ${image}
-          dc -h ${node} docker image rm ${target}
+          dc -n  ${node} docker pull     ${target}
+          dc -n  ${node} docker tag      ${target}  ${image}
+          dc -n  ${node} docker image rm ${target}
         fi
       done
     done

@@ -24,7 +24,7 @@ show_help() {
   echo ""
   echo "     -i <node-index>  ........... work with node from ${MDE_DC_YAML_FILE}  0|1|2|.."
   echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with project (can also be a directory)"
-  echo "     -h <node> .................. work with this node, instead of the one which is defined in the project ${MDE_DC_YAML_FILE} file"
+  echo "     -n <node> .................. work with this node, instead of the one which is defined in the project ${MDE_DC_YAML_FILE} file"
   echo "     -p <project> ............... work with this project"
   echo "     -v ......................... verbose"
   echo ""
@@ -159,8 +159,8 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -v)  VERB="1"           ; shift 1 ;; 
-    -h)  HOST="$2"          ; shift 2 ;;
-    -h*) HOST="${1#-h}"     ; shift 1 ;;
+    -n)  HOST="$2"          ; shift 2 ;;
+    -n*) HOST="${1#-n}"     ; shift 1 ;;
     -p)  SERVICE="$2"       ; shift 2 ;; 
     -p*) SERVICE="${1#-s}"  ; shift 1 ;;
     -i)  HIDX="$2"          ; shift 2 ;; 

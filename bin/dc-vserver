@@ -186,10 +186,10 @@ if [ "$CMD" = "delete" ] ; then
   echo "# delete vserver <$vs_name> of node <${DC_HOST}>"
   echo "################################################################################"
   # check if projects are defined for the node then error and exit
-  project_list=$( dc-list projects -h ${DC_HOST}  )
+  project_list=$( dc-list projects -n ${DC_HOST}  )
   if [ "$project_list" != "" ] ; then
     echo "projects assigned to <${DC_HOST}>:"
-    dc-list projects -h ${DC_HOST} | sed "s|^|  - |g"
+    dc-list projects -n ${DC_HOST} | sed "s|^|  - |g"
     echo "error: unable to delete vserver <$vs_name>"
     exit 1
   fi

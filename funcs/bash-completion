@@ -31,10 +31,10 @@ function INLIST() {
 
 _dc() {
   # -t ..
-  if [[ "$3" == "-h" ]] ; then
+  if [[ "$3" == "-n" ]] ; then
     COMPREPLY=( $(compgen -W "dc all" -- "$2") )
-  # -h ..
-  elif [[ "$3" == "-h" ]] ; then
+  # -n ..
+  elif [[ "$3" == "-n" ]] ; then
     list=$( dc-list nodes dc  )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # -p ..

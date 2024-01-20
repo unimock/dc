@@ -1,5 +1,22 @@
 #!/bin/bash
 
+cd /root
+/opt/dc/bin/replace-helper dc/batch/   '\-h'
+/opt/dc/bin/replace-helper dc/config/  '\-h'
+/opt/dc/bin/replace-helper dc/swarm/   '\-h'
+/opt/dc/bin/replace-helper utils       '\-h'
+/opt/dc/bin/replace-helper scripts     '\-h'
+/opt/dc/bin/replace-helper kvm-testing '\-h'
+
+rm -rvf .dc/var
+. /opt/dc/funcs/bash-completion
+dc config rebuild
+
+exit 
+
+
+
+
 cd /opt/dc
 git pull
 git fetch -a

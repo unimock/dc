@@ -8,7 +8,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --sort) opt_sort="$2" ; shift 2 ;;
-    -h) on_node="$2"      ; shift 2 ;;
+    -n) on_node="$2"      ; shift 2 ;;
     -g) group="$2"        ; shift 2 ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -23,14 +23,14 @@ if [ "$CMD" = "" ] ; then
   echo "   options:"
   echo""
   echo "       -g ................... print projects for a group"
-  echo "       -h ................... print projects defined for a node"
+  echo "       -n ................... print projects defined for a node"
   echo ""
   echo "    commands:"
   echo ""
   echo "       nodes all ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' as state=active|standby"
   echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND group=dc"
   echo "       nodes used ........... list all nodes, which are used in services"
-  echo "       projects [-h|-g|--sort run_level]  ..... list services"
+  echo "       projects [-n|-g|--sort run_level]  ..... list services"
   echo ""
   exit 0
 fi
