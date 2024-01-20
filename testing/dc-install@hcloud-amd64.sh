@@ -5,11 +5,31 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 # dc-hcloud context create  dc  # creates: ~/.config/hcloud/cli.toml 
 # dc-hcloud ssh-key create --name dc --public-key-from-file dc/nodes/id_ed25519.pub
 ################################################################################
-
+# create vserver config for Hetzner cloud
+cat << 'EOF' > /tmp/.hcloud-amd64.yml
+type: hcloud
+name: <vserver_name>
+hcloud:
+  # dc-hcloud server-type list
+  type: cx11
+  # dc-hcloud image list
+  image: ubuntu-22.04
+  #dc-hcloud location list
+  location: fsn1
+  #dc-hcloud ssh-key list
+  ssh-key: <ssh_pub_key_name> 
+dc-install:
+  dc:
+    - hcloud-others
+    #- docker
+  apt:
+    #- tree
+EOF
+################################################################################
 HOST="test"
 VSERVER="test"
 SLAVE="dc-slave"
-TEMPL="hcloud"
+TEMPL="/tmp/.hcloud-amd64.yml"
 
 if [ "$1" = "" -o "$1" = "create" ] ; then
   dc node $HOST config create test.intra dock  # create new node definition with hostname test.intra and type "dc"
