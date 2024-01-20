@@ -1,7 +1,8 @@
 #!/bin/bash
+architecture=$(dpkg --print-architecture)
 EXTERNALS="
-hcloud;Hetzner-Cloud CLI;1.40.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-amd64.tar.gz
-yq;yaml processor;4.40.3;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_amd64
+hcloud;Hetzner-Cloud CLI;1.40.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${architecture}.tar.gz
+yq;yaml processor;4.40.3;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${architecture}
 "
 
 APT_PACKAGES="sshfs libnet-ssleay-perl swaks"
