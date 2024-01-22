@@ -216,7 +216,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       fi
       app_nodes=$( dc-yq '.apps.'$app_name'.dc.home.[].node' ${MDE_DC_YAML} )
       for i in $app_nodes ; do
-        nrc=$(dc-node $i -p $app_name nrc)
+        nrc=$(dc-node $i -a $app_name nrc)
         found=0
         if [ "$nrc" != "0" ] ; then
           echo " $nrc containers still running on <$i> for this app"
@@ -224,7 +224,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         fi
       done
       if [ "$found" = "1" ] ; then
-        echo "error: do: dc -p ..."
+        echo "error: do: dc -a ..."
         exit 1
       fi
       echo "TBD: check volumes of app on target node"

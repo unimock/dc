@@ -96,11 +96,11 @@ for node in $nodes ; do
         if [ $node_up = 1 ] ; then
           app_status="Up"
           if [ "$defined_state" = "active" ] ; then
-            container_list=$(dc -n  $node -p $service compose ps -q)
+            container_list=$(dc -n  $node -a $service compose ps -q)
             if [ "$container_list" = "" ] ; then
               app_status="error_no_containers"
             else
-              stat_list=$( echo "$container_list" | xargs dc -n  $node -p $service  docker inspect --format '{{.State.Status}}')
+              stat_list=$( echo "$container_list" | xargs dc -n  $node -a $service  docker inspect --format '{{.State.Status}}')
               for stat in $stat_list ; do
                 if [ "$stat" != "running" ] ; then
                   app_status="error_incomplete_containers"

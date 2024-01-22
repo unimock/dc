@@ -78,8 +78,8 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       if [ "$opt_inspect" = "1" ]  ; then
 	      node_state=$( dc-node $h state )
 	      if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
-          #nrc=$(dc -p $p -n $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
-          nrc=$(dc-node $h -p $p nrc)
+          #nrc=$(dc -a $p -n $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
+          nrc=$(dc-node $h -a $p nrc)
 	        color=$COL_RED
         elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
 	        nrc=0

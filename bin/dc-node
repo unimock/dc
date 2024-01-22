@@ -20,7 +20,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -t) opt_type="$2"             ; shift 2 ;;
-    -p) opt_app="$2"          ; shift 2 ;;
+    -a) opt_app="$2"          ; shift 2 ;;
     -v) shift ; verbose="1" ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -43,7 +43,7 @@ if [ "$1" = "" ] ; then
   echo "    ports               # show ports"
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
-  echo "    nrc [-p <app>]  # number of all running containers or app container on node"
+  echo "    nrc [-a <app>]  # number of all running containers or app container on node"
   echo "    reboot              # reboot node"
   echo "    large_files <size>  # find lage files, size=xG"
   echo "    dir_entries <count> # find directories with more then count entries"
@@ -207,7 +207,7 @@ EOF
   fi
   if [ "$CMD" = "nrc" ] ; then
     if [ "$opt_app" != "" ] ; then
-      dc -p $opt_app -n $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
+      dc -a $opt_app -n $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
     else
       ssh $HOST docker ps -q | wc -l
     fi
@@ -278,11 +278,11 @@ EOF
     rlist=$(echo "$list" | tr ' ' '\n' | tac)              # 6 5 4
     if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
       for i in $list ; do
-        dc -n  $HOST -p $i $CMD
+        dc -n  $HOST -a $i $CMD
       done
     else
       for i in $rlist ; do
-        dc -n  $HOST -p $i $CMD
+        dc -n  $HOST -a $i $CMD
       done
     fi
   fi

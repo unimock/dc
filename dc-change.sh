@@ -1,4 +1,22 @@
 #!/bin/bash
+# 0.9.2
+replace-helper . "dc \-p" "dc -a"
+cd /root
+replace-helper dc          "\-p" "-a"
+replace-helper .dc/etc     "\-p" "-a"
+replace-helper dc/batch    "\-p" "-a"
+replace-helper dc/config   "\-p" "-a"
+replace-helper dc/swarm    "\-p" "-a"
+replace-helper utils       "\-p" "-a"
+replace-helper scripts     "\-p" "-a"
+replace-helper kvm-testing "\-p" "-a"
+replace-helper config      "\-p" "-a"
+
+
+
+
+
+
 exit
 # 0.9.2
 cd /opt/dc
@@ -40,6 +58,7 @@ replace-helper dc/swarm/   "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
 replace-helper utils       "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
 replace-helper scripts     "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
 replace-helper kvm-testing "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper config      "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
 
 replace-helper dc          "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
 replace-helper .dc/etc     "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
@@ -49,6 +68,7 @@ replace-helper dc/swarm/   "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
 replace-helper utils       "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
 replace-helper scripts     "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
 replace-helper kvm-testing "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper config      "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
 
 replace-helper dc          "project"   "app"
 replace-helper .dc/etc     "project"   "app"
@@ -58,6 +78,7 @@ replace-helper dc/swarm/   "project"   "app"
 replace-helper utils       "project"   "app"
 replace-helper scripts     "project"   "app"
 replace-helper kvm-testing "project"   "app"
+replace-helper config      "project"   "app"
 
 . .dc/etc/config
 . /opt/dc/funcs/bash-completion

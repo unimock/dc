@@ -41,7 +41,7 @@ if [ "$state" != "dc" ] ; then
   sf_set_error
 fi
 ssh $HOST dc app hello-world config create $SLAVE hello-world /root/dc/apps/hello-world
-ssh $HOST dc -p hello-world up
+ssh $HOST dc -a hello-world up
 #ssh $HOST dc ls apps --inspect
 PORT=$(ssh $HOST dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
 sleep 1
@@ -49,7 +49,7 @@ netcat -vz $IP $PORT
 if [ "$?" != "0" ] ; then
   sf_set_error
 fi
-ssh $HOST dc -p hello-world rm                 # stop and remove hello-world app services
+ssh $HOST dc -a hello-world rm                 # stop and remove hello-world app services
 ssh $HOST dc app hello-world config delete # remove hello-world app definition
 ssh $HOST dc node $SLAVE config delete         # delete node config definition
 ```

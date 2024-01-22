@@ -19,7 +19,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
   dc node    $HOST state                          # check if node returns dc
   # install, start and test hello-world template app for the node
   dc app $APP config create $HOST hello-world ${MDE_DC_APP_DIR}/$APP
-  dc -p ${APP} up                             # start app service
+  dc -a ${APP} up                             # start app service
   sleep 2
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
@@ -28,7 +28,7 @@ if [ "$1" = "" -o "$1" = "test" ] ; then
   netcat -vz $ip $port
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  dc -p $APP rm                               # shutdown app service
+  dc -a $APP rm                               # shutdown app service
   dc app $APP  config  delete             # delete app definition
   dc node    $HOST vserver delete             # delete assigned virtual server
   dc node    $HOST config  delete             # delete node definition

@@ -37,8 +37,8 @@ _dc() {
   elif [[ "$3" == "-n" ]] ; then
     list=$( dc-list nodes dc  )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
-  # -p ..
-  elif  [[ "$3" == "-p" ]] ; then
+  # -a ..
+  elif  [[ "$3" == "-a" ]] ; then
     list=$( dc-list apps )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # dc
