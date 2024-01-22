@@ -86,39 +86,39 @@ for node in $nodes ; do
   fi
 
   if [ "$check_runtime" = "0" -o "$node_up" = "1" ] ; then
-    projects_on_node=$( dc-yq  '( .projects.* | select(.dc.home.[].node == "'$node'" ) | .compose.name  )' ${MDE_DC_YAML}  )
-    for service in $projects_on_node ; do
+    apps_on_node=$( dc-yq  '( .apps.* | select(.dc.home.[].node == "'$node'" ) | .compose.name  )' ${MDE_DC_YAML}  )
+    for service in $apps_on_node ; do
       echo "  $service:"
-      defined_state=( `dc-yq '( .projects.'$service'.dc.home.[] | select(.node == "'$node'" ) | .state) '`)
+      defined_state=( `dc-yq '( .apps.'$service'.dc.home.[] | select(.node == "'$node'" ) | .state) '`)
       echo "    state: $defined_state"
 
       if [ "$check_runtime" = "1" ] ; then
         if [ $node_up = 1 ] ; then
-          project_status="Up"
+          app_status="Up"
           if [ "$defined_state" = "active" ] ; then
             container_list=$(dc -n  $node -p $service compose ps -q)
             if [ "$container_list" = "" ] ; then
-              project_status="error_no_containers"
+              app_status="error_no_containers"
             else
               stat_list=$( echo "$container_list" | xargs dc -n  $node -p $service  docker inspect --format '{{.State.Status}}')
               for stat in $stat_list ; do
                 if [ "$stat" != "running" ] ; then
-                  project_status="error_incomplete_containers"
+                  app_status="error_incomplete_containers"
                 fi
               done
             fi
-            if [ "$project_status" != "Up" ] ; then
+            if [ "$app_status" != "Up" ] ; then
               node_error_marker=1
               error_list="$error_list $node:$service"
               error=1
             fi
-            echo "    act_state: $project_status"
+            echo "    act_state: $app_status"
           fi
         else
           echo "    act_state: UNKOWN"
         fi
       fi
-      img_list=$( dc-yq '.projects.'$service'.compose.services.*.image' ${MDE_DC_YAML} )
+      img_list=$( dc-yq '.apps.'$service'.compose.services.*.image' ${MDE_DC_YAML} )
       echo "    image:"
       for img in $img_list ; do
 	      echo "      - $img"

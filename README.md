@@ -8,11 +8,11 @@ It only works as a wrapper for the docker and docker compose commands for conven
 
 The management on the master includes ssh definitions for accessing the slaves and the definition of the docker compose stacks.
 
-For example, if you establish a compose stack (project) under dc/projects/hello-word, you can jump into this directory and call docker or docker-compose commands from here, regardless of which node the stack is running on.
+For example, if you establish a compose stack (app) under dc/apps/hello-word, you can jump into this directory and call docker or docker-compose commands from here, regardless of which node the stack is running on.
 
 ```
-dc ls projects            # shows all registered projects and the associated nodes projects
-cd dc/projects/hello-word
+dc ls apps            # shows all registered apps and the associated nodes apps
+cd dc/apps/hello-word
 dc compose ...
 dc docker ....
 dc ...
@@ -22,9 +22,9 @@ dc ...
 
 ### nodes 
 
-### projects
+### apps
 
-projects are docker-compose stacks. Project names must always be unique, even if the project services run on different nodes. 
+apps are docker-compose stacks. Project names must always be unique, even if the app services run on different nodes. 
 
 ### groups 
 
@@ -51,7 +51,7 @@ dc node $(hostname) edit                                            # add/change
 dc ls nodes                                                         # list registered nodes
 ```
 
-### create a dc project service 
+### create a dc app service 
 
 ```
 
@@ -76,7 +76,7 @@ Create a virtual machine on either local or remote kvm server and register this 
 
 1. Create a virtual machine with sshd access.
 2. Install dc manager on the virtual machine.
-3. Create and start an project on the created dc manager.
+3. Create and start an app on the created dc manager.
 
 [example: dc-tests@kvm.md](./examples/dc-tests@kvm.md)
 

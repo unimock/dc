@@ -14,24 +14,24 @@ VARDIR="$HOME/.dc/var/cache"
 ############################################################################################################################################
 _config_refresh()
 {
-  project_dir="$VARDIR/projects"
+  app_dir="$VARDIR/apps"
   nodes_dir="$VARDIR/nodes"
   config_dir="$VARDIR/config"
 
   config_change="0"
-  mkdir -p $project_dir
+  mkdir -p $app_dir
   #
-  # remove projects from cache, which do not exits in ${MDE_DC_PROJ_DIR} anymore
+  # remove apps from cache, which do not exits in ${MDE_DC_APP_DIR} anymore
   #
-  list=$( find $project_dir -name "modified.*" )
+  list=$( find $app_dir -name "modified.*" )
   for i in $list ; do
     relPath=${i%/modified.*}
-    relPath=${relPath#${project_dir}/}
-    if [ -f ${MDE_DC_PROJ_DIR}/${relPath}/${MDE_DC_YAML_FILE} ] ; then
+    relPath=${relPath#${app_dir}/}
+    if [ -f ${MDE_DC_APP_DIR}/${relPath}/${MDE_DC_YAML_FILE} ] ; then
       continue
     else
-      echo "remove $project_dir/${relPath}"
-      rm -rf $project_dir/${relPath}
+      echo "remove $app_dir/${relPath}"
+      rm -rf $app_dir/${relPath}
       config_change="1"
     fi
   done
@@ -93,31 +93,31 @@ _config_refresh()
     config_change="1"
   fi
   #
-  # check for changed project configurations
+  # check for changed app configurations
   #
-  list=$( find ${MDE_DC_PROJ_DIR} -name ${MDE_DC_YAML_FILE} )
+  list=$( find ${MDE_DC_APP_DIR} -name ${MDE_DC_YAML_FILE} )
   for i in $list ; do
     relPath=${i%/${MDE_DC_YAML_FILE}}
-    relPath=${relPath#${MDE_DC_PROJ_DIR}/}
-    VAR="${project_dir}/${i#${MDE_DC_PROJ_DIR}/}"
+    relPath=${relPath#${MDE_DC_APP_DIR}/}
+    VAR="${app_dir}/${i#${MDE_DC_APP_DIR}/}"
     DIR="${i%/${MDE_DC_YAML_FILE}}"
-    last=$( find ${MDE_DC_PROJ_DIR}/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+    last=$( find ${MDE_DC_APP_DIR}/${relPath}  -maxdepth 1 -type f -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
     stamp=${last% *}
     #echo "$last"
-    if [ -f ${project_dir}/${relPath}/modified.${stamp} ] ; then
+    if [ -f ${app_dir}/${relPath}/modified.${stamp} ] ; then
       continue
     else
-      rm -rf ${project_dir}/${relPath}
-      mkdir -p ${project_dir}/${relPath}
-      echo "$last" | awk '{ print $2 }' > ${project_dir}/${relPath}/modified.${stamp}
-      compose_yml=$(dc-yq '.project.control.file' $i)
-      echo "rebuild dc project for $i"
-      cp $i ${project_dir}/${relPath}/
-      docker compose -f ${MDE_DC_PROJ_DIR}/${relPath}/${compose_yml} config > ${project_dir}/${relPath}/compose.yml
-      # overrule project name, if node is mailcowdockerized
-      project_name=$(dc-yq '.project.overrule_compose_name'  $i)
-      if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
-        dc-yq -i '.name = "'$project_name'"' ${project_dir}/${relPath}/compose.yml
+      rm -rf ${app_dir}/${relPath}
+      mkdir -p ${app_dir}/${relPath}
+      echo "$last" | awk '{ print $2 }' > ${app_dir}/${relPath}/modified.${stamp}
+      compose_yml=$(dc-yq '.app.control.file' $i)
+      echo "rebuild dc app for $i"
+      cp $i ${app_dir}/${relPath}/
+      docker compose -f ${MDE_DC_APP_DIR}/${relPath}/${compose_yml} config > ${app_dir}/${relPath}/compose.yml
+      # overrule app name, if node is mailcowdockerized
+      app_name=$(dc-yq '.app.overrule_compose_name'  $i)
+      if [ "$app_name" != "null" -a "$app_name" != "" ] ; then
+        dc-yq -i '.name = "'$app_name'"' ${app_dir}/${relPath}/compose.yml
       fi
       config_change="1"
     fi
@@ -131,23 +131,23 @@ _config_refresh()
       cat $nodes_dir/nodes.yml                                                    >> ${MDE_DC_YAML}
     fi
     #
-    # projects
+    # apps
     #
-    echo "projects:"                                                              >> ${MDE_DC_YAML}
-    list=$( find $project_dir -name "modified.*" )
+    echo "apps:"                                                              >> ${MDE_DC_YAML}
+    list=$( find $app_dir -name "modified.*" )
     for i in $list ; do
       relPath=${i%/modified.*}
-      relPath=${relPath#${project_dir}/}
-      compose_yml=$(dc-yq '.project.control.file' $project_dir/${relPath}/${MDE_DC_YAML_FILE})
-      compose_project=$(dc-yq '.name' $project_dir/${relPath}/compose.yml)
-      echo "  ${compose_project}:"                                                  >> ${MDE_DC_YAML}
-      echo "    project_dir: ${MDE_DC_PROJ_DIR}/${relPath}"                         >> ${MDE_DC_YAML}
-      echo "    dc_yml: ${MDE_DC_PROJ_DIR}/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
-      echo "    compose_yml: ${MDE_DC_PROJ_DIR}/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
+      relPath=${relPath#${app_dir}/}
+      compose_yml=$(dc-yq '.app.control.file' $app_dir/${relPath}/${MDE_DC_YAML_FILE})
+      compose_app=$(dc-yq '.name' $app_dir/${relPath}/compose.yml)
+      echo "  ${compose_app}:"                                                  >> ${MDE_DC_YAML}
+      echo "    app_dir: ${MDE_DC_APP_DIR}/${relPath}"                         >> ${MDE_DC_YAML}
+      echo "    dc_yml: ${MDE_DC_APP_DIR}/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
+      echo "    compose_yml: ${MDE_DC_APP_DIR}/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
       #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
-      cat $project_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^project:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
+      cat $app_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^app:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
       echo "    compose:"                                                         >> ${MDE_DC_YAML}
-      cat $project_dir/${relPath}/compose.yml | sed -e "s/^/      /g"             >> ${MDE_DC_YAML}
+      cat $app_dir/${relPath}/compose.yml | sed -e "s/^/      /g"             >> ${MDE_DC_YAML}
     done
   fi
 }
@@ -165,11 +165,11 @@ if [ "$1" = "" ] ; then
   echo "$IAM refresh      # refresh dc config environment (${MDE_DC_YAML})"
   echo "$IAM rebuild      # rebuild dc config environment (${MDE_DC_YAML})"
   echo ""
-  echo "# create/delete a sample project:"
+  echo "# create/delete a sample app:"
   echo "" 
-  echo "#$IAM create project <name>       <node> <main_service> <project_dir>"
-  echo "$IAM  create project test-project apps0  hello-world ${MDE_DC_PROJ_DIR}/test-project"
-  echo "$IAM  delete project test-project"
+  echo "#$IAM create app <name>       <node> <main_service> <app_dir>"
+  echo "$IAM  create app test-app apps0  hello-world ${MDE_DC_APP_DIR}/test-app"
+  echo "$IAM  delete app test-app"
   echo ""
   echo "# create/delete a node definition"
   echo ""
@@ -201,25 +201,25 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
   TYP="$1"
   shift
   #######################
-  # project
+  # app
   #######################
-  if [ "$TYP" = "project" ] ; then
-    project_name="$1"    # must be unique
-    project_dir=$( dc-yq '.projects.'$project_name'.project_dir'  ${MDE_DC_YAML} )
+  if [ "$TYP" = "app" ] ; then
+    app_name="$1"    # must be unique
+    app_dir=$( dc-yq '.apps.'$app_name'.app_dir'  ${MDE_DC_YAML} )
     if [ "$CMD" = "delete" ] ; then
       echo "################################################################################"
-      echo "# delete project <$project_name> definition"
+      echo "# delete app <$app_name> definition"
       echo "################################################################################"
-      if [ "$project_dir" = "null" ] ; then
-        echo "error: project <$project_name> did not exist!"
+      if [ "$app_dir" = "null" ] ; then
+        echo "error: app <$app_name> did not exist!"
         exit 1
       fi
-      project_nodes=$( dc-yq '.projects.'$project_name'.dc.home.[].node' ${MDE_DC_YAML} )
-      for i in $project_nodes ; do
-        nrc=$(dc-node $i -p $project_name nrc)
+      app_nodes=$( dc-yq '.apps.'$app_name'.dc.home.[].node' ${MDE_DC_YAML} )
+      for i in $app_nodes ; do
+        nrc=$(dc-node $i -p $app_name nrc)
         found=0
         if [ "$nrc" != "0" ] ; then
-          echo " $nrc containers still running on <$i> for this project"
+          echo " $nrc containers still running on <$i> for this app"
           found=1
         fi
       done
@@ -227,20 +227,20 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         echo "error: do: dc -p ..."
         exit 1
       fi
-      echo "TBD: check volumes of project on target node"
-      rm -rvf $project_dir
+      echo "TBD: check volumes of app on target node"
+      rm -rvf $app_dir
       exit 0
     elif [ "$CMD" = "create" ] ; then
       echo "################################################################################"
-      echo "# create project <$project_name>"
+      echo "# create app <$app_name>"
       echo "################################################################################"
       node="$2"
       if [ "$(dc-yq '.nodes.'$node'.state' ${MDE_DC_YAML})" = "null" ] ; then
         echo "error: node <$node> did not exist!"
         exit 1
       fi
-      if [ "$project_dir" != "null" ] ;then
-        echo "error: project <$project_name> already exists!"     
+      if [ "$app_dir" != "null" ] ;then
+        echo "error: app <$app_name> already exists!"     
         exit 1
       fi
       main_service="$3"    # keep it simple, like: git,...
@@ -254,10 +254,10 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       fi
       mkdir -p ${conf_dir}
       echo "${conf_dir} created"
-      cp -r /opt/dc/templates/create/project/.   ${conf_dir}/
+      cp -r /opt/dc/templates/create/app/.   ${conf_dir}/
       flist=$( find  ${conf_dir} -type f)
       for i in $flist ; do
-        sed -i "s|<project_name>|${project_name}|g"   $i
+        sed -i "s|<app_name>|${app_name}|g"   $i
         sed -i "s|<main_service>|${main_service}|g"   $i
         sed -i "s|<node>|${node}|g"                   $i
         sed -i "s|<image>|${image}|g"                 $i
@@ -286,9 +286,9 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
          echo "error: node <$name> did not exist!"
          exit 1
       fi
-      if [ "$( dc-list projects -n $name)" != "" ] ; then
-        echo "error: the following projects still defined for node <$name> :"
-        dc-list projects -n $name | sed "s|^| - |g" 
+      if [ "$( dc-list apps -n $name)" != "" ] ; then
+        echo "error: the following apps still defined for node <$name> :"
+        dc-list apps -n $name | sed "s|^| - |g" 
         exit 1
       fi
       echo "TBD in $0 : do not allow, if hcloud server is assigned an running!"
@@ -334,8 +334,8 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
 fi
 
 if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
-  if [[ "$1" == "" || ( "$1" != "node" &&  "$1" != "project" ) ]] ; then
-    echo "error: unkown type given. Use node or project!"
+  if [[ "$1" == "" || ( "$1" != "node" &&  "$1" != "app" ) ]] ; then
+    echo "error: unkown type given. Use node or app!"
     exit 1
   fi
   TYP="$1" ; shift
@@ -349,7 +349,7 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
     config_dir=$( dc-yq '.nodes.'$name'.node_dir' ${MDE_DC_YAML}  )
     file="node.yml"
   else
-    config_dir=$( dc-yq '.projects.'$name'.project_dir' ${MDE_DC_YAML}  )
+    config_dir=$( dc-yq '.apps.'$name'.app_dir' ${MDE_DC_YAML}  )
     file="docker-compose.yml"
   fi
   if [ "$config_dir" = "null" ] ; then
@@ -375,7 +375,7 @@ if [ "$CMD" = "check" ] ; then
   if [ "$?" != "0" ] ; then
     echo " ❌ missing ssh config dir: <Include $HOME/.dc/var/ssh/config/\*> in ~/.ssh/config"
   fi
-  nodes=$( dc-yq  '.projects.*.dc.home.[].node'   ${MDE_DC_YAML}  | sort | uniq)
+  nodes=$( dc-yq  '.apps.*.dc.home.[].node'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $nodes ; do
     res=$(  dc-yq '.nodes.'$h'.state' ${MDE_DC_YAML} ) 
     if [ "$res" = "null" ] ; then
@@ -385,28 +385,28 @@ if [ "$CMD" = "check" ] ; then
     fi
   done
 
-  projects=$( dc-yq '(.projects.[] | path )  [-1]'  ${MDE_DC_YAML} | sort )
-  for p in $projects ; do
-    ignore_vol_check=$( dc-yq '.projects.'$p'.dc.ignore_volume_check' ${MDE_DC_YAML} )
-    p_on_nodes=( `dc-yq '.projects.'$p'.dc.home.[].node' ${MDE_DC_YAML}` )   # Array
-    s_on_nodes=( `dc-yq '.projects.'$p'.dc.home.[].state' ${MDE_DC_YAML}` )  # Array
-    cfg=$( dc-yq '.projects.'$p'.compose_yml' ${MDE_DC_YAML} )
+  apps=$( dc-yq '(.apps.[] | path )  [-1]'  ${MDE_DC_YAML} | sort )
+  for p in $apps ; do
+    ignore_vol_check=$( dc-yq '.apps.'$p'.dc.ignore_volume_check' ${MDE_DC_YAML} )
+    p_on_nodes=( `dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML}` )   # Array
+    s_on_nodes=( `dc-yq '.apps.'$p'.dc.home.[].state' ${MDE_DC_YAML}` )  # Array
+    cfg=$( dc-yq '.apps.'$p'.compose_yml' ${MDE_DC_YAML} )
     #
-    # check for not unique project names
+    # check for not unique app names
     #
-    anz=$( dc-yq '.projects' ${MDE_DC_YAML} | grep "^${p}:"  | wc -l)
+    anz=$( dc-yq '.apps' ${MDE_DC_YAML} | grep "^${p}:"  | wc -l)
     if [ "$anz" != "1" ] ; then
-      echo " ❌ project name [$p] not unique"
+      echo " ❌ app name [$p] not unique"
     fi
     #
-    # check if project name overrules (mailcowdockerized)
+    # check if app name overrules (mailcowdockerized)
     #
-    project_name=$( dc-yq '.projects.'$p'.dc.project_name' ${MDE_DC_YAML} )
-    if [ "$project_name" != "null" -a "$project_name" != "" ] ; then
-      echo " 💡 [$p] project name overrule <project_name: $project_name> in $cfg"
+    app_name=$( dc-yq '.apps.'$p'.dc.app_name' ${MDE_DC_YAML} )
+    if [ "$app_name" != "null" -a "$app_name" != "" ] ; then
+      echo " 💡 [$p] app name overrule <app_name: $app_name> in $cfg"
     fi
 
-    vol_list=$(dc-yq '.projects.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
+    vol_list=$(dc-yq '.apps.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
 
     for h in "${!p_on_nodes[@]}"; do
       if [ "${s_on_nodes[$h]}" != "active" ] ; then
@@ -422,8 +422,8 @@ if [ "$CMD" = "check" ] ; then
             #echo "  $vol" 
             if [[ "$vol" == "${MDE_DC_VOL_Logs}/$p"         || \
                   "$vol" == "${MDE_DC_VOL_Logs}/$p/"*       || \
-                  "$vol" == "${MDE_DC_VOL_Stacks}/$p"     || \
-                  "$vol" == "${MDE_DC_VOL_Stacks}/$p/"*   || \
+                  "$vol" == "${MDE_DC_VOL_Apps}/$p"     || \
+                  "$vol" == "${MDE_DC_VOL_Apps}/$p/"*   || \
                   "$vol" == "${MDE_DC_VOL_Cache}/$p"        || \
                   "$vol" == "${MDE_DC_VOL_Cache}/$p/"*      || \
                   "$vol" == "${MDE_DC_VOL_Data}/$p"         || \

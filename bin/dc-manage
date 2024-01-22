@@ -14,8 +14,8 @@ _help()
   echo ""
   echo "    commands:"
   echo ""
-  echo "       sync .................. copy data and restart project service"
-  echo "       sync_group <group> .... copy data and restart project services []"
+  echo "       sync .................. copy data and restart app service"
+  echo "       sync_group <group> .... copy data and restart app services []"
   echo "       copy .................. only copy data (${MDE_DC_VOL_N_CFG}/${MDE_DC_VOL_N_VAR})"
   echo "       image_update .......... update an image (tbd)"
   echo "       backup <source> <target> <mask> ... swarm backup"
@@ -32,7 +32,7 @@ copy_data()
   if [ "$?" = "0" ] ; then
   dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Data}/$service      rdc-${t_node}:${MDE_DC_VOL_Data}/$service     real >/dev/null 2>&1
   fi
-  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Stacks}/$service  rdc-${t_node}:${MDE_DC_VOL_Stacks}/$service real 
+  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Apps}/$service  rdc-${t_node}:${MDE_DC_VOL_Apps}/$service real 
   ret=$?
   echo -e "#\n# copy_data from $s_node to $t_node for $service (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
@@ -85,19 +85,19 @@ if [ "$CMD" = "backup" ] ; then
   exit $?
 fi
 
-project_list=""
+app_list=""
 if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
   YML="`pwd`/${MDE_DC_YAML_FILE}"
   if [ -f $YAML ] ; then
-    project_list=$( dc-yq '(( .projects.* | select(.dc_yml == "'$YML'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
+    app_list=$( dc-yq '(( .apps.* | select(.dc_yml == "'$YML'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
   fi
 elif [ "$CMD" = "sync_group" ] ; then
-  project_list=$( dc-list projects -g $2 )
+  app_list=$( dc-list apps -g $2 )
 fi
 
-for SERVICE in $project_list ; do
-  service_nodes=( `dc-yq '.projects.'$SERVICE'.dc.home.[].node' ${MDE_DC_YAML} `)
-  service_state=( `dc-yq '.projects.'$SERVICE'.dc.home.[].state' ${MDE_DC_YAML} `)
+for SERVICE in $app_list ; do
+  service_nodes=( `dc-yq '.apps.'$SERVICE'.dc.home.[].node' ${MDE_DC_YAML} `)
+  service_state=( `dc-yq '.apps.'$SERVICE'.dc.home.[].state' ${MDE_DC_YAML} `)
   if [ "${SHST}" != "" -a  "${THST}" != "" ] ; then
     for i in "${!service_nodes[@]}"; do
       if [[ "${service_nodes[$i]}" = "${SHST}" ]]; then SIDX="$i" ; fi

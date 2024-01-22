@@ -1,6 +1,6 @@
 # config area:
 export MDE_DC_DIR=${HOME}/dc
-export MDE_DC_PROJ_DIR=${MDE_DC_DIR}/projects
+export MDE_DC_APPS_DIR=${MDE_DC_DIR}/apps
 export MDE_DC_HOST_DIR=${MDE_DC_DIR}/nodes
 export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch
 export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs
@@ -10,10 +10,10 @@ export MDE_DC_VOL=/Volumes
 export MDE_DC_VOL_Cache=${MDE_DC_VOL}/Cache
 export MDE_DC_VOL_Data=${MDE_DC_VOL}/Data
 export MDE_DC_VOL_Backup=${MDE_DC_VOL}/Backup
-export MDE_DC_VOL_Stacks=${MDE_DC_VOL}/Projects
+export MDE_DC_VOL_Apps=${MDE_DC_VOL}/Projects
 export MDE_DC_VOL_Logs=${MDE_DC_VOL}/Logs
 export MDE_DC_VOL_N_CFG="cfg"
 export MDE_DC_VOL_N_VAR="var"
 # yml files:
-export MDE_DC_YAML_FILE="dc-project.yml"
+export MDE_DC_YAML_FILE="dc-app.yml"
 export MDE_DC_YAML=$HOME/.dc/var/dc.yml

@@ -47,16 +47,16 @@ if [ "$1" = "" -o "$1" = "test" ] ; then
   # lets play around on the new dc cluster manager
   ssh $HOST dc node $SLAVE config create $IP dc
   ssh $HOST dc ls nodes --inspect
-  ssh $HOST dc project hello-world config create $SLAVE hello-world /root/dc/projects/hello-world
+  ssh $HOST dc app hello-world config create $SLAVE hello-world /root/dc/apps/hello-world
   ssh $HOST dc -p hello-world up
-  ssh $HOST dc ls projects --inspect
-  PORT=$(ssh $HOST dc-yq '.projects.hello-world.compose.services.hello-world.ports.[0].published')
+  ssh $HOST dc ls apps --inspect
+  PORT=$(ssh $HOST dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
   sleep 1
   netcat -vz $IP $PORT
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  ssh $HOST dc -p hello-world rm                 # stop and remove hello-world project services
-  ssh $HOST dc project hello-world config delete # remove hello-world project definition
+  ssh $HOST dc -p hello-world rm                 # stop and remove hello-world app services
+  ssh $HOST dc app hello-world config delete # remove hello-world app definition
   ssh $HOST dc node $SLAVE config delete         # delete node config definition
   dc node $HOST vserver delete                   # delete assigned Hetzner cloud server
   dc node $HOST config  delete                   # delete node definition

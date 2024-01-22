@@ -12,7 +12,7 @@ _ask()
   read ans
   return
 }
-opt_project=""
+opt_app=""
 opt_type=""
 on_node=""
 verbose=""
@@ -20,7 +20,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -t) opt_type="$2"             ; shift 2 ;;
-    -p) opt_project="$2"          ; shift 2 ;;
+    -p) opt_app="$2"          ; shift 2 ;;
     -v) shift ; verbose="1" ;;
     *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
   esac
@@ -30,7 +30,7 @@ eval set -- $CURROPT
 
 if [ "$1" = "" ] ; then
   echo ""
-  echo " usage: `basename $0` <node>|-t <type> <command>  # manage nodes and/or projects on nodes"
+  echo " usage: `basename $0` <node>|-t <type> <command>  # manage nodes and/or apps on nodes"
   echo "      type: all dc"
   echo " node commands:"
   echo "    state               # state of a node. returns: ||ping|sshd|dock|off|dc|"
@@ -43,7 +43,7 @@ if [ "$1" = "" ] ; then
   echo "    ports               # show ports"
   echo "    upgrade             # do dist-upgrade"
   echo "    update              # update docker-ce"
-  echo "    nrc [-p <project>]  # number of all running containers or project container on node"
+  echo "    nrc [-p <app>]  # number of all running containers or app container on node"
   echo "    reboot              # reboot node"
   echo "    large_files <size>  # find lage files, size=xG"
   echo "    dir_entries <count> # find directories with more then count entries"
@@ -53,12 +53,12 @@ if [ "$1" = "" ] ; then
   echo ""
   echo " service commands"
   echo ""
-  echo "    list                # list projects on $H"
-  echo "    check               # check projects on $H"
-  echo "    check details       # check projects on $H and show details"
-  echo "    stop|start          # start or stop all projects on $H"
-  echo "    rm|up|rmup          # start or stop all projects on $H"
-  echo "    ps                  # show project containers on $H"
+  echo "    list                # list apps on $H"
+  echo "    check               # check apps on $H"
+  echo "    check details       # check apps on $H and show details"
+  echo "    stop|start          # start or stop all apps on $H"
+  echo "    rm|up|rmup          # start or stop all apps on $H"
+  echo "    ps                  # show app containers on $H"
   echo ""
   exit 0
 fi
@@ -206,8 +206,8 @@ EOF
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
-    if [ "$opt_project" != "" ] ; then
-      dc -p $opt_project -n $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
+    if [ "$opt_app" != "" ] ; then
+      dc -p $opt_app -n $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
     else
       ssh $HOST docker ps -q | wc -l
     fi
@@ -260,21 +260,21 @@ EOF
   fi
 
   if [ "$CMD" = "list" ] ; then
-    dc-list projects -n $HOST
+    dc-list apps -n $HOST
   fi
   if [ "$CMD" = "ports" ] ; then
     echo "dc-ssh=$(dc-yq '.nodes.'$HOST'.port')"
-    list=$( dc-list projects -n $HOST  )
+    list=$( dc-list apps -n $HOST  )
     for i in $list ; do
-      ports=$(  dc-yq '.projects.'$i'.compose.services.*.ports[].published' | tr '\n' ' ' )
+      ports=$(  dc-yq '.apps.'$i'.compose.services.*.ports[].published' | tr '\n' ' ' )
       if [ "$ports" != "" ] ; then
-        echo "project.$i=$ports"
+        echo "app.$i=$ports"
       fi
     done
   fi 
   ####################################################################################################################
   if [    "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
-    list=$( dc-list projects -n $HOST --sort run_level)    # 4 5 6
+    list=$( dc-list apps -n $HOST --sort run_level)    # 4 5 6
     rlist=$(echo "$list" | tr ' ' '\n' | tac)              # 6 5 4
     if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
       for i in $list ; do
@@ -339,7 +339,7 @@ if [ "$CMD" = "image"   ] ; then
           exit 1
         fi
       fi
-      image_list=$( dc-yq  '( .projects.* | select(.dc.home.[].node == "'$node'" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
+      image_list=$( dc-yq  '( .apps.* | select(.dc.home.[].node == "'$node'" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
       for i in $image_list ; do
         image="$i"
         if [[ $image == *"/"* ]] ; then

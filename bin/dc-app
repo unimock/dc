@@ -4,14 +4,14 @@
 
 _show_help() {
   echo ""
-  echo " usage: `basename $0` <project>"
+  echo " usage: `basename $0` <app>"
   echo ""
-  echo "tbd    list                # list projects on $H"
-  echo "tbd    check               # check projects on $H"
-  echo "tbd    check details       # check projects on $H and show details"
-  echo "tbd    stop|start          # start or stop all projects on $H"
-  echo "tbd    rm|up|rmup          # start or stop all projects on $H"
-  echo "tbd    ps                  # show project containers on $H"
+  echo "tbd    list                # list apps on $H"
+  echo "tbd    check               # check apps on $H"
+  echo "tbd    check details       # check apps on $H and show details"
+  echo "tbd    stop|start          # start or stop all apps on $H"
+  echo "tbd    rm|up|rmup          # start or stop all apps on $H"
+  echo "tbd    ps                  # show app containers on $H"
   echo ""
 }
 
@@ -32,7 +32,7 @@ if [ "$1" = "" ] ; then
 fi
 
 echo $*
-project=$1
+app=$1
 shift
 CMD="$1"
 shift
@@ -40,7 +40,7 @@ shift
 if [ "$CMD" = "config"  ] ; then
   cmd=$1
   shift
-  dc-config $cmd project ${project} $@
+  dc-config $cmd app ${app} $@
   exit $?
 fi
 exit 0
