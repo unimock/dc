@@ -60,8 +60,8 @@ _help() {
     fi
   fi
   source $HOME/.dc/etc/config
-  echo "$IAM: create directories <${MDE_DC_PROJ_DIR}> <${MDE_DC_HOST_DIR}>..."
-  mkdir -vp ${MDE_DC_PROJ_DIR} ${MDE_DC_HOST_DIR}
+  echo "$IAM: create directories <${MDE_DC_APP_DIR}> <${MDE_DC_HOST_DIR}>..."
+  mkdir -vp ${MDE_DC_APP_DIR} ${MDE_DC_HOST_DIR}
   if [ ! -f ${MDE_DC_HOST_DIR}/id_ed25519 ] ; then
     echo "$IAM: create dc ssh keys in <${MDE_DC_HOST_DIR}/>..."
     ssh-keygen -q -N "" -o -a 100 -t ed25519 -f ${MDE_DC_HOST_DIR}/id_ed25519 -C 'dc'

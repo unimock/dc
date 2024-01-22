@@ -37,18 +37,18 @@ _dc() {
   elif [[ "$3" == "-n" ]] ; then
     list=$( dc-list nodes dc  )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
-  # -p ..
-  elif  [[ "$3" == "-p" ]] ; then
-    list=$( dc-list projects )
+  # -a ..
+  elif  [[ "$3" == "-a" ]] ; then
+    list=$( dc-list apps )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # dc
   elif [[ "$COMP_CWORD" == "1" ]] ; then
-    COMPREPLY=( $(compgen -W "project ssh-control-reset versions update readme inspect node install vserver batch list manage config ls mount umount login" -- "$2") )
-  # dc project ..
-  elif [[  "$COMP_CWORD" == "2" && "$3" == "project" ]] ; then
-    list=$( dc-list projects )
+    COMPREPLY=( $(compgen -W "app ssh-control-reset versions update readme inspect node install vserver batch list manage config ls mount umount login" -- "$2") )
+  # dc app ..
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "app" ]] ; then
+    list=$( dc-list apps )
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
-  elif [[ "${COMP_WORDS[1]}" = "project" ]] ; then
+  elif [[ "${COMP_WORDS[1]}" = "app" ]] ; then
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
       COMPREPLY=( $(compgen -W "config" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
@@ -105,7 +105,7 @@ _dc() {
   elif [[ "${COMP_WORDS[1]}" = "config" ]] ; then
     # dc config delete|  ..
     if  [[  "$COMP_CWORD" == "3" ]] && INLIST $3 "create delete yq edit" ; then
-      COMPREPLY=( $(compgen -W "node project" -- "$2") )
+      COMPREPLY=( $(compgen -W "node app" -- "$2") )
     # dc config delete|edit|yq node ..
     elif [[ "${COMP_WORDS[3]}" == "node" ]] ; then
       if [[ "${COMP_WORDS[2]}" == "create" ]] ; then
@@ -120,11 +120,11 @@ _dc() {
         list=$( dc-list nodes all  )
         COMPREPLY=( $(compgen -W "$list" -- "$2") )
       fi
-    # dc config delete|edit|yq project
-    elif [[ "${COMP_WORDS[3]}" == "project"  ]] ; then
+    # dc config delete|edit|yq app
+    elif [[ "${COMP_WORDS[3]}" == "app"  ]] ; then
       if [[ "${COMP_WORDS[2]}" == "create" ]] ; then
         if [[ "$COMP_CWORD" == "4" ]] ; then
-          COMPREPLY=( $(compgen -W "<project_name>" -- "$2") )
+          COMPREPLY=( $(compgen -W "<app_name>" -- "$2") )
         elif [[ "$COMP_CWORD" == "5" ]] ; then
           list=$( dc-list nodes dc )
           COMPREPLY=( $(compgen -W "$list" -- "$2") )
@@ -134,18 +134,18 @@ _dc() {
           compopt -o default; COMPREPLY=() # work on filesystem
         fi
       else 
-        list=$( dc-list projects )
+        list=$( dc-list apps )
         COMPREPLY=( $(compgen -W "$list" -- "$2") )
       fi
     fi
   # dc ls .. 
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
-    COMPREPLY=( $(compgen -W "projects nodes" -- "$2") )
+    COMPREPLY=( $(compgen -W "apps nodes" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" == "3" ]] ; then
       COMPREPLY=( $(compgen -W "--inspect" -- "$2") )
   # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
-    COMPREPLY=( $(compgen -W "nodes projects" -- "$2") )
+    COMPREPLY=( $(compgen -W "nodes apps" -- "$2") )
   # dc list node
   elif [[  "$COMP_CWORD" == "3" && "$3" == "nodes" ]] ; then
     COMPREPLY=( $(compgen -W "all dc used" -- "$2") )

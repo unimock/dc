@@ -1,0 +1,46 @@
+#!/bin/bash
+
+. /opt/dc/funcs/global
+
+_show_help() {
+  echo ""
+  echo " usage: `basename $0` <app>"
+  echo ""
+  echo "tbd    list                # list apps on $H"
+  echo "tbd    check               # check apps on $H"
+  echo "tbd    check details       # check apps on $H and show details"
+  echo "tbd    stop|start          # start or stop all apps on $H"
+  echo "tbd    rm|up|rmup          # start or stop all apps on $H"
+  echo "tbd    ps                  # show app containers on $H"
+  echo ""
+}
+
+
+verbose=""
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -v) verbose="1"               ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
+
+if [ "$1" = "" ] ; then
+  _show_help
+  exit 0
+fi
+
+echo $*
+app=$1
+shift
+CMD="$1"
+shift
+
+if [ "$CMD" = "config"  ] ; then
+  cmd=$1
+  shift
+  dc-config $cmd app ${app} $@
+  exit $?
+fi
+exit 0

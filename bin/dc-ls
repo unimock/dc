@@ -15,14 +15,14 @@ LINE="--------------------------------------------------------------------------
 
 _help() {
   echo ""
-  echo "usage: dc-ls <options> [nodes|projects]"
+  echo "usage: dc-ls <options> [nodes|apps]"
   echo ""
   echo " options:"
   echo ""
   echo "  dc-ls --help             # show this help"
   echo "  dc-ls --active           # "
   echo "  dc-ls --node=<node_name> # show only this node"
-  echo "  dc-ls --short            # list only node/project names"
+  echo "  dc-ls --short            # list only node/app names"
   echo "  dc-ls --group=<group>    # show only nodes of group=<group> in '${MDE_DC_HOST_DIR}/*/node.yml'."
   echo "  dc-ls --inspect          # inspect and list"
   echo ""
@@ -55,31 +55,31 @@ done
 eval set -- $COPT
 
 ####################################################################################################################################
-if [ "$1" = "projects" -o "$1" = "p"  ] ; then
-  project_list=$( dc-list projects)
+if [ "$1" = "apps" -o "$1" = "p"  ] ; then
+  app_list=$( dc-list apps)
   if [ "$opt_short" = "1" ] ; then
-    echo "$project_list"
+    echo "$app_list"
     exit 0
   fi
-  printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "PROJECT" "CO" "HOSTS" "GROUPS" "DESCRIPTION" "MAIN_IMAGE" "PROJECT_DIRECTORY"
+  printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "app" "#c" "nodes" "groups" "description" "main_container_image" "app_directory"
   printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
-  for p in $project_list ; do
-    p_nodes=$(   dc-yq '.projects.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
-    p_desc=$(    dc-yq '.projects.'$p'.dc.desc'         ${MDE_DC_YAML} )
-    p_dir=$(     dc-yq '.projects.'$p'.project_dir'     ${MDE_DC_YAML} )
-    p_groups=$(  dc-yq '.projects.'$p'.dc.group.[]'     ${MDE_DC_YAML} | tr '\n' ',' )
+  for p in $app_list ; do
+    p_nodes=$(   dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
+    p_desc=$(    dc-yq '.apps.'$p'.dc.desc'         ${MDE_DC_YAML} )
+    p_dir=$(     dc-yq '.apps.'$p'.app_dir'     ${MDE_DC_YAML} )
+    p_groups=$(  dc-yq '.apps.'$p'.dc.group.[]'     ${MDE_DC_YAML} | tr '\n' ',' )
     p_groups=${p_groups%,}
-    main_service=$( dc-yq '.projects.'$p'.dc.main_service'    ${MDE_DC_YAML} )
-    p_image=$( dc-yq '.projects.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
+    main_service=$( dc-yq '.apps.'$p'.dc.main_service'    ${MDE_DC_YAML} )
+    p_image=$( dc-yq '.apps.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
     xxx=""
     yyy=""
-    ndc=$(dc-yq '(.projects.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
+    ndc=$(dc-yq '(.apps.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
     for h in $p_nodes ; do
       if [ "$opt_inspect" = "1" ]  ; then
 	      node_state=$( dc-node $h state )
 	      if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
-          #nrc=$(dc -p $p -n $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
-          nrc=$(dc-node $h -p $p nrc)
+          #nrc=$(dc -a $p -n $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
+          nrc=$(dc-node $h -a $p nrc)
 	        color=$COL_RED
         elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
 	        nrc=0
@@ -142,7 +142,7 @@ if [ "$opt_short" = "1" ] ; then
   exit 0
 fi
 MASK="%12s|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-printf "$MASK" "node" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "mid" "last_inspection" "description"
+printf "$MASK" "node" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "id" "last_inspection" "description"
 printf "$MASK" "------------" "----" "----" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then

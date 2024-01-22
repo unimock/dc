@@ -22,15 +22,15 @@ if [ "$CMD" = "" ] ; then
   echo " usage: `basename $0` [<optinons>] <command>"
   echo "   options:"
   echo""
-  echo "       -g ................... print projects for a group"
-  echo "       -n ................... print projects defined for a node"
+  echo "       -g ................... print apps for a group"
+  echo "       -n ................... print apps defined for a node"
   echo ""
   echo "    commands:"
   echo ""
   echo "       nodes all ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' as state=active|standby"
   echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND group=dc"
   echo "       nodes used ........... list all nodes, which are used in services"
-  echo "       projects [-n|-g|--sort run_level]  ..... list services"
+  echo "       apps [-n|-g|--sort run_level]  ..... list services"
   echo ""
   exit 0
 fi
@@ -42,29 +42,29 @@ if [ "$CMD" = "nodes" ] ; then
     dc-yq '((.nodes.* | select (.type == "dc" )) | path) [-1]' | sort
     #dc-ls --group=dc --short | sort
   elif [ "$2" = "used" ] ; then
-    dc-yq '.projects.*.dc.home.[].node'   ${MDE_DC_YAML} | sort | uniq
+    dc-yq '.apps.*.dc.home.[].node'   ${MDE_DC_YAML} | sort | uniq
   fi
   exit 0
 fi
 
-if [ "$CMD" = "projects" ] ; then
+if [ "$CMD" = "apps" ] ; then
   shift
   if [ "$on_node" != "" ] ; then
     if [ "$opt_sort" = "run_level" ] ; then
-      run_levels=$( dc-yq  '.projects.*.dc.run_level' | sort | uniq  )   # 5 4     -> stop
-      project_list=""
+      run_levels=$( dc-yq  '.apps.*.dc.run_level' | sort | uniq  )   # 5 4     -> stop
+      app_list=""
       for rl in $run_levels ; do
-        project_list="$project_list $(dc-yq '(( .projects.* | select(.dc.run_level == "'$rl'") | select(.dc.home.[].node == "'$on_node'") | path ) [-1] )')"
+        app_list="$app_list $(dc-yq '(( .apps.* | select(.dc.run_level == "'$rl'") | select(.dc.home.[].node == "'$on_node'") | path ) [-1] )')"
       done
     else
-      project_list=$( dc-yq  '(( .projects.* | select(.dc.home.[].node == "'$on_node'" ) | path ) [-1] )' ${MDE_DC_YAML} )
+      app_list=$( dc-yq  '(( .apps.* | select(.dc.home.[].node == "'$on_node'" ) | path ) [-1] )' ${MDE_DC_YAML} )
     fi
   else
-    project_list=$(dc-yq '(.projects.[] | path ) [-1]'   ${MDE_DC_YAML})
+    app_list=$(dc-yq '(.apps.[] | path ) [-1]'   ${MDE_DC_YAML})
   fi
-  for p in $project_list ; do
+  for p in $app_list ; do
     if [ "$group" != "" ] ; then
-      groups=$( dc-yq '.projects.'$p'.dc.group[]'  ${MDE_DC_YAML}  )
+      groups=$( dc-yq '.apps.'$p'.dc.group[]'  ${MDE_DC_YAML}  )
       found_in_group="0"
       for g in $groups ; do
         if [ "$g" = "$group" ] ; then

@@ -1,110 +1,107 @@
 #!/bin/bash
-
-# 0.9.1
-cd /opt/dc
-git status
-git pull
-
+# 0.9.2
+replace-helper . "dc \-p" "dc -a"
 cd /root
+replace-helper dc          "\-p" "-a"
+replace-helper .dc/etc     "\-p" "-a"
+replace-helper dc/batch    "\-p" "-a"
+replace-helper dc/config   "\-p" "-a"
+replace-helper dc/swarm    "\-p" "-a"
+replace-helper utils       "\-p" "-a"
+replace-helper scripts     "\-p" "-a"
+replace-helper kvm-testing "\-p" "-a"
+replace-helper config      "\-p" "-a"
 
-replace-helper dc          "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper .dc/etc     "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper dc/batch/   "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper dc/config/  "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper dc/swarm/   "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper utils       "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper scripts     "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
-replace-helper kvm-testing "MDE_DC_VOL_Projects" "MDE_DC_VOL_Stacks"
 
-rm -rvf .dc/var
-exit 
 
-. /opt/dc/funcs/bash-completion
-dc config rebuild
+
+
 
 exit
-
-
-
-
-
-# 0.9.0
+# 0.9.2
 cd /opt/dc
 git status
-git pull
+git fetch -a
+git checkout rename_project_to_app
 
 cd /root
-/opt/dc/bin/replace-helper dc/batch/   '\-h'
-/opt/dc/bin/replace-helper dc/config/  '\-h'
-/opt/dc/bin/replace-helper dc/swarm/   '\-h'
-/opt/dc/bin/replace-helper utils       '\-h'
-/opt/dc/bin/replace-helper scripts     '\-h'
-/opt/dc/bin/replace-helper kvm-testing '\-h'
+ll .
+
+mkdir rename_project_to_app
+cp -r dc      rename_project_to_app
+cp -r utils   rename_project_to_app
+cp -r scripts rename_project_to_app
 
 rm -rvf .dc/var
-. /opt/dc/funcs/bash-completion
-dc config rebuild
 
-exit 
-
-
-
-
-cd /opt/dc
-git pull
-git fetch -a
-git checkout rename-hosts-to-nodes
-
-
-
-cd /root
-
-cp -r dc dc-backup
-
-list=$(find dc -name host.yml)
-for i in $list ; do
-  sed -i "s|^host:|node:|g"  $i
-  sed -i "s| host | node |g" $i
-  mv $i `dirname $i`/node.yml
-done 
-mv dc/hosts dc/nodes
-
+sed -i "s|MDE_DC_VOL_Stacks|MDE_DC_VOL_Apps|g" .dc/etc/config
+sed -i "s|MDE_DC_PROJ_DIR|MDE_DC_APP_DIR|g"    .dc/etc/config
+sed -i "s|/projects|/apps|g"                   .dc/etc/config
+sed -i "s|dc-project.yml|dc-app.yml|g"         .dc/etc/config
+cat .dc/etc/config
+. .dc/etc/config
+######################
 
 list=$(find dc -name dc-project.yml)
 for i in $list ; do
-  sed -i "s| host: | node: |g"  $i
+  sed -i "s|^project:|app:|g"  $i
+  sed -i "s| project | app |g" $i
+  mv $i `dirname $i`/dc-app.yml
 done 
+mv dc/projects dc/apps
 
-list=$(find ./dc/batch ./utils ./scripts -type f)
-for i in $list ; do
-  sed -i "s|hostname|_HOSTNAME_|g"  $i
-  sed -i "s|localhost|_LOCALHOST_|g" $i
-  #echo "##########################################################"
-  #echo "# check $i :"
-  #echo "##########################################################"
-  #grep "host" $i
-  sed -i "s|host|node|g" $i
+replace-helper dc          "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper .dc/etc     "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper dc/batch/   "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper dc/config/  "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper dc/swarm/   "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper utils       "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper scripts     "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper kvm-testing "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
+replace-helper config      "MDE_DC_VOL_Stacks" "MDE_DC_VOL_Apps"
 
-  sed -i "s|_HOSTNAME_|hostname|g" $i
-  sed -i "s|_LOCALHOST_|localhost|g" $i
-done
+replace-helper dc          "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper .dc/etc     "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper dc/batch/   "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper dc/config/  "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper dc/swarm/   "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper utils       "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper scripts     "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper kvm-testing "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
+replace-helper config      "MDE_DC_PROJ_DIR"   "MDE_DC_APP_DIR"
 
-rm -rvf .dc/var
-sed -i "s|hosts|nodes|g" .dc/etc/config
+replace-helper dc          "project"   "app"
+replace-helper .dc/etc     "project"   "app"
+replace-helper dc/batch/   "project"   "app"
+replace-helper dc/config/  "project"   "app"
+replace-helper dc/swarm/   "project"   "app"
+replace-helper utils       "project"   "app"
+replace-helper scripts     "project"   "app"
+replace-helper kvm-testing "project"   "app"
+replace-helper config      "project"   "app"
+
+. .dc/etc/config
 . /opt/dc/funcs/bash-completion
 dc config rebuild
 
+exit 
+
+#list=$(find dc -name dc-project.yml)
+#for i in $list ; do
+#  sed -i "s| host: | node: |g"  $i
+#done 
 #
-# dc package itself:
-#
+#list=$(find ./dc/batch ./utils ./scripts -type f)
+#for i in $list ; do
+#  sed -i "s|hostname|_HOSTNAME_|g"  $i
+#  sed -i "s|localhost|_LOCALHOST_|g" $i
+#  #echo "##########################################################"
+#  #echo "# check $i :"
+#  #echo "##########################################################"
+#  #grep "host" $i
+#  sed -i "s|host|node|g" $i
+#  sed -i "s|_HOSTNAME_|hostname|g" $i
+#  sed -i "s|_LOCALHOST_|localhost|g" $i
+#done
 
-rm -Rf          /opt/dc-temp
-cp -r   /opt/dc /opt/dc-temp  
-rm -r           /opt/dc-temp/.git /opt/dc-temp/updates/update-*
 
-/opt/dc/bin/replace-helper /opt/dc-temp/ "hostname" "HOSTNAME"
-/opt/dc/bin/replace-helper /opt/dc-temp/ "host" "node"
-/opt/dc/bin/replace-helper /opt/dc-temp/ "HOSTNAME" "hostname"
-
-mv /opt/dc-temp/bin/dc-host /opt/dc-temp/bin/dc-node
-mv /opt/dc-temp/templates/create/host /opt/dc-temp/templates/create/node 

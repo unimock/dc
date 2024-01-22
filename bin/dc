@@ -18,14 +18,14 @@ show_help() {
   echo "docker cluster manager"
   echo ""
   echo ""
-  echo " usage: `basename $0` [<options>] [<cluster-command>|<project-command>|<container-command>] ..."
+  echo " usage: `basename $0` [<options>] [<cluster-command>|<app-command>|<container-command>] ..."
   echo ""
   echo "   options:"
   echo ""
   echo "     -i <node-index>  ........... work with node from ${MDE_DC_YAML_FILE}  0|1|2|.."
-  echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with project (can also be a directory)"
-  echo "     -n <node> .................. work with this node, instead of the one which is defined in the project ${MDE_DC_YAML_FILE} file"
-  echo "     -p <project> ............... work with this project"
+  echo "     -c <path>/${MDE_DC_YAML_FILE} ... work with app (can also be a directory)"
+  echo "     -n <node> .................. work with this node, instead of the one which is defined in the app ${MDE_DC_YAML_FILE} file"
+  echo "     -a <app> ............... work with this app"
   echo "     -v ......................... verbose"
   echo ""
   echo "   cluster-commands:"
@@ -36,16 +36,16 @@ show_help() {
   echo "     ssh-control-reset             # remove ssh control sockets"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list nodes"
-  echo "     list ...                      # list nodes/projects"
+  echo "     list ...                      # list nodes/apps"
   echo "     config ...                    # manage dc configurations"
-  echo "     node ...                      # manage nodes and projects on node"
-  echo "     mounts [umount] ...           # list/unmount all projects mounts to nodes"
+  echo "     node ...                      # manage nodes and apps on node"
+  echo "     mounts [umount] ...           # list/unmount all apps mounts to nodes"
   echo "     inspect ...                   # print config and/or runtime informations about the dc cluster"
   echo "     vserver ...                   # manage virtual servers and aassign the to node definition"
   echo "     batch ...                     # manage job batches"
   echo "     docker|compose|swarm          # delegate command to standard tools"
   echo "     ssh [<cmd>]                   # login into a node"                          
-  echo "     manage ...                    # sync projects between nodes"
+  echo "     manage ...                    # sync apps between nodes"
   echo "     hcloud ...                    # link to comptible hcloud version"
   echo ""
   echo "  build and deploy images on node:"
@@ -54,9 +54,9 @@ show_help() {
   echo "     docker login                  # auth for dockerhub"
   echo "     docker push <image-name>      # push image from target node to dockerhub"
   echo ""
-  echo "   project-commands"
+  echo "   app-commands"
   echo ""
-  echo "     rmup|up|rm|down|ps|start|stop # control projects"
+  echo "     rmup|up|rm|down|ps|start|stop # control apps"
   echo "     logs [-f]|stop|start          # print logs from service console"
   echo "     data pull|push ${MDE_DC_VOL_N_CFG}|c|${MDE_DC_VOL_N_VAR}|v|cv [real|r] # sync ${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data"
   echo "     data mount|umount             # mount p${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data to ./data"
@@ -78,7 +78,7 @@ show_help() {
   echo "  dc ssh-control-reset                       # remove ssh control sockets"
   echo ""
   echo "  dc ls nodes [--inspect]                    # show defined nodes (check state with --inspect)"
-  echo "  dc ls projects [--inspect]                 # show defined project services (check state with --inspect)"
+  echo "  dc ls apps [--inspect]                 # show defined app services (check state with --inspect)"
   echo ""
   echo "  dc node <name> config create <hname_or_ip> # define new node from template"
   echo "  dc node <name> config edit                 # modify node definition file"
@@ -145,7 +145,7 @@ if [ "$1" = "ssh-control-reset" ] ; then
   rm -fv  $HOME/.dc/var/ssh/control/*
   exit 0
 fi
-wrapper_list="inspect node project install vserver batch list manage config ls vserver hcloud kvm"
+wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
@@ -161,8 +161,8 @@ while [ "$#" -gt 0 ]; do
     -v)  VERB="1"           ; shift 1 ;; 
     -n)  HOST="$2"          ; shift 2 ;;
     -n*) HOST="${1#-n}"     ; shift 1 ;;
-    -p)  SERVICE="$2"       ; shift 2 ;; 
-    -p*) SERVICE="${1#-s}"  ; shift 1 ;;
+    -a)  SERVICE="$2"       ; shift 2 ;; 
+    -a*) SERVICE="${1#-s}"  ; shift 1 ;;
     -i)  HIDX="$2"          ; shift 2 ;; 
     -i[0-9]) HIDX="${1#-i}" ; shift 1 ;; 
     -c)  CONF="$2"          ; shift 2 ;;
@@ -191,44 +191,44 @@ if [[ "$CMD" == "docker" && "$HOST" != "" ]] ; then
 fi  
 
 ######################################################################################################################################
-project_dir=""
+app_dir=""
 if [[ "$CONF" != "" ]] ; then
   if [[ ! -f $CONF && ! -d $CONF ]] ; then
-    echo "error: given project is neither a file nor a directory."
+    echo "error: given app is neither a file nor a directory."
     exit 1
   fi
   if [ -f $CONF ] ; then
-    project_dir="$( cd `dirname $CONF` ; pwd)"
+    app_dir="$( cd `dirname $CONF` ; pwd)"
   else
-    project_dir="$( cd $CONF ; pwd)"
+    app_dir="$( cd $CONF ; pwd)"
   fi
   if [ "${SERVICE}" != "" ] ; then
-    echo "error: it is not allowed to enter project file and project"
+    echo "error: it is not allowed to enter app file and app"
     exit 1
   fi
 fi
 if [ "${SERVICE}" != "" ] ; then
-  project_dir=$( dc-yq '.projects.'$SERVICE'.project_dir' ${MDE_DC_YAML} )
-  if [ "$project_dir" = "null"  ] ; then
-    echo "error: unkown project given."
+  app_dir=$( dc-yq '.apps.'$SERVICE'.app_dir' ${MDE_DC_YAML} )
+  if [ "$app_dir" = "null"  ] ; then
+    echo "error: unkown app given."
     exit 1
   fi
 fi
-if [[ "$project_dir" == "" && -f ./${MDE_DC_YAML_FILE} ]] ; then
-  project_dir="$(pwd)"
+if [[ "$app_dir" == "" && -f ./${MDE_DC_YAML_FILE} ]] ; then
+  app_dir="$(pwd)"
 fi
-if [[ "$project_dir" == "" ]] ; then
-  echo "error: no valid project given"
+if [[ "$app_dir" == "" ]] ; then
+  echo "error: no valid app given"
   exit 1
 fi
-#echo "project_dir=$project_dir"
+#echo "app_dir=$app_dir"
 
 # HIDX und HOST parameter auswerten und pruefen
 
 HNAME=""
 if [ "$HOST" != "" ] ; then
   found="0"
-  hlist=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.home.[].node  )' ${MDE_DC_YAML} )
+  hlist=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.home.[].node  )' ${MDE_DC_YAML} )
   for i in $hlist ; do
     if [ "$i" = "$HOST" ] ; then
       found="1"
@@ -241,7 +241,7 @@ if [ "$HOST" != "" ] ; then
   fi
   HNAME=$HOST
 else
-  HNAME=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.home.['$HIDX'].node  )' ${MDE_DC_YAML} )
+  HNAME=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.home.['$HIDX'].node  )' ${MDE_DC_YAML} )
   if [ "$HNAME" = "null" ] ; then
     echo "error: node_index=$HIDX not valid."
     exit 1
@@ -249,17 +249,17 @@ else
 fi
 
 if [ "$CMD" = "vol" ] ; then
-  #if [ "$(pwd)" = "$project_dir" ] ; then
+  #if [ "$(pwd)" = "$app_dir" ] ; then
   if [ "$SERVICE" = "" ] ; then
-    SERVICE=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'") | path ) [-1] )' ${MDE_DC_YAML}  )
+    SERVICE=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'") | path ) [-1] )' ${MDE_DC_YAML}  )
 
  
   fi
   echo "pwd=$(pwd)"
-  #echo "project_dir=$project_dir"
+  #echo "app_dir=$app_dir"
   echo "TBD:"
   echo " HNAME=$HNAME"
-  echo " project=$SERVICE"
+  echo " app=$SERVICE"
   echo " list|mount|umount|pull|push"
   echo " <cmd> Project/cfg, Project, Backup, Logs, /Volumes/xzy"
   exit 0
@@ -267,7 +267,7 @@ fi
 
 
 export DOCKER_HOST="ssh://${HNAME}"
-cd $project_dir
+cd $app_dir
 
 case "$CMD" in
   ssh)
@@ -303,10 +303,10 @@ case "$CMD" in
     ;;
   data)
     scmd=$2
-    project_name=$( dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
+    app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      sshfs $HNAME:/${MDE_DC_VOL_Stacks}/${project_name} ./data
+      sshfs $HNAME:/${MDE_DC_VOL_Apps}/${app_name} ./data
       exit $?
     fi
     if [ "$scmd" = "umount" ] ; then
@@ -326,17 +326,17 @@ case "$CMD" in
         exit 0
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh ${HNAME}  mkdir -p /${MDE_DC_VOL_Stacks}/${project_name}
+        ssh ${HNAME}  mkdir -p /${MDE_DC_VOL_Apps}/${app_name}
         rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE
-        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE>)"
+               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE
+        echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
-        ssh ${HNAME} ls -d /${MDE_DC_VOL_Stacks}/${project_name}/$TYPE >/dev/null 2>&1
+        ssh ${HNAME} ls -d /${MDE_DC_VOL_Apps}/${app_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
           rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-                  ${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE/ ${LDIR}
-          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Stacks}/${project_name}/$TYPE>) TO <./${TYPE}> done." 
+                  ${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE/ ${LDIR}
+          echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
             echo "WARNING ./${TYPE} only exists locally!"  
@@ -348,11 +348,11 @@ case "$CMD" in
     ;;
   ############
   supervisor)
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     docker compose exec ${main_service} supervisorctl
     ;;
   syslog)
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     docker compose exec ${main_service} tail -n 200 /var/log/syslog
     ;;
   login)
@@ -362,19 +362,19 @@ case "$CMD" in
     else
       cmd=$*
     fi
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
 	  docker compose exec  ${main_service} $cmd
     ;;
   cmd)
     shift
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     docker compose exec -T  ${main_service} $*
     ret=$?
     exit $ret
     ;;
   ovw)
     if [ "$2" = "push" ] ; then
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
       docker compose  exec ${main_service} rsync -av /service/ovw/ /
       exit 0
     fi
@@ -384,12 +384,12 @@ case "$CMD" in
         exit 0
       fi
       echo "rsync -avR ${3} /service/ovw/"
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
       docker compose  exec ${main_servicei} ync -avR ${3} /service/ovw/
       exit 0
     fi
     if [ "$2" = "fetch" ] ; then
-    main_service=$(dc-yq '(( .projects.* | select(.project_dir == "'$project_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
+    main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
        docker compose exec ${main_service} diff /service/ovw/${3} ${3}
        exit 0
     fi
