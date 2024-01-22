@@ -31,7 +31,7 @@ function INLIST() {
 
 _dc() {
   # -t ..
-  if [[ "$3" == "-n" ]] ; then
+  if [[ "$3" == "-t" ]] ; then
     COMPREPLY=( $(compgen -W "dc all" -- "$2") )
   # -n ..
   elif [[ "$3" == "-n" ]] ; then

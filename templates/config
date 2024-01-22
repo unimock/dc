@@ -1,6 +1,6 @@
 # config area:
 export MDE_DC_DIR=${HOME}/dc
-export MDE_DC_APPS_DIR=${MDE_DC_DIR}/apps
+export MDE_DC_APP_DIR=${MDE_DC_DIR}/apps
 export MDE_DC_HOST_DIR=${MDE_DC_DIR}/nodes
 export MDE_DC_BATCH_DIR=${MDE_DC_DIR}/batch
 export MDE_DC_LOG_DIR=${MDE_DC_DIR}/logs
