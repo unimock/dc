@@ -76,7 +76,7 @@ Create a virtual machine on either local or remote kvm server and register this 
 
 1. Create a virtual machine with sshd access.
 2. Install dc manager on the virtual machine.
-3. Create and start a project on the created dc manager.
+3. Create and start an project on the created dc manager.
 
 [example: dc-tests@kvm.md](./examples/dc-tests@kvm.md)
 
