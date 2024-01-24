@@ -1,4 +1,7 @@
 #!/bin/bash
+
+exit 0
+
 # 0.9.2
 replace-helper . "dc \-p" "dc -a"
 cd /root
@@ -11,11 +14,6 @@ replace-helper utils       "\-p" "-a"
 replace-helper scripts     "\-p" "-a"
 replace-helper kvm-testing "\-p" "-a"
 replace-helper config      "\-p" "-a"
-
-
-
-
-
 
 exit
 # 0.9.2
