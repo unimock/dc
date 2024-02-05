@@ -107,7 +107,7 @@ _help() {
     url=$(  echo "$i"     | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g")
     version=""
     if [ -e /opt/dc/external/$name ] ; then
-      version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
+      version=$( /opt/dc/external/$name $ver_cmd 2>/dev/null | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
     fi
     if [[ "$version" != "$ver" ]] ; then
       echo "dc install: external <$name>"
