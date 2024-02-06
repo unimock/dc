@@ -1,20 +1,28 @@
 type: kvm
 kvm:
-  #cloud_image: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img
-  cloud_image: https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img
-  image_name: ubuntu-22.04-server
-  virt-customize:
-    - --install qemu-guest-agent
+  cloud_image: https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img
+  image_name: ubuntu-22.04-server-arm64
+  ## virt-customize not working on arm kvm, so see cloud-config section
+  #virt-customize:
+  #  - --install qemu-guest-agent
   vol-pool:
-    name: dc
-    target: /var/lib/dc-kvm
+    name: tsp0-images
+    target: /tsp0-images
   size: 5G
   virt-install:
     - --memory 2048
     - --vcpus 2
     - --os-variant ubuntu22.04
-    #- --network bridge=lan-net,model=virtio
+    - --network bridge=lan-net,model=virtio
 cloud-config:
+  package_update: true
+  packages:
+    - qemu-guest-agent
+  runcmd:
+    - - systemctl
+      - enable
+      - '--now'
+      - qemu-guest-agent.service
   chpasswd:
     expire: false
     list: |
