@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.3.1"
+VERSION="0.3.2"
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH="x86_64"
 if [ "${ARCH}" = "arm64" ] ; then
@@ -19,7 +19,7 @@ yq;yaml processor;4.40.5;--version;https://github.com/mikefarah/yq/releases/down
 drone;drone CLI;1.8.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_${ARCH}.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-${ARCH}-linux
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
-hcloud;Hetzner-Cloud CLI;1.41.1;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
+hcloud;Hetzner-Cloud CLI;1.42.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 "
 ####################################################################################
 addapps_spinner() {
