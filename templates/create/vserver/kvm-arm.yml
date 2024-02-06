@@ -2,19 +2,18 @@ type: kvm
 kvm:
   cloud_image: https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-arm64.img
   image_name: ubuntu-22.04-server-arm64
-  ## virt-customize not working on arm kvm, so see cloud-config 
+  ## virt-customize not working on arm kvm, so see cloud-config section
   #virt-customize:
   #  - --install qemu-guest-agent
   vol-pool:
-    name: tsp0-images
-    target: /tsp0/images
+    name: dc
+    target: /var/lib/dc-kvm
   size: 5G
   virt-install:
     - --memory 2048
     - --vcpus 2
     - --os-variant ubuntu22.04
     #- --network bridge=lan-net,model=virtio
-    - --network network=default
 cloud-config:
   package_update: true
   packages:
@@ -28,7 +27,7 @@ cloud-config:
     expire: false
     list: |
       root:mypassword
-  hostname: arm-vm
+  hostname: <vserver_name>
   # configure sshd to allow users logging in using password 
   # rather than just keys
   users:
@@ -36,7 +35,7 @@ cloud-config:
       ssh_pwauth: true
       lock-passwd: false
       ssh_authorized_keys:
-        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKXDa/gO5lgznlY++BQwVOwRP0//hIiwfeKT2KqOycNL gluster
+        - <ssh_pub_key>
   timezone: Europe/Berlin
   #packages:
   #  - quemu-gust-agent
