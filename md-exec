@@ -1,29 +1,37 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.1.1"
+VERSION="0.2.0"
+
 
 show_help() {
+  MD_FILE="./new-file.md"
+  if [ "$1" != "" ] ; then
+    MD_FILE="$1"
+  fi
   echo ""
   echo "# usage: $(basename $0) <md-file> show|list|run|create [section] [-o <var>=<val>].."
   echo ""
   echo ""
   echo "# example:"
   echo ""
-  echo "`basename $0` ./new-file.md create      # create template md file"
-  echo "`basename $0` ./new-file.md list        # list commands"
-  echo "`basename $0` ./new-file.md run         # execute commands"
-  echo "`basename $0` ./new-file.md show        # show relevant content"
+  echo "`basename $0` ${MD_FILE} list        # list available sections"
+  echo "`basename $0` ${MD_FILE} run         # execute sections"
+  echo "`basename $0` ${MD_FILE} show        # show relevant content"
+  echo "`basename $0` ${MD_FILE} create      # create template md file"
   echo ""
   echo ""
-  echo "`basename $0` ./new-file.md run          # execute all sections"
-  echo "`basename $0` ./new-file.md run  create  # execute 'create' section"
-  echo "`basename $0` ./new-file.md run  test    # execute 'test'   section"
-  echo "`basename $0` ./new-file.md run  delete  # execute 'delete' section"
-  echo ""
+  echo "`basename $0` ${MD_FILE} run          # execute all sections"
+  echo "`basename $0` ${MD_FILE} run  create  # execute 'create' section"
+  echo "`basename $0` ${MD_FILE} run  test    # execute 'test'   section"
+  echo "`basename $0` ${MD_FILE} run  delete  # execute 'delete' section"
+  echo "`basename $0` ${MD_FILE} dump create  # dump 'create' section"
+  echo "`basename $0` ${MD_FILE} dump test    # dump 'test'   section"
+  echo "`basename $0` ${MD_FILE} dump delete  # dump 'delete' section"
+ echo ""
   echo "# overwrite variable values:"
   echo ""
-  echo "`basename $0` ./new-file.md run                   # use values from md-file"
-  echo "`basename $0` ./new-file.md run -o X=\"new value\"  # overwrite value"
+  echo "`basename $0` ${MD_FILE} run                   # use values from md-file"
+  echo "`basename $0` ${MD_FILE} run -o X=\"new value\"  # overwrite value"
   echo ""
   echo ""
 }
@@ -62,11 +70,16 @@ if [ "$1" = "" ] ; then
   show_help
   exit 0
 fi
+if [ "$2" = "" ] ; then
+  show_help "$1"
+  exit 0
+fi
+
 
 FI="$1"
 if [ "$2" = "create" ] ; then
   if [ -f $FI ] ; then
-    echo "error: file alrady exist"
+    echo "error: file already exist"
     exit 1
   fi
   cat >$FI <<EOF
@@ -104,37 +117,39 @@ if [ "$FI" = "" -o ! -f "$FI" ] ; then
   exit 1
 fi
 CMD="$2"
-if [ "$CMD" != "run" -a "$CMD" != "show" -a "$CMD" != "list"  ] ; then
+if [ "$CMD" != "run" -a "$CMD" != "show" -a "$CMD" != "list" -a "$CMD" != "dump"  ] ; then
   echo "error unkown command given"
   exit 1
 fi
 TAG="$3"
 
 script=$(mktemp)
-#script=/tmp/x
 
 ret=0
 if [ "$TAG" = "" ] ; then
   if [ "$CMD" = "show" ] ; then
     cat $FI | sed  -n '/```/,/```/p'                    | sed 's/ *$//g' | sed '/^$/d'                    > $script
+  elif [ "$CMD" = "list" ] ; then
+    cat $FI | grep "\`\`\`.*" | sed 's|```||g' | sed 's/ *$//g' | sed '/^$/d'                 > $script
   else
     cat $FI | sed  -n '/```/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'                    > $script
   fi
 else
   if [ "$CMD" = "show" ] ; then
     cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p'                    | sed 's/ *$//g' | sed '/^$/d'  > $script
-  else
+  elif [ "$CMD" = "dump" ] ; then
+    cat $FI | sed  -n '/```'$TAG'$/,/```/p' | sed '/```.*/d'     > $script
+  else 
     cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'  > $script
   fi
 fi
 for arg in "${!opt_args[@]}" ; do
   var=${arg%=*}
   val=${arg#*=}
-  #echo "overwrite: <$var> <$val>"
   sed -i "/^[[:blank:]]*${var}=*/c\\${var}=\"${val}\"" $script
 done
 
-if [ "$CMD" = "list" -o "$CMD" = "show" ] ; then
+if [ "$CMD" = "list" -o "$CMD" = "show" -o "$CMD" = "dump" ] ; then
   cat $script
 fi
 if [ "$CMD" = "run" ] ; then
