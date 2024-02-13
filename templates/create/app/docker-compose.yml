@@ -16,8 +16,8 @@ services:
 #      - ${DC_VOL_cache}/xyz:/var/xqz
 #      - ${DC_VOL_logs}/smtp:/var/log
 #      - ${DC_VOL_data}/vmail:/home/vmail
-#      - "traefik.enable=true"
 #    labels:
+#      - "traefik.enable=true"
 #      - "traefik.http.routers.${DC_ENV_NAME}.entrypoints=http"
 #      - "traefik.http.routers.${DC_ENV_NAME}.rule=Host(`${DC_ENV_TRAEFIK_URL}`)"
 #      - "traefik.http.middlewares.${DC_ENV_NAME}-https-redirect.redirectscheme.scheme=https"
