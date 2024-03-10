@@ -1,9 +1,11 @@
 #!/bin/bash
-VERSION="0.3.4"
+VERSION="0.4.0"
 ARCH=$(dpkg --print-architecture)
-ALT_ARCH="x86_64"
+ALT_ARCH0="x86_64"
+ALT_ARCH1="x86_64"
 if [ "${ARCH}" = "arm64" ] ; then
-  ALT_ARCH="aarch64"
+  ALT_ARCH0="aarch64"
+  ALT_ARCH1="arm64"
 fi
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
@@ -14,12 +16,13 @@ sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
 crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
 print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
 stsync;syncting stc CLI;0.0.6;--version;https://mde.gate-7.de/addapps/stsync
-difft;difftastic;0.55.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH}-unknown-linux-gnu.tar.gz
+difft;difftastic;0.55.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
 yq;yaml processor;4.42.1;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
 drone;drone CLI;1.8.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_${ARCH}.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-${ARCH}-linux
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
 hcloud;Hetzner-Cloud CLI;1.42.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
+http-server;http-server;2.1.4;;https://github.com/patrickdappollonio/http-server/releases/download/v<VERSION>/http-server_linux_${ALT_ARCH1}.tar.gz
 "
 ####################################################################################
 addapps_spinner() {
