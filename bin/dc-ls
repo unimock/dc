@@ -61,12 +61,13 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     echo "$app_list"
     exit 0
   fi
-  printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "app" "#c" "nodes" "groups" "description" "main_container_image" "app_directory"
-  printf "%15s|%-2s|%-15s|%-20s|%-35s|%-35s|%s\n" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
+  printf "%15s|%-2s|%-15s|%-20s|%s|%-35s|%-35s|%s\n" "app" "#c" "nodes" "groups"                               "!"  "description" "main_container_image" "app_directory"
+  printf "%15s|%-2s|%-15s|%-20s|%s|%-35s|%-35s|%s\n" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
   for p in $app_list ; do
     p_nodes=$(   dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
     p_desc=$(    dc-yq '.apps.'$p'.dc.desc'         ${MDE_DC_YAML} )
-    p_dir=$(     dc-yq '.apps.'$p'.app_dir'     ${MDE_DC_YAML} )
+    p_rnl=$(     dc-yq '.apps.'$p'.dc.run_level'    ${MDE_DC_YAML} )
+    p_dir=$(     dc-yq '.apps.'$p'.app_dir'         ${MDE_DC_YAML} )
     p_groups=$(  dc-yq '.apps.'$p'.dc.group.[]'     ${MDE_DC_YAML} | tr '\n' ',' )
     p_groups=${p_groups%,}
     main_service=$( dc-yq '.apps.'$p'.dc.main_service'    ${MDE_DC_YAML} )
@@ -106,7 +107,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     if [ "$opt_inspect" != "1" ]  ; then
       COL_LGRAY=${COL_DEFAULT}  #if not inspect, print not lighten
     fi
-    printf "${COL_LGRAY}%15s|%2s|%b${COL_LGRAY}|%-20s|%-35s|%-35s|%s${COL_DEFAULT}\n" "$p" "${ndc}" "${yyy}" "$p_groups" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
+    printf "${COL_LGRAY}%15s|%2s|%b${COL_LGRAY}|%-20s|%1s|%-35s|%-35s|%s${COL_DEFAULT}\n" "$p" "${ndc}" "${yyy}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
   done
   exit 0
 fi
@@ -141,9 +142,9 @@ if [ "$opt_short" = "1" ] ; then
   done 
   exit 0
 fi
-MASK="%12s|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-printf "$MASK" "node" "stat" "type" "groups" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "id" "last_inspection" "description"
-printf "$MASK" "------------" "----" "----" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
+MASK="%12s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
+printf "$MASK" "node" "stat" "type" "groups" "arch" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "id" "last_inspection" "description"
+printf "$MASK" "------------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
@@ -165,6 +166,7 @@ for node in $list ; do
   mde_patch=""
   mde_monitor=""
   serial=""
+  arch=""
 
   if [ "$opt_inspect" = "1" ] ; then
     state=$( dc-node ${node} state )
@@ -180,6 +182,10 @@ if [ "$os" != "android" ] ; then
           os_ver="$VERSION_ID"
           os_ver=${os_ver%_*}
         fi
+        arch=$( ssh $node uname -m 2>/dev/null)
+        if [ "$arch" = "aarch64" ] ; then arch="arm64" ; fi
+        if [ "$arch" = "x86_64" ]  ; then arch="amd64" ; fi
+        if [ "$arch" = "armv7l" ]  ; then arch="arm32" ; fi
         dock_ver=""
         if [ "$state" = "dock" -o "$state" = "dc" ] ; then
           dock_ver=$( DOCKER_HOST="ssh://$node" docker version --format '{{.Server.Version}}' 2>/dev/null )
@@ -227,6 +233,7 @@ fi
     echo "insp_mde_patch=\"${mde_patch}\""     >> $node_data_file
     echo "insp_hd_size=\"${size}\""            >> $node_data_file
     echo "insp_machine_id=\"${serial}\""       >> $node_data_file
+    echo "insp_arch=\"${arch}\""               >> $node_data_file
     echo "insp_last_inspect=$(date +%s)"       >> $node_data_file
   fi
   eval `cat $node_data_file`
@@ -258,6 +265,6 @@ fi
   if [ "${insp_last_inspect}" != "" ] ; then
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
-  MASK="${col_state}%12s${col_std}|%-4s|%-4s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-  printf "$MASK" "${node}" "${state}" "${typ}" "${group}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  MASK="${col_state}%12s${col_std}|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
+  printf "$MASK" "${node}" "${state}" "${typ}" "${group}" "${arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
