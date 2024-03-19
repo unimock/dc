@@ -5,6 +5,7 @@ node:
   #   - dock ... if node is accessible via ssh and has docker installed
   #   - dc ..... if node is accessible via ssh and has docker installed and belongs to dc cluster
   type: <type>
+  # state=active or state=standby
   state: active
   # hostname or ip
   fqdn: <hostname_or_ip> 
