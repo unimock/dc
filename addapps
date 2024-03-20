@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.4.0"
+VERSION="0.4.1"
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
 ALT_ARCH1="x86_64"
@@ -10,7 +10,7 @@ fi
 list="
 addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
 selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
-md-exec;execute md code sections;0.2.1;--version;https://mde.gate-7.de/addapps/md-exec
+md-exec;execute md code sections;0.3.0;--version;https://mde.gate-7.de/addapps/md-exec
 sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
 2facli;2FA CLI;0.0.2;--version;https://mde.gate-7.de/addapps/2facli
 crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter

@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.2.1"
+VERSION="0.3.0"
 
 
 show_help() {
@@ -150,7 +150,7 @@ for arg in "${!opt_args[@]}" ; do
 done
 
 if [ "$CMD" = "list" -o "$CMD" = "show" -o "$CMD" = "dump" ] ; then
-  cat $script
+  cat $script | envsubst
 fi
 if [ "$CMD" = "run" ] ; then
   chmod a+x $script
