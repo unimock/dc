@@ -50,7 +50,7 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "app" ]] ; then
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
-      COMPREPLY=( $(compgen -W "config" -- "$2") )
+      COMPREPLY=( $(compgen -W "config rm up rmup start stop data log" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
       if [[ "$COMP_CWORD" == "4" ]] ; then
         COMPREPLY=( $(compgen -W "create delete yq edit" -- "$2") )
@@ -64,7 +64,21 @@ _dc() {
           compopt -o default; COMPREPLY=() # work on filesystem
         fi
       fi
+    #elif [[ "${COMP_WORDS[3]}" == "rm" || "${COMP_WORDS[3]}" == "up" ]] ; then
+    #  if [[ "$COMP_CWORD" == "4" ]] ; then
+    #    COMPREPLY=( $(compgen -W "rm up rmup ps start stop data log" -- "$2") )
+    #  elif [[ "${COMP_WORDS[4]}" == "data" ]] ; then
+    #    if [[ "$COMP_CWORD" == "5" ]] ; then
+    #      list=$( dc-list nodes dc )
+    #      COMPREPLY=( $(compgen -W "mount umount" -- "$2") )
+    #  #  elif  [[ "$COMP_CWORD" == "6" ]] ; then
+    #  #    COMPREPLY=( $(compgen -W "<main_service>" -- "$2") )
+    #  #  elif [[ "$COMP_CWORD" == "7" ]] ; then
+    #  #    compopt -o default; COMPREPLY=() # work on filesystem
+    #    fi
+    #  fi
     fi
+
   # dc node
   elif [[  "$COMP_CWORD" == "2" && "$3" == "node" ]] ; then
     list=$( dc-list nodes all)

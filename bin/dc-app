@@ -31,7 +31,7 @@ if [ "$1" = "" ] ; then
   exit 0
 fi
 
-echo $*
+#echo $*
 app=$1
 shift
 CMD="$1"
@@ -42,5 +42,9 @@ if [ "$CMD" = "config"  ] ; then
   shift
   dc-config $cmd app ${app} $@
   exit $?
+elif [[ "$CMD" == "rm" || "$CMD" == "up" || "$CMD" == "rmup" || "$CMD" == "ps" || "$CMD" == "data" || "$CMD" == "log" ]]; then
+  dc -a ${app} $CMD $@
+  exit $?
 fi
+
 exit 0
