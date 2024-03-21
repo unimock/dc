@@ -50,7 +50,7 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "app" ]] ; then
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
-      COMPREPLY=( $(compgen -W "config rm up rmup start stop data log" -- "$2") )
+      COMPREPLY=( $(compgen -W "config rm up rmup start stop data log login" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
       if [[ "$COMP_CWORD" == "4" ]] ; then
         COMPREPLY=( $(compgen -W "create delete yq edit" -- "$2") )
