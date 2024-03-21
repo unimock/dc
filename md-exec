@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.3.0"
+VERSION="1.0.0"
 
 
 show_help() {
@@ -9,15 +9,17 @@ show_help() {
     MD_FILE="$1"
   fi
   echo ""
-  echo "# usage: $(basename $0) <md-file> show|list|run|create [section] [-o <var>=<val>].."
+  echo "# usage: $(basename $0) <md-file> [-e|--envsubst] show|list|run|create [section] [-o <var>=<val>].."
   echo ""
   echo ""
   echo "# example:"
   echo ""
-  echo "`basename $0` ${MD_FILE} list        # list available sections"
-  echo "`basename $0` ${MD_FILE} run         # execute sections"
-  echo "`basename $0` ${MD_FILE} show        # show relevant content"
-  echo "`basename $0` ${MD_FILE} create      # create template md file"
+  echo "`basename $0` ${MD_FILE} list     # list available sections"
+  echo "`basename $0` ${MD_FILE} run      # execute sections"
+  echo "`basename $0` ${MD_FILE} show     # show relevant sections for run command"
+  echo "`basename $0` ${MD_FILE} dump     # dump a section"
+  echo "`basename $0` ${MD_FILE} dump -e  # dump a section and substitute values which are defined in global section"
+  echo "`basename $0` ${MD_FILE} create   # create template md file"
   echo ""
   echo ""
   echo "`basename $0` ${MD_FILE} run          # execute all sections"
@@ -37,11 +39,27 @@ show_help() {
 }
 
 declare -A opt_args
+opt_envsubst=0
 
 ####################################################################################
 # magic main
 ####################################################################################
-options=$(getopt -l "help,version,overwrite" -o "hvo:" -a -- "$@")
+
+CURROPT=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help)      show_help        ; exit 0 ;;
+    -v|--version)   echoe "$VERSION" ; exit 0 ;;
+    -o|--overwrite) opt_args+=($1)   ; shift  ;;
+    -e|--envsubst)  opt_envsubst=1   ; shift  ;;
+    *)   CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+  esac
+done
+eval set -- $CURROPT
+
+function xxx()
+{
+options=$(getopt -l "help,version,overwrite" -o "hvoe:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -56,6 +74,10 @@ while true ; do
   -o|--overwrite)
     opt_args+=($2)
     ;;
+  -e)
+    opt_envsubst=1
+    shift
+    ;;
   --)
     shift
     break;;
@@ -64,7 +86,7 @@ while true ; do
 done
 
 #echo "$@"
-
+}
 
 if [ "$1" = "" ] ; then
   show_help
@@ -125,32 +147,45 @@ TAG="$3"
 
 script=$(mktemp)
 
+D2U='s/\r$//g'              # dos2unix
+RML='/```.*/d'              # remove lines with ```
+EMPTY='/^[[:space:]]*$/d'   # remove empty lines
+RMT='s|```||g'              # remove ````
+RMC='/^[[:blank:]]*#/d;s/#.*//' # remove all comments
+
+#                            section global          
+
 ret=0
 if [ "$TAG" = "" ] ; then
   if [ "$CMD" = "show" ] ; then
-    cat $FI | sed  -n '/```/,/```/p'                    | sed 's/ *$//g' | sed '/^$/d'                    > $script
+    cat $FI | sed $D2U | sed  -n '/```/,/```/p'                                | sed $EMPTY > $script
   elif [ "$CMD" = "list" ] ; then
-    cat $FI | grep "\`\`\`.*" | sed 's|```||g' | sed 's/ *$//g' | sed '/^$/d'                 > $script
+    cat $FI | sed $D2U | grep "\`\`\`.*" | sed $RMT                            | sed $EMPTY > $script
   else
-    cat $FI | sed  -n '/```/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'                    > $script
+    cat $FI | sed $D2U | sed  -n '/```/,/```/p' | sed $RML                     | sed $EMPTY > $script
   fi
 else
   if [ "$CMD" = "show" ] ; then
-    cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p'                    | sed 's/ *$//g' | sed '/^$/d'  > $script
+    cat $FI | sed $D2U | sed  -n '/```global$\|```'$TAG'$/,/```/p'            | sed $EMPTY > $script
   elif [ "$CMD" = "dump" ] ; then
-    cat $FI | sed  -n '/```'$TAG'$/,/```/p' | sed '/```.*/d'     > $script
+    cat $FI | sed $D2U | sed  -n '/```'$TAG'$/,/```/p' | sed $RML                          > $script
   else 
-    cat $FI | sed  -n '/```global$\|```'$TAG'$/,/```/p' | sed 's/```.*//g' | sed 's/ *$//g' | sed '/^$/d'  > $script
+    cat $FI | sed $D2U | sed  -n '/```global$\|```'$TAG'$/,/```/p' | sed $RML | sed $EMPTY > $script
   fi
 fi
+
 for arg in "${!opt_args[@]}" ; do
   var=${arg%=*}
   val=${arg#*=}
   sed -i "/^[[:blank:]]*${var}=*/c\\${var}=\"${val}\"" $script
 done
-
 if [ "$CMD" = "list" -o "$CMD" = "show" -o "$CMD" = "dump" ] ; then
-  cat $script | envsubst
+  if [ "$CMD" = "dump" -a "$opt_envsubst" = "1" ] ; then
+    export $(cat $FI | sed $D2U | sed  -n '/```'global'$/,/```/p' | sed $RML  | sed $EMPTY | sed $RMC | sed 's|"||g' | xargs -0)
+    cat $script | envsubst
+  else
+    cat $script
+  fi
 fi
 if [ "$CMD" = "run" ] ; then
   chmod a+x $script
