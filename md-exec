@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 
 show_help() {
@@ -49,7 +49,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -h|--help)      show_help        ; exit 0 ;;
-    -v|--version)   echoe "$VERSION" ; exit 0 ;;
+    -v|--version)   echo "$VERSION"  ; exit 0 ;;
     -o|--overwrite) opt_args+=($1)   ; shift  ;;
     -e|--envsubst)  opt_envsubst=1   ; shift  ;;
     *)   CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
