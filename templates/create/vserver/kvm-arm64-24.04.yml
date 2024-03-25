@@ -1,6 +1,6 @@
 type: kvm
 kvm:
-  cloud_image: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img 
+  cloud_image: https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-arm64.img 
   image_name: ubuntu-24.04-server-arm64
   ## virt-customize not working on arm kvm, so see cloud-config section
   #virt-customize:
