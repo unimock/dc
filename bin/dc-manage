@@ -3,7 +3,7 @@
 . /opt/dc/funcs/global
 
 error_detect=0
-with_images=1
+with_images=0
 SIDX="0" ; TIDX="1"
 SHST=""  ; THST=""
 
@@ -137,25 +137,20 @@ for SERVICE in $app_list ; do
 
     # check images
     image_mismatch=0
-    images=$( dc -a $SERVICE -n $S_HOST compose ps -q  )
-    for C in $images ; do
-      N=$( dc -a $SERVICE -n $S_HOST docker inspect --format='{{.Config.Image}}' $C )
-      [[ $N != *:* ]] && N=$N:latest
-      S_ID=$( dc -a $SERVICE -n $S_HOST docker image ls -q $N )
-      T_ID=$( dc -a $SERVICE -n $T_HOST docker image ls -q $N )
-      if [ "$S_ID" != "$T_ID" ] ; then
-        image_mismatch=1
-        echo "detect image mismatch for service: <$SERVICE> !!!!!"
-        break
-      fi
-    done
-    if [ "$image_mismatch" = "1" -a "$with_images" = "0" ] ; then
-      echo "#ERROR: found different images for <$SERVICE>."
-      echo "#       Sync service with images manually with:"
-      echo "#       dc-manage --images -a $SERVICE sync"
-      error_detect=1
-      continue
-    fi  
+    if [ "$with_images" = "1" ] ; then
+      images=$( dc -a $SERVICE -n $S_HOST compose ps -q  )
+      for C in $images ; do
+        N=$( dc -a $SERVICE -n $S_HOST docker inspect --format='{{.Config.Image}}' $C )
+        [[ $N != *:* ]] && N=$N:latest
+        S_ID=$( dc -a $SERVICE -n $S_HOST docker image ls -q $N )
+        T_ID=$( dc -a $SERVICE -n $T_HOST docker image ls -q $N )
+        if [ "$S_ID" != "$T_ID" ] ; then
+          image_mismatch=1
+          echo "detect image mismatch for service: <$SERVICE> !!!!!"
+          break
+        fi
+      done
+    fi
     if [ "$T_STATE" = "active" ] ; then
       dc_command stop    $SERVICE $T_HOST  
     fi
@@ -166,7 +161,7 @@ for SERVICE in $app_list ; do
     # copy remove taget containers
     # copy images
     # create target containers
-    if [ "$image_mismatch" = "1" -a "$with_images" = "1" ] ; then
+    if [ "$image_mismatch" = "1" ] ; then
       dc_command  rm      $SERVICE $T_HOST
       images=$( dc -a $SERVICE -n $S_HOST compose ps -q  )
       for C in $images ; do
