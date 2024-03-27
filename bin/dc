@@ -1,4 +1,5 @@
 #!/bin/bash
+MULTI_NODES=""
 
 printf "%-60s # %s %s\n" "dc $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> /tmp/.dc-history
 
@@ -154,7 +155,6 @@ for i in $wrapper_list ; do
   fi  
 done
 
-
 CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -164,7 +164,7 @@ while [ "$#" -gt 0 ]; do
     -a)  SERVICE="$2"       ; shift 2 ;; 
     -a*) SERVICE="${1#-s}"  ; shift 1 ;;
     -i)  HIDX="$2"          ; shift 2 ;; 
-    -i[0-9]) HIDX="${1#-i}" ; shift 1 ;; 
+    -i[a,0-9]) HIDX="${1#-i}" ; shift 1 ;; 
     -c)  CONF="$2"          ; shift 2 ;;
     -d)  PROJECT_DIR="$2"   ; shift 2 ;;
     *)   CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
@@ -241,10 +241,14 @@ if [ "$HOST" != "" ] ; then
   fi
   HNAME=$HOST
 else
-  HNAME=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.home.['$HIDX'].node  )' ${MDE_DC_YAML} )
-  if [ "$HNAME" = "null" ] ; then
-    echo "error: node_index=$HIDX not valid."
-    exit 1
+  if [ "${HIDX}" = "a" ] ; then
+    MULTI_NODES=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.home.[].node  )' ${MDE_DC_YAML} )
+  else
+    HNAME=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.home.['$HIDX'].node  )' ${MDE_DC_YAML} )
+    if [ "$HNAME" = "null" ] ; then
+      echo "error: node_index=$HIDX not valid."
+      exit 1
+    fi
   fi
 fi
 
@@ -264,6 +268,10 @@ if [ "$CMD" = "vol" ] ; then
   echo " <cmd> Project/cfg, Project, Backup, Logs, /Volumes/xzy"
   exit 0
 fi
+if [ "${MULTI_NODES}" = "" ] ; then
+  MULTI_NODES=${HNAME}
+fi
+for HNAME in ${MULTI_NODES} ; do
 
 
 export DOCKER_HOST="ssh://${HNAME}"
@@ -410,3 +418,4 @@ case "$CMD" in
     docker compose $* 
     ;;
 esac
+done
