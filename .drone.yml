@@ -1,5 +1,10 @@
 kind: pipeline
+type: docker
 name: default
+
+platform:
+  os: linux
+  arch: arm64
 
 steps:
 - name: deploy
