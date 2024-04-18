@@ -172,53 +172,55 @@ for node in $list ; do
     state=$( dc-node ${node} state )
     if [ "$state" = "$typ" ] ; then
       if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
-if [ "$os" != "android" ] ; then 
-       if [ "$os" = "ubuntu" ] ; then
-          os_ver=$( ssh $node lsb_release -d -s 2>/dev/null | cut -d " " -f2)
-          os_ver=${os_ver:0:8}
-        else
-          VERSION_ID=""
-          eval $( ssh $node "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
-          os_ver="$VERSION_ID"
-          os_ver=${os_ver%_*}
-        fi
-        arch=$( ssh $node uname -m 2>/dev/null)
-        if [ "$arch" = "aarch64" ] ; then arch="arm64" ; fi
-        if [ "$arch" = "x86_64" ]  ; then arch="amd64" ; fi
-        if [ "$arch" = "armv7l" ]  ; then arch="arm32" ; fi
-        dock_ver=""
-        if [ "$state" = "dock" -o "$state" = "dc" ] ; then
-          dock_ver=$( DOCKER_HOST="ssh://$node" docker version --format '{{.Server.Version}}' 2>/dev/null )
-        fi
-        # get mde_patch
-        mde_patch=$( ssh $node cat /etc/mde/patch 2>/dev/null )
-        size=0
-        size_list=$(ssh $node df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
-        for x in $size_list ; do
-          if (( $x >= $size )) ; then
-            let size=$x
+        if [ "$os" != "android" ] ; then 
+          if [ "$os" = "ubuntu" ] ; then
+            os_ver=$( ssh $node lsb_release -d -s 2>/dev/null | cut -d " " -f2)
+            os_ver=${os_ver:0:8}
+          elif [ "$os" = "freebsd"  ] ; then
+            os_ver=$( ssh $node freebsd-version | cut -d "-" -f1)
+          else
+            VERSION_ID=""
+            eval $( ssh $node "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
+            os_ver="$VERSION_ID"
+            os_ver=${os_ver%_*}
           fi
-        done
-        x=$( ssh $node cat /etc/machine-id 2>/dev/null )
-        if [ "$x" = "" ] ; then
-          serial="!!"
-        elif [ "$x" = "$mid" ] ; then
-          serial="OK"
-        else
-          serial="$x"
-        fi
-        mde_ver=$( ssh $node dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
-        if [ "$mde_ver" = "" ] ; then
-          mde_ver=""
-          mde_monitor=""
-        else
-          x=$( ssh $node pgrep mde-monitor 2>/dev/null)
-          if [ "$x" != "" ] ; then
-            mde_monitor="M"
+          arch=$( ssh $node uname -m 2>/dev/null)
+          if [ "$arch" = "aarch64" ] ; then arch="arm64" ; fi
+          if [ "$arch" = "x86_64" ]  ; then arch="amd64" ; fi
+          if [ "$arch" = "armv7l" ]  ; then arch="arm32" ; fi
+          dock_ver=""
+          if [ "$state" = "dock" -o "$state" = "dc" ] ; then
+            dock_ver=$( DOCKER_HOST="ssh://$node" docker version --format '{{.Server.Version}}' 2>/dev/null )
+          fi
+          # get mde_patch
+          mde_patch=$( ssh $node cat /etc/mde/patch 2>/dev/null )
+          size=0
+          size_list=$(ssh $node df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
+          for x in $size_list ; do
+            if (( $x >= $size )) ; then
+              let size=$x
+            fi
+          done
+          x=$( ssh $node cat /etc/machine-id 2>/dev/null )
+          if [ "$x" = "" ] ; then
+            serial="!!"
+          elif [ "$x" = "$mid" ] ; then
+            serial="OK"
+          else
+            serial="$x"
+          fi
+          mde_ver=$( ssh $node dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
+          if [ "$mde_ver" = "" ] ; then
+            mde_ver=""
+            mde_monitor=""
+          else
+            x=$( ssh $node pgrep mde-monitor 2>/dev/null)
+            if [ "$x" != "" ] ; then
+              mde_monitor="M"
+            fi
           fi
         fi
       fi
-fi
     fi
     #
     # store latest inspection data
@@ -236,6 +238,15 @@ fi
     echo "insp_arch=\"${arch}\""               >> $node_data_file
     echo "insp_last_inspect=$(date +%s)"       >> $node_data_file
   fi
+  insp_os_ver=""
+  insp_dock_ver=""
+  insp_mde_ver=""
+  insp_mde_monitor=""
+  insp_mde_patch=""
+  insp_hd_size=""
+  insp_machine_id=""
+  insp_arch=""
+  insp_last_inspect=""
   eval `cat $node_data_file`
   if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     col_state=$COL_LGRAY
@@ -266,5 +277,5 @@ fi
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
   MASK="${col_state}%12s${col_std}|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-  printf "$MASK" "${node}" "${state}" "${typ}" "${group}" "${arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  printf "$MASK" "${node}" "${state}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
