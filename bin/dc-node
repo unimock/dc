@@ -324,6 +324,14 @@ if [ "$CMD" = "image"   ] ; then
     cluster="$cluster_name"
     echo ""
     for node in $hlist ; do
+      # skip node if state == off
+      STATE=$(dc node $node state)
+      if [ "$STATE" = "off" ] ; then
+        echo "###########################################################################"
+        echo "# skip image backup for $node because node is <$STATE>"
+        echo "###########################################################################"
+        continue
+      fi
       if [ "$cmd" = "restore" -a "$opt_type" = "" ] ; then
         echo "restoring images only allowd for single haosts. use dc node <name> restore"
         exit 1
