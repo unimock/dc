@@ -61,6 +61,18 @@ pers=$( df -h $TDIR | grep "^/" | awk '{ print $5 }'  )
 echo "Backup-Source   : ${SDIR}"
 echo "Backup-Host     : `hostname`"
 echo "Backup-Directroy: ${TDIR}"
+
+source_node=${SDIR%:*}
+if [ "$source_node" != "$SDIR" ] ; then  # source node is remote
+  STATE=$(dc node $source_node state)
+  if [ "$STATE" = "off" ] ; then
+    echo "-------------------------------------------------------" 
+    echo "skipping backup, because node is off!"
+    echo "-------------------------------------------------------" 
+    exit 0
+  fi
+fi
+
 echo "-------------------------------------------------------" 
 echo "age|m|directory |operation|size  |used  |free  |used %|"
 echo "-------------------------------------------------------"
@@ -103,7 +115,6 @@ for i in `seq 0 ${age_array[-1]}` ; do
   if [ -d $TDIR/$(get_date $i) ] ; then 
      arr_b[$i]=$(get_date $i)
   fi
-
   if [ "${arr_a[$i]}" = ""  -a "${arr_b[$i]}" != "" ] ; then
     for (( c=$i+1 ; c<=${age_array[-1]}; c++ )) ; do
       if [ "${arr_b[$c]}" != "" ] ; then
@@ -121,6 +132,7 @@ for i in `seq 0 ${age_array[-1]}` ; do
 
   dat=${arr_b[$i]}
   if [ "$cmd" = "" -a "$dat" != "" ] ; then cmd="kept" ; fi
+
   if [ "$cmd" = "" ] ; then
     comp=""
     used=""
