@@ -16,8 +16,8 @@ sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
 crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
 print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
 stsync;syncting stc CLI;0.0.6;--version;https://mde.gate-7.de/addapps/stsync
-difft;difftastic;0.57.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
-yq;yaml processor;4.43.1;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
+difft;difftastic;0.58.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
+yq;yaml processor;4.44.1;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
 drone;drone CLI;1.8.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_${ARCH}.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-${ARCH}-linux
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
