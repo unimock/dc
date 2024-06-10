@@ -43,7 +43,14 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # dc
   elif [[ "$COMP_CWORD" == "1" ]] ; then
-    COMPREPLY=( $(compgen -W "app ssh-control-reset versions update readme inspect node install vserver batch list manage config ls mount umount login" -- "$2") )
+    COMPREPLY=( $(compgen -W "app data ssh-control-reset versions update readme inspect node install vserver batch list manage config ls mount umount login" -- "$2") )
+  # dc data ..
+  elif [[ "${COMP_WORDS[1]}" = "data" ]] ; then
+    if [[  "$COMP_CWORD" == "3" && "$3" == "mount" ]] ; then
+      COMPREPLY=( $(compgen -W "cfg var" -- "$2") )
+    elif [[  "$COMP_CWORD" == "2" ]] ; then
+      COMPREPLY=( $(compgen -W "mount umount" -- "$2") )
+    fi
   # dc app ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "app" ]] ; then
     list=$( dc-list apps )

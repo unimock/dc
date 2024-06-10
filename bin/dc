@@ -311,11 +311,20 @@ case "$CMD" in
     ;;
   data)
     scmd=$2
-    app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
+    app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) | path ) [-1] )' ${MDE_DC_YAML} )
     if [ "$scmd" = "mount" ] ; then
       mkdir -p ./data
-      sshfs $HNAME:/${MDE_DC_VOL_Apps}/${app_name} ./data
-      exit $?
+      mount_source="$HNAME:/${MDE_DC_VOL_Apps}/${app_name}"
+      if [ "$3" != "" ] ; then
+        mount_source="${mount_source}/${3}"
+      fi
+      sshfs ${mount_source} ./data
+      ret=$?
+      if [ "$ret" != "0" ] ; then
+         echo "error mounting <${mount_source}> to ./data"
+         rmdir ./data
+      fi
+      exit $ret
     fi
     if [ "$scmd" = "umount" ] ; then
       umount ./data
