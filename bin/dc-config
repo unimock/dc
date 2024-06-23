@@ -113,7 +113,8 @@ _config_refresh()
       compose_yml=$(dc-yq '.app.control.file' $i)
       echo "rebuild dc app for $i"
       cp $i ${app_dir}/${relPath}/
-      docker compose -f ${MDE_DC_APP_DIR}/${relPath}/${compose_yml} config > ${app_dir}/${relPath}/compose.yml
+      
+      ( cd ${MDE_DC_APP_DIR}/${relPath}/  && docker compose config > ${app_dir}/${relPath}/compose.yml )
       # overrule app name, if node is mailcowdockerized
       app_name=$(dc-yq '.app.overrule_compose_name'  $i)
       if [ "$app_name" != "null" -a "$app_name" != "" ] ; then
