@@ -2,7 +2,6 @@
 
 # additional applications
 
-
 # initial installation
 
 ```
