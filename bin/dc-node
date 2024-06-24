@@ -300,6 +300,10 @@ done
 
 ####################################################################################################################
 if [ "$CMD" = "image"   ] ; then
+    COL_DEFAULT='\e[m'
+    COL_GREEN='\e[1;92m'
+    COL_RED='\e[1;91m'
+
     cmd="$1"
     if [ "$cmd" = "" ] ; then
       echo ""
@@ -362,20 +366,25 @@ if [ "$CMD" = "image"   ] ; then
         if [ "$2" = "config" ] ; then
           echo "$image;$DIR;${node}"
         else
-          echo "$image -> $target"
+          echo "############################################################"
+          echo "# image=<${image}> from node=<${node}> to target=<${target}>"
         fi
         if [ "$cmd" = "backup" ] ; then
+          printf "${COL_GREEN}%s${COL_DEFAULT}\n" "dc -n ${node} docker tag ${image} ${target}"
           dc -n  ${node} docker tag ${image} ${target}
           if [ "$?" != "0" ] ; then echo "docker tag error!!!" ; exit 1 ; fi
+          printf "${COL_GREEN}%s${COL_DEFAULT}\n" "dc -n ${node} docker push ${target}" 
           if [ "$verbose" = "1" ] ; then
             dc -n  ${node} docker push          ${target}
           else
             dc -n  ${node} docker push          ${target} >/dev/null
           fi
-          if [ "$?" != "0" ] ; then
-            echo "error: push image <${target}> to node <${node}>"
-            exit 1
+          ret=$?
+          if [ "$ret" != "0" ] ; then
+            printf "${COL_RED}%s${COL_DEFAULT}\n" "error: ret=$ret docker push image=${image} from node=${node} to target=${target}"
+          #  exit 1
           fi
+          printf "${COL_GREEN}%s${COL_DEFAULT}\n" "dc -n ${node} docker image rm -f ${target}"
           dc -n  ${node} docker image rm -f     ${target}
           if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
         fi
