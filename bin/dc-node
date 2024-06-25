@@ -275,7 +275,7 @@ EOF
   ####################################################################################################################
   if [    "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
     list=$( dc-list apps -n $HOST --sort run_level)    # 4 5 6
-    rlist=$(echo "$list" | tr ' ' '\n' | tac)              # 6 5 4
+    rlist=$(echo "$list" | tr ' ' '\n' | tac)          # 6 5 4
     if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
       for i in $list ; do
         dc -n  $HOST -a $i $CMD
@@ -351,6 +351,7 @@ if [ "$CMD" = "image"   ] ; then
           exit 1
         fi
       fi
+      error_ret=0
       image_list=$( dc-yq  '( .apps.* | select(.dc.home.[].node == "'$node'" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
       for i in $image_list ; do
         image="$i"
@@ -382,6 +383,7 @@ if [ "$CMD" = "image"   ] ; then
           ret=$?
           if [ "$ret" != "0" ] ; then
             printf "${COL_RED}%s${COL_DEFAULT}\n" "error: ret=$ret docker push image=${image} from node=${node} to target=${target}"
+            error_ret=1
           #  exit 1
           fi
           printf "${COL_GREEN}%s${COL_DEFAULT}\n" "dc -n ${node} docker image rm -f ${target}"
@@ -395,5 +397,6 @@ if [ "$CMD" = "image"   ] ; then
         fi
       done
     done
+    exit $error_ret
   fi
 exit 0
