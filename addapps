@@ -21,7 +21,7 @@ yq;yaml processor;4.44.2;--version;https://github.com/mikefarah/yq/releases/down
 drone;drone CLI;1.8.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_${ARCH}.tar.gz
 stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.4/stc-${ARCH}-linux
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
-hcloud;Hetzner-Cloud CLI;1.44.2;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
+hcloud;Hetzner-Cloud CLI;1.45.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 http-server;http-server;2.1.4;;https://github.com/patrickdappollonio/http-server/releases/download/v<VERSION>/http-server_linux_${ALT_ARCH1}.tar.gz
 "
 ####################################################################################
