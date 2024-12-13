@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.4.7"
+VERSION="0.4.8"
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
 ALT_ARCH1="x86_64"
@@ -190,7 +190,7 @@ while read -r i ; do
   if [ -e /usr/local/bin/$name ] ; then
     state="✅"
     if [ "$ver_cmd" != "" ] ; then
-      version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
+      version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | head -n1 | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
       if [[ "$version" == "" ]] ; then
         state="💡"
       elif [[ "$version" != "$ver" ]] ; then
