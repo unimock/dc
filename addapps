@@ -1,4 +1,5 @@
 #!/bin/bash
+
 VERSION="0.4.7"
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
