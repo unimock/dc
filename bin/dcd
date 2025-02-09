@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ ! -f ./dcd.list ] ; then
+  exit 0
+fi
+
+if [ "$1" = "pull" ] ; then
+  dc data mount
+  rm -rvf ./dcd
+  list=$(cat dcd.list)
+  for i in $list ; do
+    ( cd data ; rsync -Rav $i ../dcd)
+  done
+  dc data umount
+fi
+
