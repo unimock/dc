@@ -59,6 +59,7 @@ if [ "$1" = "" ] ; then
   echo "    stop|start          # start or stop all apps on $H"
   echo "    rm|up|rmup          # start or stop all apps on $H"
   echo "    ps                  # show app containers on $H"
+  echo "    pull                # pull app container images on $H"
   echo ""
   exit 0
 fi
@@ -273,7 +274,7 @@ EOF
     done
   fi 
   ####################################################################################################################
-  if [    "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
+  if [ "$CMD" = "pull" -o "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
     list=$( dc-list apps -n $HOST --sort run_level --state active )    # 4 5 6
     rlist=$(echo "$list" | tr ' ' '\n' | tac)          # 6 5 4
     if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
