@@ -114,7 +114,7 @@ _config_refresh()
       overwrite_file="${DIR}/"${MDE_DC_YAML_FILE%.yml}".overwrite.yml"
       if [ -f ${overwrite_file} ] ; then
         echo "rebuild dc app for $i with overwrite file"
-        yq '. *= load("'${overwrite_file}'")' $i > ${app_dir}/${relPath}/${MDE_DC_YAML_FILE}
+        dc-yq '. *= load("'${overwrite_file}'")' $i > ${app_dir}/${relPath}/${MDE_DC_YAML_FILE}
       else
         echo "rebuild dc app for $i"
         cp $i                                                ${app_dir}/${relPath}/
