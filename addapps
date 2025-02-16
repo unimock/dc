@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.5.3"
+VERSION="0.5.4"
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
 ALT_ARCH1="x86_64"
