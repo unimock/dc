@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.5.4"
+VERSION="0.5.5"
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
 ALT_ARCH1="x86_64"
@@ -24,7 +24,7 @@ stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.5.4/stc-${
 mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
 hcloud;Hetzner-Cloud CLI;1.50.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 http-server;http-server;2.1.4;;https://github.com/patrickdappollonio/http-server/releases/download/v<VERSION>/http-server_linux_${ALT_ARCH1}.tar.gz
-http-here;http-here;;;https://github.com/western/http-here/releases/download/v1.11.3/http-here.gz
+http-here;http-here;;;https://github.com/western/http-here/releases/download/v1.11.4/http-here.gz
 "
 ####################################################################################
 addapps_spinner() {
