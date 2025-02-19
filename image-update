@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.2.0"
+VERSION="0.2.1"
 
 IAM=`basename $0`
 
@@ -89,10 +89,10 @@ if [ "$1" = "list" ] ; then
       dstate="💡"
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
-      printf "%-1s %-2d %-34s %-30s %-20s %-20s\n" "${dstate}" "$idx" "${dname[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
+      printf "%-1s %-34s %-30s %-20s %-20s\n" "${dstate}" "${dname[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
       found="1"
     else
-      printf "%-1s %-2d %-34s %-30s %-20s\n"       "${dstate}" "$idx" "${dname[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}"
+      printf "%-1s %-34s %-30s %-20s\n"       "${dstate}" "${dname[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}"
     fi
   done
   if [ "${found}" = "1" ] ; then
