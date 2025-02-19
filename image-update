@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.2"
+VERSION="0.0.3"
 
 IAM=`basename $0`
 
@@ -54,6 +54,12 @@ vaultwarden/server:1.33.2-alpine
 psitrax/psitransfer:v2.2.0
 zavy86/wikidocs:1.0.74
 registry:2.8.3
+unimock/aptrep-docker:1.0.0
+drone/drone:2.25.0
+louislam/uptime-kuma:2.0.0-beta.1
+onlyoffice/documentserver:8.0
+unimock/dotproject-docker:2.8.0-4
+unimock/share-sshd-docker:1.0.0
 #ecf:
 smeagolworms4/mqtt-explorer:browser-1.0.3
 homeassistant/home-assistant:2024.12
