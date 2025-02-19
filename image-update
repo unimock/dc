@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.0.1"
+VERSION="0.0.2"
 
 IAM=`basename $0`
 
@@ -47,13 +47,18 @@ done
 update_list="
 #general
 traefik:v3.3.3
+gitea/gitea:1.23.4
+freshrss/freshrss:1.25.0-alpine
+filebrowser/filebrowser:v2.32.0
+vaultwarden/server:1.33.2-alpine
+psitrax/psitransfer:v2.2.0
+zavy86/wikidocs:1.0.74
+registry:2.8.3
 #ecf:
 smeagolworms4/mqtt-explorer:browser-1.0.3
 homeassistant/home-assistant:2024.12
 unimock/ow-mqtt:0.1.0
-zavy86/wikidocs:1.0.74
 grafana/grafana:11.5.2
-gitea/gitea:1.23.4
 kanboard/kanboard:v1.2.43
 nodered/node-red:4.0.9
 koenkk/zigbee2mqtt:2.1.1
