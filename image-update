@@ -1,6 +1,6 @@
 #!/bin/bash
 # remember to call "./addapps .getver" after version modifications!
-VERSION="0.1.0"
+VERSION="0.2.0"
 
 IAM=`basename $0`
 
@@ -45,33 +45,37 @@ while true ; do
 done
 
 if [ "$1" = "list" ] ; then
-  mkdir -p /var/addapps
-  wget -q -O /var/addapps/image-update.list https://mde.gate-7.de/addapps/image-update.list
-  update_list=$(grep -o '^[^#]*' /var/addapps/image-update.list)
+  FI=$(mktemp)
+  wget -q -O $FI https://mde.gate-7.de/addapps/image-update.list
+  update_list=$(grep -o '^[^#]*' $FI)
+  rm $FI
   #
   # create information arrays
   #
   env_list=$(find ${MDE_DC_APP_DIR} -type f -name .env)
   idx=0
   for env in $env_list ; do
-    state[$idx]=" "
-    image=$(grep "^DC_ENV_IMAGE=" $env | sed "s|^DC_ENV_IMAGE=||g")
-    img_name[$idx]=${image%:*}
-    img_ver[$idx]=${image#*:}
-    for u in $update_list ; do
-      u_name=${u%:*}
-      u_ver[$idx]=${u#*:}
-      if [ "${u_name}" = "${img_name[$idx]}" ] ; then
-        if [ "${u_ver[$idx]}" = "${img_ver[$idx]}" ] ; then
-          state[$idx]="o"
-        else
-          state[$idx]="!"
+    image_list=$(grep "^DC_ENV_IMAGE.*=" .env | sed "s|^DC_ENV_IMAGE.*=||g")
+    for image in $image_list ; do
+      #image=$(grep "^DC_ENV_IMAGE=" $env | sed "s|^DC_ENV_IMAGE=||g")
+      img_name[$idx]=${image%:*}
+      img_ver[$idx]=${image#*:}
+      state[$idx]=" "
+      for u in $update_list ; do
+        u_name=${u%:*}
+        u_ver[$idx]=${u#*:}
+        if [ "${u_name}" = "${img_name[$idx]}" ] ; then
+          if [ "${u_ver[$idx]}" = "${img_ver[$idx]}" ] ; then
+            state[$idx]="o"
+          else
+            state[$idx]="!"
+          fi
+          break
         fi
-        break
-      fi
+      done
+      dname[$idx]=$(dirname $env )
+      let idx=$idx+1
     done
-    dname[$idx]=$(dirname $env )
-    let idx=$idx+1
   done
   #
   # print informations
