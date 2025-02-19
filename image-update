@@ -55,7 +55,7 @@ if [ "$1" = "list" ] ; then
   env_list=$(find ${MDE_DC_APP_DIR} -type f -name .env)
   idx=0
   for env in $env_list ; do
-    image_list=$(grep "^DC_ENV_IMAGE.*=" .env | sed "s|^DC_ENV_IMAGE.*=||g")
+    image_list=$(grep "^DC_ENV_IMAGE.*=" $env | sed "s|^DC_ENV_IMAGE.*=||g")
     for image in $image_list ; do
       #image=$(grep "^DC_ENV_IMAGE=" $env | sed "s|^DC_ENV_IMAGE=||g")
       img_name[$idx]=${image%:*}
@@ -110,8 +110,13 @@ if [ "$1" = "list" ] ; then
 fi
 
 if [ "${1}" = "update" ] ; then
-  ( cd ${2} ; dc docker pull ${3} )
-  sed -i "s|^DC_ENV_IMAGE=.*|DC_ENV_IMAGE=${3}|g" ${2}/.env
+  env_dir=${2}
+  image=${3}
+  ( cd ${env_dir} ; dc docker pull ${image} )
+  name=${image%:*}
+  version=${image#*:}
+  line=$(grep "^DC_ENV_IMAGE.*=${name}:" ${env_dir}/.env | cut -f1 -d":")
+  sed -i "s|^${line}:.*|${line}:${version}|g" ${env_dir}/.env
   ( cd ${2} ; dc rmup )
 fi
 

@@ -17,6 +17,11 @@ unimock/share-sshd-docker:1.0.0
 boky/postfix:v3.5.1
 unimock/aptrep-docker:1.0.0
 unimock/phpservermonitor:3.5.2-1
+unimock/prg-docker:1.0.3
+ghcr.io/hoellen/nextcloud:28.0.6
+wph_5-php7.4-fpm-alpine:2024.03.29-181233
+unimock/mailmonit-docker:1.0.0
+minio/minio:RELEASE.2024-03-21T23-13-43Z
 #
 # share
 #
