@@ -15,6 +15,12 @@ louislam/uptime-kuma:2.0.0-beta.1
 onlyoffice/documentserver:8.0
 unimock/dotproject-docker:2.8.0-4
 unimock/share-sshd-docker:1.0.0
+boky/postfix:v3.5.1
+#
+# mdv
+#
+mediawiki:1.39
+jacobalberty/unifi:v8
 #
 # hc/ecf images
 #
