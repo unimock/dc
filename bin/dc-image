@@ -10,7 +10,7 @@ show_help() {
   echo ""
   echo "$IAM ls              # list used images and their states"
   echo ""
-  echo "$IAM update /root/dc/apps/ecf/zigbee  koenkk/zigbee2mqtt:2.1.1"
+  echo "$IAM update <app>  koenkk/zigbee2mqtt:2.1.1"
   echo ""
 } 
 
@@ -48,9 +48,14 @@ if [ "$1" = "ls" ] ; then
     echo "error: image_list.url undefined in cluster.yml"
     exit 1
   fi
+  groups=$(dc-yq '.config.cluster.image_list.groups.[]')
   FI=$(mktemp)
   wget -q -O $FI $url
-  update_list=$(dc-yq '.*.[]' $FI)
+  update_list=""
+  for g in $groups ; do
+    update_list="$update_list "$(dc-yq '.'$g'.[]' $FI)
+  done
+  #update_list=$(dc-yq '.'$g'.[]' $FI)
   rm $FI
   #
   # create information arrays
@@ -92,7 +97,7 @@ if [ "$1" = "ls" ] ; then
   #
   found="0"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
-    dstate="☐"
+    dstate="☐ "
     if [ "${state[$idx]}" = "o" ] ; then
       dstate="✅"
     elif  [ "${state[$idx]}" = "!" ] ; then
