@@ -16,6 +16,9 @@ app:
   control:
     type: compose
     file: docker-compose.yml
+  # set to true for disable app in dc image list 
+  image_list:
+    disabled: false
   home:
     - type: default
       # set state to "disabled" so that app service will not be included in "dc-inspect runtime"

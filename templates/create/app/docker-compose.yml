@@ -1,6 +1,6 @@
 services:
   <main_service>:
-    image: ${DC_ENV_IMAGE}
+    image: <image>
     restart: unless-stopped
     container_name: ${DC_ENV_NAME}
     hostname: ${DC_ENV_NAME}

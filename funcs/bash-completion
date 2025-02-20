@@ -49,7 +49,7 @@ _dc() {
     if [[  "$COMP_CWORD" == "3" && "$3" == "update" ]] ; then
       COMPREPLY=( $(compgen -W "tbd" -- "$2") )
     elif [[  "$COMP_CWORD" == "2" ]] ; then
-      COMPREPLY=( $(compgen -W "list update" -- "$2") )
+      COMPREPLY=( $(compgen -W "ls update" -- "$2") )
     fi
   # dc data ..
   elif [[ "${COMP_WORDS[1]}" = "data" ]] ; then

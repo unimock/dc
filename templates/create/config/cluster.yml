@@ -2,3 +2,6 @@ cluster:
   name: xyz
   backup:
     image_url: registry.domain.de
+  image_list:
+    url:
+

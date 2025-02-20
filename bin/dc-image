@@ -8,7 +8,7 @@ show_help() {
   echo ""
   echo "# examples:"
   echo ""
-  echo "$IAM list              # list used images and their states"
+  echo "$IAM ls              # list used images and their states"
   echo ""
   echo "$IAM update /root/dc/apps/ecf/zigbee  koenkk/zigbee2mqtt:2.1.1"
   echo ""
@@ -42,7 +42,7 @@ while true ; do
   shift
 done
 
-if [ "$1" = "list" ] ; then
+if [ "$1" = "ls" ] ; then
   url=$(   dc-yq '.config.cluster.image_list.url'   )
   if [ "$url" = "null" -o "$url" = "" ] ; then
     echo "error: image_list.url undefined in cluster.yml"
@@ -67,6 +67,7 @@ if [ "$1" = "list" ] ; then
     image_list=$(dc-yq '.services.*.image' $yaml_file  | sort | uniq)
     for image in $image_list ; do
       #echo "  $image"
+      apps[$idx]="$app"
       img_name[$idx]=${image%:*}
       img_ver[$idx]=${image#*:}
       state[$idx]=" "
@@ -98,10 +99,10 @@ if [ "$1" = "list" ] ; then
       dstate="💡"
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
-      printf "%-1s %-34s %-30s %-20s %-20s\n" "${dstate}" "${dname[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
+      printf "%-1s %-16s %-30s %-20s %-20s\n" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
       found="1"
     else
-      printf "%-1s %-34s %-30s %-20s\n"       "${dstate}" "${dname[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}"
+      printf "%-1s %-16s %-30s %-20s\n"       "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}"
     fi
   done
   if [ "${found}" = "1" ] ; then
@@ -111,7 +112,7 @@ if [ "$1" = "list" ] ; then
   printf "\n\n"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
     if [ "${state[$idx]}" = "!" ] ; then
-      printf "%s update %-34s %s:%s\n" "$IAM" "${dname[$idx]}" "${img_name[$idx]}" "${u_ver[$idx]}"
+      printf "%s update %-16s %s:%s\n" "$IAM" "${apps[$idx]}" "${img_name[$idx]}" "${u_ver[$idx]}"
     fi
   done
   printf "\n\n"
@@ -119,29 +120,29 @@ if [ "$1" = "list" ] ; then
 fi
 
 if [ "${1}" = "update" ] ; then
-  env_dir=${2}
-  image=${3}
-  #( cd ${env_dir} ; dc docker pull ${image} )
-  #name=${image%:*}
-  #version=${image#*:}
-  #line=$(grep "^DC_ENV_IMAGE.*=${name}:" ${env_dir}/.env | cut -f1 -d":")
-  #sed -i "s|^${line}:.*|${line}:${version}|g" ${env_dir}/.env
-  #( cd ${2} ; dc rmup )
+  app="$2"
+  image="$3"
 
-#s_image="unimock/share-sshd-docker:1.0.0"
-#s_image="filebrowser/filebrowser:v2.32.0"
-#r_image="mimo/test:2.3.4"
-#cp /root/dc/apps/http-web/share/docker-compose.yml /xxx
-#dc-yq '.services.*.image' /xxx/docker-compose.yml
-#services=$(dc-yq '(.services.* | (select(.image=="'${s_image}'")) | path ) [-1] ' /xxx/docker-compose.yml )
-#for s in $services ; do
-#  echo "<$s>"
-#  dc-yq -i '.services.'$s'.image = "'${r_image}'"' /xxx/docker-compose.yml 
-#done
-#difft /root/dc/apps/http-web/share/docker-compose.yml /xxx/docker-compose.yml
+  yaml_file=$(dc-yq '.apps.'$app'.compose_yml')
+  app_dir=$(dc-yq '.apps.'$app'.app_dir')
 
-
-
+  ( cd ${app_dir} ; dc docker pull ${image} )
+  name=${image%:*}
+  version=${image#*:}
+  #echo "-------"
+  #echo "yaml_file=$yaml_file"
+  #echo "anpp_dir=$app_dir"
+  #echo "name=$name"
+  #echo "version=$version"
+  services=$(dc-yq '(.services.* | path )[-1]' $yaml_file )
+  for s in $services ; do
+    current_image=$( dc-yq '.services.'$s'.image' $yaml_file )
+    #echo " - $s   $current_image"
+    if [[ $current_image == "${name}:"* ]] ; then
+       dc-yq -i '.services.'$s'.image = "'${image}'"' $yaml_file 
+    fi
+  done
+  ( cd ${app_dir} ; dc rmup )
 fi
 
 exit 0
