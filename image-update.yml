@@ -29,13 +29,13 @@ general:
   - unimock/syncthing-user-docker:1.29.2
   - filebrowser/filebrowser:v2.32.0
   - jacobalberty/unifi:v8
+  - kanboard/kanboard:v1.2.43
 hc:
   - traefik:v3.3.3
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2024.12
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:11.5.2
-  - kanboard/kanboard:v1.2.43
   - nodered/node-red:4.0.9
   - koenkk/zigbee2mqtt:2.1.1
   - influxdb:2.7.11-alpine
