@@ -23,15 +23,14 @@ general:
   - biarms/mysql:5.7
   - mysql:8.0.37
   - nginx:1-alpine
-share:
+  - mediawiki:1.39
   - docker:27.5.1-dind-alpine3.21
   - unimock/share-gist-docker:1.0.0
   - unimock/syncthing-user-docker:1.29.2
   - filebrowser/filebrowser:v2.32.0
-mdv:
-  - mediawiki:1.39
   - jacobalberty/unifi:v8
 hc:
+  - traefik:v3.3.3
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2024.12
   - unimock/ow-mqtt:0.1.0
