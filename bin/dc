@@ -48,6 +48,7 @@ show_help() {
   echo "     ssh [<cmd>]                   # login into a node"                          
   echo "     manage ...                    # sync apps between nodes"
   echo "     hcloud ...                    # link to comptible hcloud version"
+  echo "     image  ...                    # list and update images"
   echo ""
   echo "  build and deploy images on node:"
   echo ""
@@ -146,7 +147,7 @@ if [ "$1" = "ssh-control-reset" ] ; then
   rm -fv  $HOME/.dc/var/ssh/control/*
   exit 0
 fi
-wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm"
+wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm image"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
