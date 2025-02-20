@@ -21,6 +21,7 @@ general:
   - unimock/mailmonit-docker:1.0.0
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - biarms/mysql:5.7
+  - mysql:8.0.37
   - nginx:1-alpine
 share:
   - docker:27.5.1-dind-alpine3.21
