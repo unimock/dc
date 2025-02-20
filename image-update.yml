@@ -1,6 +1,7 @@
 general:
   - traefik:v3.3.3
   - gitea/gitea:1.23.4
+  - phpmyadmin:5.2.2
   - freshrss/freshrss:1.25.0-alpine
   - vaultwarden/server:1.33.2-alpine
   - psitrax/psitransfer:v2.2.0
