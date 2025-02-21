@@ -13,10 +13,9 @@ general:
   - filebrowser/filebrowser:v2.32.0
   - kanboard/kanboard:v1.2.43
   - unimock/syncthing-user-docker:1.29.2
-  - unimock/aptrep-docker:1.0.0
   - unimock/dotproject-docker:2.8.0-4
   - unimock/share-sshd-docker:1.0.0
-  - unimock/aptrep-docker:1.0.0
+  - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
 g7:
   - psitrax/psitransfer:v2.2.0
@@ -24,7 +23,6 @@ g7:
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:8.0
   - docker:27.5.1-dind-alpine3.21
-  - unimock/share-gist-docker:1.0.0
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
   - ghcr.io/hoellen/nextcloud:28.0.6
   - freshrss/freshrss:1.25.0-alpine
@@ -32,6 +30,7 @@ g7:
   - drone/drone:2.25.0
   - unimock/mailmonit-docker:1.0.0
   - unimock/prg-docker:1.0.3
+  - unimock/aptrep-docker:1.0.0
 atk:
   - jacobalberty/unifi:v8
 hc:
