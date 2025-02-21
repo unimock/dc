@@ -33,7 +33,6 @@ general:
   - jacobalberty/unifi:v8
   - kanboard/kanboard:v1.2.43
 hc:
-  - traefik:v3.3.3
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2024.12
   - unimock/ow-mqtt:0.1.0
