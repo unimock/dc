@@ -30,7 +30,7 @@ g7:
   - drone/drone:2.25.0
   - unimock/mailmonit-docker:1.0.0
   - unimock/prg-docker:1.0.3
-  - unimock/aptrep-docker:1.0.0
+  - unimock/aptrep-docker:1.1.0
   - gitea/act_runner:0.2.11
 atk:
   - jacobalberty/unifi:v8
