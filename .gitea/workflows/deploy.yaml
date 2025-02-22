@@ -26,7 +26,7 @@ jobs:
           HOST: mde.gate-7.de
           # find ssh-key in dc/apps of mde on apps0
           KEY: ${{secrets.MDE_APT_SSHKEY}}
-          TARGET: /downloads/${{ gitea.event.head_commit.message }}
+          TARGET: /downloads/${{ gitea.event.repository.name }}
           VERBOSE: true
           USER: root
           ARGS: -az --delete --exclude=/.git/ --exclude=/.gitea/ --exclude=/README.md
@@ -35,12 +35,12 @@ jobs:
           #PRE_SCRIPT: |
           #  pwd
           POST_SCRIPT: |
-            tree -lah /downloads/${{ gitea.event.head_commit.message }}
+            tree -lah /downloads/${{ gitea.event.repository.name }}
       - name: send mail
         uses: dawidd6/action-send-mail@v4
         with:
           connection_url: ${{ vars.SMTP_URL }}
-          subject: ✅ ${{ gitea.event.head_commit.message }} deployed to mde
+          subject: ✅ ${{ gitea.event.repository.name }} deployed to mde
           to: ${{ vars.SMTP_TO }}
           from: ${{ vars.SMTP_FROM }}
           body: |
