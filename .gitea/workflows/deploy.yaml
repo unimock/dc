@@ -24,16 +24,16 @@ jobs:
           HOST: mde.gate-7.de
           # find ssh-key in dc/apps of mde on apps0
           KEY: ${{secrets.MDE_APT_SSHKEY}}
-          TARGET: /downloads/test
+          TARGET: /downloads/addapps
           VERBOSE: true
           USER: root
-          ARGS: -az --delete --exclude=/.git/ --exclude=/.gitea/
+          ARGS: -az --delete --exclude=/.git/ --exclude=/.gitea/ --exclude=/README.md
           SSH_ARGS: '-p 32000 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
           SOURCE: ${{ gitea.workspace }}/
           #PRE_SCRIPT: |
           #  pwd
           POST_SCRIPT: |
-            find /downloads/test -ls
+            find /downloads/addapps -ls
       - name: send mail
         uses: dawidd6/action-send-mail@v4
         with:
