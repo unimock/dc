@@ -16,7 +16,7 @@ jobs:
           echo "gitea.workspace=${{ gitea.workspace }}"
           echo "job.status=${{ job.status }}"
           echo "gitea.actor=${{ gitea.actor }}"
-      - name: Check out repository code
+      - name: check out repository
         uses: actions/checkout@v3
       - name: deploy to mde
         uses: up9cloud/action-rsync@master
