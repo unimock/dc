@@ -1,0 +1,45 @@
+name: deploy to mde
+run-name: ${{ gitea.actor }} is testing out Gitea Actions 
+on: [push]
+
+jobs:
+  deploy-to-mde:
+    runs-on: ubuntu-latest
+    steps:
+      - name: show environment
+        run: |
+          echo "gitea.workspace=${{ gitea.workspace }}"
+          echo "gitea.event_name=${{ gitea.event_name }}"
+          echo "runner.os=${{ runner.os }}"
+          echo "gitea.ref=${{ gitea.ref }}"
+          echo "gitea.repository=${{ gitea.repository }}"
+          echo "gitea.workspace=${{ gitea.workspace }}"
+          echo "job.status=${{ job.status }}"
+          echo "gitea.actor=${{ gitea.actor }}"
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: deploy to mde
+        uses: up9cloud/action-rsync@master
+        env:
+          HOST: mde.gate-7.de
+          # find ssh-key in dc/apps of mde on apps0
+          KEY: ${{secrets.MDE_APT_SSHKEY}}
+          TARGET: /downloads/test
+          VERBOSE: true
+          USER: root
+          ARGS: -az --delete --exclude=/.git/ --exclude=/.gitea/
+          SSH_ARGS: '-p 32000 -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no'
+          SOURCE: ${{ gitea.workspace }}/
+          #PRE_SCRIPT: |
+          #  pwd
+          POST_SCRIPT: |
+            find /downloads/test -ls
+      - name: send mail
+        uses: dawidd6/action-send-mail@v4
+        with:
+          connection_url: ${{ vars.SMTP_URL }}
+          subject: ✅ addapps deployed to mde
+          to: ${{ vars.SMTP_TO }}
+          from: ${{ vars.SMTP_FROM }}
+          body: |
+            ${{gitea.repository}} deployed to https://mde.gate-7.de/addapps/
