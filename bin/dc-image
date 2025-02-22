@@ -61,7 +61,7 @@ if [ "$1" = "ls" ] ; then
   # create information arrays
   #
   idx=0
-  app_list=$(dc-yq '(.apps.* | path) [-1]')
+  app_list=$(dc-yq '(.apps.* | path) [-1]' | sort | uniq )
   for app in $app_list ; do
     x=$(dc-yq '.apps.'$app'.dc.image_list.disabled')
     if [ "$x" = "true" ] ; then
