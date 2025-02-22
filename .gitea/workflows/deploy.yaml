@@ -33,7 +33,7 @@ jobs:
           #PRE_SCRIPT: |
           #  pwd
           POST_SCRIPT: |
-            find /downloads/addapps -ls
+            tree -lah /downloads/addapps
       - name: send mail
         uses: dawidd6/action-send-mail@v4
         with:
