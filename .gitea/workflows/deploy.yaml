@@ -16,6 +16,7 @@ jobs:
           echo "gitea.workspace=${{ gitea.workspace }}"
           echo "job.status=${{ job.status }}"
           echo "gitea.actor=${{ gitea.actor }}"
+          echo "gitea.event.repository.name=${{ gitea.event.repository.name }}"
       - name: check out repository
         uses: actions/checkout@v3
       - name: deploy to mde
