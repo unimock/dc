@@ -1,4 +1,5 @@
-[![Build Status](https://drone.gate-7.de/api/badges/mok/addapps/status.svg)](https://drone.gate-7.de/mok/addapps)
+[![Deploy Status](https://git.gate-7.de/mok/addapps/actions/workflows/deploy.yaml/badge.svg)](https://git.gate-7.de/mok/addapps/actions)
+
 
 # additional applications
 
