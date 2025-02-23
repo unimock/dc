@@ -2,15 +2,6 @@
 
 . /opt/dc/funcs/global
 
-#
-# Farben fuer Ausgabe definieren
-#
-COL_DEFAULT='\e[m'
-COL_GREEN='\e[1;92m'
-COL_ORANGE='\033[0;33m'
-COL_GRAY='\033[1;30m'
-COL_LGRAY='\033[1;37m'
-COL_RED='\e[1;91m'
 LINE="--------------------------------------------------------------------------------------------------------------"
 
 _help() {
@@ -61,8 +52,9 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     echo "$app_list"
     exit 0
   fi
-  printf "|%2s|%15s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|%s|\n"  "" "app" "#c" "node" "groups"                               "!"  "description" "main_container_image" "app_directory"
-  printf "|%2s|%15s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|%s|\n" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
+  MASK="|%2s|%12s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|%s|\n"
+  printf "$MASK" "" "app" "#c" "node" "groups" "!"  "description" "main_container_image" "app_directory"
+  printf "$MASK" "${LINE:0:2}" "${LINE:0:12}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
   for p in $app_list ; do
     p_nodes=$(   dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
     p_desc=$(    dc-yq '.apps.'$p'.dc.desc'         ${MDE_DC_YAML} )
@@ -101,7 +93,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
         # call without inspect
         state="☐ "
       fi
-      printf "|%2s|%15s|%2s|%-8s|%-20s|%1s|%-35s|%-35s|%s|\n" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
+      printf "$MASK" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
     done
   done
   exit 0
@@ -137,9 +129,9 @@ if [ "$opt_short" = "1" ] ; then
   done 
   exit 0
 fi
-MASK="%12s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s\n"
-printf "$MASK" "node" "stat" "type" "groups" "arch" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "id" "last_inspection" "description"
-printf "$MASK" "------------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
+MASK="|%2s|%8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s|\n"
+printf "$MASK" "" "node" "stat" "type" "groups" "arch" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "id" "last_inspection" "description"
+printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
@@ -243,26 +235,27 @@ for node in $list ; do
   insp_arch=""
   insp_last_inspect=""
   eval `cat $node_data_file`
+  #dstate="✅"
+  #dstate="💡"
+  #dstate="☑"
+  dstate="☐ "
+  #dstate="s "
+  #dstate="❌"
+  #dstate="⏰"
   if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
-    col_state=$COL_LGRAY
-    col_std=$COL_LGRAY
-    col_size=$COL_LGRAY
+    dstate="✅"
     if [ "$size" != "" ] ; then
-      if [ $size -gt 80 ] ; then
-         col_size=$COL_ORANGE
+      if [ $size -gt 89 ] ; then
+        dstate="💡"
       fi
-      if [ $size -gt 90 ] ; then
-        col_size=$COL_RED
+      if [ $size -gt 97 ] ; then
+        dstate="❌"
       fi
     fi
   elif [ "$state" = "ping" ] ; then
-    col_state=$COL_DEFAULT
-    col_std=$COL_DEFAULT
-    col_size=$COL_DEFAULT
+    dstate="☑ "
   else
-    col_state=$COL_GRAY
-    col_std=$COL_GRAY
-    col_size=$COL_GRAY
+    dstate="⏰"
   fi
   #
   # Ausgabe
@@ -271,6 +264,5 @@ for node in $list ; do
   if [ "${insp_last_inspect}" != "" ] ; then
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
-  MASK="${col_state}%12s${col_std}|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|${col_size}%-3s${col_std}|%-2s|%-16s|%s${COL_DEFAULT}\n"
-  printf "$MASK" "${node}" "${state}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  printf "$MASK" "${dstate}" "${node}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
