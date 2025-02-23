@@ -100,8 +100,8 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
         # call without inspect
         state="☐ "
       fi
+      printf "|%2s|%15s|%2s|%-15s|%-20s|%1s|%-35s|%-35s|%s|\n" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
     done
-    printf "|%2s|%15s|%2s|%-15s|%-20s|%1s|%-35s|%-35s|%s|\n" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
   done
   exit 0
 fi
