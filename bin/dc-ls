@@ -61,8 +61,8 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     echo "$app_list"
     exit 0
   fi
-  printf "%15s|%-2s|%-15s|%-20s|%s|%-35s|%-35s|%s\n" "app" "#c" "nodes" "groups"                               "!"  "description" "main_container_image" "app_directory"
-  printf "%15s|%-2s|%-15s|%-20s|%s|%-35s|%-35s|%s\n" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
+  printf "|%2s|%15s|%-2s|%-15s|%-20s|%s|%-35s|%-35s|%s|\n"  "" "app" "#c" "nodes" "groups"                               "!"  "description" "main_container_image" "app_directory"
+  printf "|%2s|%15s|%-2s|%-15s|%-20s|%s|%-35s|%-35s|%s|\n" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:2}" "${LINE:0:15}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}" "${LINE:0:30}"
   for p in $app_list ; do
     p_nodes=$(   dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
     p_desc=$(    dc-yq '.apps.'$p'.dc.desc'         ${MDE_DC_YAML} )
@@ -72,42 +72,36 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     p_groups=${p_groups%,}
     main_service=$( dc-yq '.apps.'$p'.dc.main_service'    ${MDE_DC_YAML} )
     p_image=$( dc-yq '.apps.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
-    xxx=""
-    yyy=""
     ndc=$(dc-yq '(.apps.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
+    #state="✅"
+    #state="💡"
+    #state="☑ "
+    #state="☐ "
+    #state="s "
+    #state="❌"
+    #state="⏰"
     for h in $p_nodes ; do
       if [ "$opt_inspect" = "1" ]  ; then
+        # call with inspect
 	      node_state=$( dc-node $h state )
 	      if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
-          #nrc=$(dc -a $p -n $h compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l  )
           nrc=$(dc-node $h -a $p nrc)
-	        color=$COL_RED
+          state="❌"
         elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
 	        nrc=0
-	        color=$COL_GRAY
+          state="⏰"
 	      fi	
         if [ "$ndc" = "$nrc" ] ; then
-          xxx="$xxx $h"
-          yyy="$yyy $h"
+          state="✅"
         else
-          xxx="$xxx $h"
-          yyy="$yyy ${color}${h}${COL_LGRAY}"
+          state="❓"
         fi
       else
-        xxx="$xxx $h"
-        yyy="$yyy $h"
-
+        # call without inspect
+        state="☐ "
       fi
     done
-    xxx=${xxx# }
-    yyy=${yyy# }
-    len=$((15+${#yyy}-${#xxx}))
-    yyy="$yyy                               "
-    yyy=${yyy:0:$len}
-    if [ "$opt_inspect" != "1" ]  ; then
-      COL_LGRAY=${COL_DEFAULT}  #if not inspect, print not lighten
-    fi
-    printf "${COL_LGRAY}%15s|%2s|%b${COL_LGRAY}|%-20s|%1s|%-35s|%-35s|%s${COL_DEFAULT}\n" "$p" "${ndc}" "${yyy}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
+    printf "|%2s|%15s|%2s|%-15s|%-20s|%1s|%-35s|%-35s|%s|\n" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
   done
   exit 0
 fi

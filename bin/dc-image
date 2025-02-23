@@ -95,6 +95,8 @@ if [ "$1" = "ls" ] ; then
   #
   # print informations
   #
+  printf "|%-1s|%-16s|%-30s|%-20s|%-20s|\n" "  " "app             " "image                         " "current version     " "new version         "
+  printf "|%-1s|%-16s|%-30s|%-20s|%-20s|\n" "--" "----------------" "------------------------------" "--------------------" "--------------------"
   found="0"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
     dstate="☐ "
@@ -104,11 +106,9 @@ if [ "$1" = "ls" ] ; then
       dstate="💡"
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
-      printf "%-1s %-16s %-30s %-20s %-20s\n" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
       found="1"
-    else
-      printf "%-1s %-16s %-30s %-20s\n"       "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}"
     fi
+    printf "|%-1s|%-16s|%-30s|%-20s|%-20s|\n" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
   done
   if [ "${found}" = "1" ] ; then
   #
