@@ -86,13 +86,14 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
 	      node_state=$( dc-node $h state )
 	      if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
           nrc=$(dc-node $h -a $p nrc)
-          state="❌"
+          if [ "$ndc" = "$nrc" ] ; then
+            state="✅"
+          else
+            state="❌"
+          fi
         elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
 	        nrc=0
           state="⏰"
-	      fi	
-        if [ "$ndc" = "$nrc" ] ; then
-          state="✅"
         else
           state="❓"
         fi
