@@ -72,6 +72,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     #state="s "
     #state="❌"
     #state="⏰"
+    #state="❓"
     for h in $p_nodes ; do
       if [ "$opt_inspect" = "1" ]  ; then
         # call with inspect
@@ -130,7 +131,7 @@ if [ "$opt_short" = "1" ] ; then
   exit 0
 fi
 MASK="|%2s|%8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s|\n"
-printf "$MASK" "" "node" "stat" "type" "groups" "arch" "os" "os_ver" "dock_ver" "mde_ver" "M" "P" "HD" "id" "last_inspection" "description"
+printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "dock_ver" "mde_ver"  "M" "P"  "HD"  "id" "last_inspection"  "description"
 printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
@@ -253,7 +254,7 @@ for node in $list ; do
       fi
     fi
   elif [ "$state" = "ping" ] ; then
-    dstate="☑ "
+    dstate="❓"
   else
     dstate="⏰"
   fi
@@ -264,5 +265,5 @@ for node in $list ; do
   if [ "${insp_last_inspect}" != "" ] ; then
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
-  printf "$MASK" "${dstate}" "${node}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  printf "$MASK" "${dstate}" "${node}" "$state" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
