@@ -80,7 +80,8 @@ show_help() {
   echo "  dc ssh-control-reset                       # remove ssh control sockets"
   echo ""
   echo "  dc ls nodes [--inspect]                    # show defined nodes (check state with --inspect)"
-  echo "  dc ls apps [--inspect]                 # show defined app services (check state with --inspect)"
+  echo "  dc ls apps  [--inspect]                    # show defined app services (check state with --inspect)"
+  echo "  dc ls images"
   echo ""
   echo "  dc node <name> config create <hname_or_ip> # define new node from template"
   echo "  dc node <name> config edit                 # modify node definition file"
@@ -151,7 +152,11 @@ wrapper_list="inspect node app install vserver batch list manage config ls vserv
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
-    /opt/dc/bin/dc-$i $@
+    if [ "$i" = "ls" -a "$1" = "images" ] ; then
+      /opt/dc/bin/dc-image ls
+    else
+      /opt/dc/bin/dc-$i $@
+    fi
     exit $?
   fi  
 done
