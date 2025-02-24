@@ -95,20 +95,22 @@ if [ "$1" = "ls" ] ; then
   #
   # print informations
   #
-  printf "|%-1s|%-16s|%-30s|%-20s|%-20s|\n" "  " "app             " "image                         " "current version     " "new version         "
-  printf "|%-1s|%-16s|%-30s|%-20s|%-20s|\n" "--" "----------------" "------------------------------" "--------------------" "--------------------"
+  MASK="|%-1s|%-16s|%-30s|%-20s|%-20s|\n"
+  printf "$MASK" "  " "app             " "image                         " "current version     " "new version         "
+  printf "$MASK" "--" "----------------" "------------------------------" "--------------------" "--------------------"
   found="0"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
     dstate="☐ "
     if [ "${state[$idx]}" = "o" ] ; then
       dstate="✅"
+      u_ver[$idx]="                    "
     elif  [ "${state[$idx]}" = "!" ] ; then
       dstate="💡"
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
     fi
-    printf "|%-1s|%-16s|%-30s|%-20s|%-20s|\n" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
+    printf "$MASK" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
   done
   if [ "${found}" = "1" ] ; then
   #
