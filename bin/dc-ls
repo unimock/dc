@@ -240,9 +240,9 @@ for node in $list ; do
   #dstate="💡"
   #dstate="☑"
   #dstate="☐ "
-  
   #dstate="❌"
   #dstate="⏰"
+  #dstate="❓"
   dstate="??"
   if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     dstate="✅"
@@ -261,7 +261,7 @@ for node in $list ; do
     dstate="⏰"
   else
     # state="", d.h. node nicht erreichbar
-    dstate="☐ "
+    dstate="❓"
   fi
   #
   # Ausgabe
