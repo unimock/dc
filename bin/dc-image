@@ -101,28 +101,29 @@ if [ "$1" = "ls" ] ; then
   found="0"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
     dstate="☐ "
+    new_version="                    " 
     if [ "${state[$idx]}" = "o" ] ; then
       dstate="✅"
-      u_ver[$idx]="                    "
     elif  [ "${state[$idx]}" = "!" ] ; then
       dstate="💡"
+      new_version=${u_ver[$idx]}
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
     fi
-    printf "$MASK" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${u_ver[$idx]}"
+    printf "$MASK" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${new_version}"
   done
   if [ "${found}" = "1" ] ; then
-  #
-  # print update commands
-  #
-  printf "\n\n"
-  for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
-    if [ "${state[$idx]}" = "!" ] ; then
-      printf "%s update %-16s %s:%s\n" "$IAM" "${apps[$idx]}" "${img_name[$idx]}" "${u_ver[$idx]}"
-    fi
-  done
-  printf "\n\n"
+    #
+    # print update commands
+    #
+    printf "\n\n"
+    for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
+      if [ "${state[$idx]}" = "!" ] ; then
+        printf "%s update %-16s %s:%s\n" "$IAM" "${apps[$idx]}" "${img_name[$idx]}" "${u_ver[$idx]}"
+      fi
+    done
+    printf "\n\n"
   fi
 fi
 
@@ -136,15 +137,9 @@ if [ "${1}" = "update" ] ; then
   ( cd ${app_dir} ; dc docker pull ${image} )
   name=${image%:*}
   version=${image#*:}
-  #echo "-------"
-  #echo "yaml_file=$yaml_file"
-  #echo "anpp_dir=$app_dir"
-  #echo "name=$name"
-  #echo "version=$version"
   services=$(dc-yq '(.services.* | path )[-1]' $yaml_file )
   for s in $services ; do
     current_image=$( dc-yq '.services.'$s'.image' $yaml_file )
-    #echo " - $s   $current_image"
     if [[ $current_image == "${name}:"* ]] ; then
        dc-yq -i '.services.'$s'.image = "'${image}'"' $yaml_file 
     fi
