@@ -279,4 +279,4 @@ for node in $list ; do
   fi
   printf "$MASK" "${dstate}" "${node}" "$state" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
-return $return_code
+exit $return_code
