@@ -239,24 +239,32 @@ for node in $list ; do
   #dstate="✅"
   #dstate="💡"
   #dstate="☑"
-  dstate="☐ "
-  #dstate="s "
+  #dstate="☐ "
+  
   #dstate="❌"
   #dstate="⏰"
-  if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
-    dstate="✅"
-    if [ "$size" != "" ] ; then
-      if [ $size -gt 89 ] ; then
-        dstate="💡"
-      fi
-      if [ $size -gt 97 ] ; then
-        dstate="❌"
-      fi
-    fi
-  elif [ "$state" = "ping" ] ; then
-    dstate="❓"
-  else
+  dstate="??"
+  if [ "$typ" = "off" ] ; then
+    # node ist deaktiviert (disabled in dc-apps.yml)
     dstate="⏰"
+  else
+    if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
+      dstate="✅"
+      if [ "$size" != "" ] ; then
+        if [ $size -gt 89 ] ; then
+          dstate="💡"
+        fi
+        if [ $size -gt 97 ] ; then
+          dstate="❌"
+        fi
+      fi
+    elif [ "$state" = "ping" ] ; then
+      # node ist via ping erreichbar, aber stat != type
+      dstate="❌"
+    else
+      # state="", d.h. node nicht erreichbar
+      dstate="☐ "
+    fi
   fi
   #
   # Ausgabe
