@@ -47,6 +47,7 @@ eval set -- $COPT
 
 ####################################################################################################################################
 if [ "$1" = "apps" -o "$1" = "p"  ] ; then
+  return_code=0
   app_list=$( dc-list apps)
   if [ "$opt_short" = "1" ] ; then
     echo "$app_list"
@@ -83,12 +84,14 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
             state="✅"
           else
             state="❌"
+            return_code=1
           fi
         elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
 	        nrc=0
           state="⏰"
         else
           state="❓"
+          return_code=1
         fi
       else
         # call without inspect
@@ -97,12 +100,13 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       printf "$MASK" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "${p_image:0:35}" "$p_dir" 
     done
   done
-  exit 0
+  exit $return_code
 fi
 
 ####################################################################################################################################
 # nodes
 ####################################################################################################################################
+return_code=0
 HOST_DATA_DIR=$HOME/.dc/var/nodes
 mkdir -p $HOST_DATA_DIR
 
@@ -252,16 +256,19 @@ for node in $list ; do
       fi
       if [ $size -gt 97 ] ; then
         dstate="❌"
+        return_code=1
       fi
     fi
   elif [ "$state" = "ping" ] ; then
     # node ist via ping erreichbar, aber stat != type
     dstate="❌"
+    return_code=1
   elif [ "$state" = "off" ] ; then
     dstate="⏰"
   else
     # state="", d.h. node nicht erreichbar
     dstate="❓"
+    return_code=1
   fi
   #
   # Ausgabe
@@ -272,3 +279,4 @@ for node in $list ; do
   fi
   printf "$MASK" "${dstate}" "${node}" "$state" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
+return $return_code

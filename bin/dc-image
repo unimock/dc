@@ -43,6 +43,7 @@ while true ; do
 done
 
 if [ "$1" = "ls" ] ; then
+  return_code=0
   url=$(   dc-yq '.config.cluster.image_list.url'   )
   if [ "$url" = "null" -o "$url" = "" ] ; then
     echo "error: image_list.url undefined in cluster.yml"
@@ -107,6 +108,7 @@ if [ "$1" = "ls" ] ; then
     elif  [ "${state[$idx]}" = "!" ] ; then
       dstate="💡"
       new_version=${u_ver[$idx]}
+      return_code=1
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
@@ -125,6 +127,7 @@ if [ "$1" = "ls" ] ; then
     done
     printf "\n\n"
   fi
+  exit $return_code
 fi
 
 if [ "${1}" = "update" ] ; then
