@@ -86,7 +86,7 @@ addapps_spinner() {
 }
 ####################################################################################
 _install() {
-  type="$1"
+  list_type="$1"
   name="$2"
   url="$3"
 
@@ -119,17 +119,16 @@ _install() {
   fi
   rm $FI
 
-        if [ "$type" = "i" ] ; then # installer script
+  if [ "$list_type" = "i" ] ; then # installer script
     echo /usr/local/bin/${name} install
   fi
-echo "soso"
 }
 ####################################################################################
 _remove() {
-  type="$1"
+  list_type="$1"
   name="$2"
   if [ -f /usr/local/bin/${name} ] ; then
-    if [ "$type" = "i" ] ; then # installer script
+    if [ "$list_type" = "i" ] ; then # installer script
       /usr/local/bin/$name remove
     fi
     sudo rm -f /usr/local/bin/.addapps-${name}
@@ -192,7 +191,7 @@ done
 
 update_done="0"
 while read -r i ; do
-  type=$( echo "$i"     | cut -d";" -f1)
+  list_type=$( echo "$i"     | cut -d";" -f1)
   name=$( echo "$i"     | cut -d";" -f2)
   bez=$(  echo "$i"     | cut -d";" -f3)
   ver=$(  echo "$i"     | cut -d";" -f4)
@@ -211,7 +210,7 @@ while read -r i ; do
       elif [[ "$version" != "$ver" ]] ; then
         state="☑"
         if [[ "$1" == "update" ]] ; then
-          _install "$type" "$name" "$url"
+          _install "$list_type" "$name" "$url"
           update_done="1"
         fi
       fi
@@ -221,18 +220,18 @@ while read -r i ; do
     printf "%-1s %-15s %-8s %-8s %-20s\n" "$state" "$name" "$version" "$ver" "$bez" 
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
-    _install "$type" "$name" "$url"
+    _install "$list_type" "$name" "$url"
     echo ""
     $0 list
     exit
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
-    _install "$type" "$name" "$url"
+    _install "$list_type" "$name" "$url"
     exit 0
   fi
  
   if [[ "$1" == "remove" && "$2" == "$name" ]] ; then
-    _remove "$type" "$name"
+    _remove "$list_type" "$name"
     exit 0
   fi
   if [[ "$1" == ".getver" && "$name" != "addapps" ]] ; then
