@@ -107,6 +107,9 @@ _install() {
   fi
   sudo chmod 755 /usr/local/bin/$name
   sudo chown root:root /usr/local/bin/$name
+  if [ "$type" = "i" ] ; then # installer script
+    /usr/local/bin/$name install
+  fi
   if [ "$name" = "addapps" ] ; then
     x=$( mktemp )
     cat /usr/local/bin/$name | sed  -e '/^addapps_spinner()/,/^}$/!d' > $x
@@ -124,6 +127,9 @@ _remove() {
   type="$1"
   name="$2"
   if [ -f /usr/local/bin/${name} ] ; then
+    if [ "$type" = "i" ] ; then # installer script
+      /usr/local/bin/$name remove
+    fi
     sudo rm -f /usr/local/bin/.addapps-${name}
     sudo mv    /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
     (sleep 0.1) &
