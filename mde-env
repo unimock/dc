@@ -50,6 +50,9 @@ while true ; do
   shift
 done
 if [ "$1" = "install" ] ; then
-  echo "calling install"
+  echo "calling $1"
+fi
+if [ "$1" = "remove" ] ; then
+  echo "calling $1"
 fi
 exit 0
