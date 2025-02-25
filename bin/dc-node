@@ -353,7 +353,7 @@ if [ "$CMD" = "image"   ] ; then
         fi
       fi
       error_ret=0
-      image_list=$( dc-yq  '( .apps.* | select(.dc.home.[].node == "'$node'" | select(.dc.home.[].state == "active" ) ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
+      image_list=$( dc-yq  '( .apps.* | select(.dc.home.[].node == "'$node'") | select(.dc.home.[].state == "active" ) .compose.services.*.image )' ${MDE_DC_YAML} | sort | uniq)
       for i in $image_list ; do
         image="$i"
         if [[ $image == *"/"* ]] ; then
