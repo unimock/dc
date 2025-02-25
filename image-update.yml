@@ -7,6 +7,7 @@ general:
   - boky/postfix:v3.5.1
   - biarms/mysql:5.7
   - mysql:8.0.37
+  - mariadb:11.3.2
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
@@ -21,10 +22,10 @@ g7:
   - psitrax/psitransfer:v2.2.0
   - louislam/uptime-kuma:2.0.0-beta.1
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
-  - onlyoffice/documentserver:8.0
+  - onlyoffice/documentserver:8.3
   - docker:27.5.1-dind-alpine3.21
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
-  - ghcr.io/hoellen/nextcloud:28.0.6
+  - ghcr.io/hoellen/nextcloud:30.0.6
   - freshrss/freshrss:1.26.0-alpine
   - vaultwarden/server:1.33.2-alpine
   - drone/drone:2.25.0
