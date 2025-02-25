@@ -107,9 +107,6 @@ _install() {
   fi
   sudo chmod 755 /usr/local/bin/$name
   sudo chown root:root /usr/local/bin/$name
-  if [ "$type" = "i" ] ; then # installer script
-    echo /usr/local/bin/${name} install
-  fi
   if [ "$name" = "addapps" ] ; then
     x=$( mktemp )
     cat /usr/local/bin/$name | sed  -e '/^addapps_spinner()/,/^}$/!d' > $x
@@ -226,6 +223,10 @@ while read -r i ; do
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
     _install "$type" "$name" "$url"
+      if [ "$type" = "i" ] ; then # installer script
+    echo /usr/local/bin/${name} install
+  fi
+
     exit 0
   fi
  
