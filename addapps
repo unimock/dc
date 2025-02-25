@@ -8,22 +8,24 @@ if [ "${ARCH}" = "arm64" ] ; then
   ALT_ARCH0="aarch64"
   ALT_ARCH1="arm64"
 fi
+# a..app; i..installer
 list="
-addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
-selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
-md-exec;execute md code sections;1.0.2;--version;https://raw.githubusercontent.com/unimock/addapps/main/md-exec
-sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
-2facli;2FA CLI;0.0.2;--version;https://mde.gate-7.de/addapps/2facli
-crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
-print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
-stsync;syncting stc CLI;0.0.6;--version;https://mde.gate-7.de/addapps/stsync
-difft;difftastic;0.63.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
-yq;yaml processor;4.45.1;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
-drone;drone CLI;1.8.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_${ARCH}.tar.gz
-stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.5.4/stc-${ARCH}-linux
-mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
-hcloud;Hetzner-Cloud CLI;1.50.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
-http-here;http-here;;;https://github.com/western/http-here/releases/download/v1.11.4/http-here.gz
+a;addapps;additional apps;$VERSION;--version;https://mde.gate-7.de/addapps/addapps
+a;selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/selfextractor
+a;md-exec;execute md code sections;1.0.2;--version;https://raw.githubusercontent.com/unimock/addapps/main/md-exec
+a;sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
+a;2facli;2FA CLI;0.0.2;--version;https://mde.gate-7.de/addapps/2facli
+a;crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
+a;print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
+a;stsync;syncting stc CLI;0.0.6;--version;https://mde.gate-7.de/addapps/stsync
+a;difft;difftastic;0.63.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
+a;yq;yaml processor;4.45.1;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
+a;drone;drone CLI;1.8.0;--version;https://github.com/harness/drone-cli/releases/download/v<VERSION>/drone_linux_${ARCH}.tar.gz
+a;stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.5.4/stc-${ARCH}-linux
+a;mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
+a;hcloud;Hetzner-Cloud CLI;1.50.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
+a;http-here;http-here;;;https://github.com/western/http-here/releases/download/v1.11.4/http-here.gz
+i;mde-env;mde-base installer;0.0.2;--version;https://mde.gate-7.de/addapps/mde-env
 "
 ####################################################################################
 addapps_spinner() {
@@ -84,8 +86,9 @@ addapps_spinner() {
 }
 ####################################################################################
 _install() {
-  name="$1"
-  url="$2"
+  type="$1"
+  name="$2"
+  url="$3"
 
   FI=$(mktemp)
   (wget -q -O $FI $url) &
@@ -118,7 +121,8 @@ _install() {
 }
 ####################################################################################
 _remove() {
-  name="$1"
+  type="$1"
+  name="$2"
   if [ -f /usr/local/bin/${name} ] ; then
     sudo rm -f /usr/local/bin/.addapps-${name}
     sudo mv    /usr/local/bin/${name} /usr/local/bin/.addapps-${name}
@@ -180,11 +184,12 @@ done
 
 update_done="0"
 while read -r i ; do
-  name=$( echo "$i"     | cut -d";" -f1)
-  bez=$(  echo "$i"     | cut -d";" -f2)
-  ver=$(  echo "$i"     | cut -d";" -f3)
-  ver_cmd=$(  echo "$i" | cut -d";" -f4)
-  url=$(  echo "$i"     | cut -d";" -f5 | sed -e "s/<VERSION>/$ver/g")
+  type=$( echo "$i"     | cut -d";" -f1)
+  name=$( echo "$i"     | cut -d";" -f2)
+  bez=$(  echo "$i"     | cut -d";" -f3)
+  ver=$(  echo "$i"     | cut -d";" -f4)
+  ver_cmd=$(  echo "$i" | cut -d";" -f5)
+  url=$(  echo "$i"     | cut -d";" -f6 | sed -e "s/<VERSION>/$ver/g")
   if [ "$name" = "" ] ; then continue ; fi
   state="☐ "
 
@@ -198,7 +203,7 @@ while read -r i ; do
       elif [[ "$version" != "$ver" ]] ; then
         state="☑"
         if [[ "$1" == "update" ]] ; then
-          _install "$name" "$url"
+          _install "$type" "$name" "$url"
           update_done="1"
         fi
       fi
@@ -206,23 +211,20 @@ while read -r i ; do
   fi
   if [[ "$1" == "list" ]] ; then
     printf "%-1s %-15s %-8s %-8s %-20s\n" "$state" "$name" "$version" "$ver" "$bez" 
-    #printf "%-1s %-15s %-8s %-8s %-20s # %s\n" "$state" "$name" "$version" "$ver" "$bez" "$url"
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
-    _install "$name" "$url"
-    # hier spinner function global bereitstellen
-     
+    _install "$type" "$name" "$url"
     echo ""
     $0 list
     exit
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
-    _install "$name" "$url"
+    _install "$type" "$name" "$url"
     exit 0
   fi
  
   if [[ "$1" == "remove" && "$2" == "$name" ]] ; then
-    _remove "$name"
+    _remove "$type" "$name"
     exit 0
   fi
   if [[ "$1" == ".getver" && "$name" != "addapps" ]] ; then

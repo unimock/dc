@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# remember to call "./addapps .getver" after version modifications!
+VERSION="0.0.0"
+
+show_help()
+{
+  echo ""
+  echo "usage: `basename $0` <content-directory> [selfextractor-file]"
+  echo ""
+  echo "example:"
+  echo ""
+  echo "`basename $0` ./hugo  # create directory and a template installer script."
+  echo ""
+  echo "# copy desired content to the ./hugo directory and modify installer script:"
+  echo "vi ./hugo/installer"
+  echo ""
+  echo "`basename $0` ./hugo # re-create installable selfextractor file: ./hugo.sh"
+  echo "#or:"
+  echo "`basename $0` ./hugo /tmp/my-selfextractor.sh"
+  echo ""
+}
+
+if [ "$1" = "" ] ; then
+  show_help
+  exit 0
+fi
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
+    show_help
+    exit 0
+    ;;
+  -v|--version) 
+    echo "$VERSION"
+    exit 0
+    ;;
+  
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+exit 0
