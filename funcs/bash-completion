@@ -168,7 +168,7 @@ _dc() {
     fi
   # dc ls .. 
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
-    COMPREPLY=( $(compgen -W "apps nodes images" -- "$2") )
+    COMPREPLY=( $(compgen -W "apps nodes images addapps" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" == "3" ]] ; then
       COMPREPLY=( $(compgen -W "--inspect" -- "$2") )
   # dc list

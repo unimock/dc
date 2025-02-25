@@ -82,6 +82,7 @@ show_help() {
   echo "  dc ls nodes [--inspect]                    # show defined nodes (check state with --inspect)"
   echo "  dc ls apps  [--inspect]                    # show defined app services (check state with --inspect)"
   echo "  dc ls images"
+  echo "  dc ls addapps"
   echo ""
   echo "  dc node <name> config create <hname_or_ip> # define new node from template"
   echo "  dc node <name> config edit                 # modify node definition file"
@@ -154,6 +155,8 @@ for i in $wrapper_list ; do
     shift
     if [ "$i" = "ls" -a "$1" = "images" ] ; then
       /opt/dc/bin/dc-image ls
+    elif [ "$i" = "ls" -a "$1" = "addapps" ] ; then
+      addapps ls
     else
       /opt/dc/bin/dc-$i $@
     fi
