@@ -51,12 +51,16 @@ while true ; do
 done
 if [ "$1" = "remove" ] ; then
   echo "calling $1"
-  sudo apt-get purge -y mde-base
+  apt-get purge -y mde-base
   rm -f /etc/apt/sources.list.d/mde.list*
 fi
 
 if [ "$1" = "install" ] ; then
   echo "calling $1"
-  sudo apt-get install -y mde-base
+  mkdir -p /etc/apt/keyrings/
+  wget -O - http://mde.gate-7.de/apt/g7-apt-key | gpg --dearmor -o /etc/apt/keyrings/mde.gpg
+  echo  "deb [signed-by=/etc/apt/keyrings/mde.gpg] https://mde.gate-7.de/apt mde main" >/etc/apt/sources.list.d/mde.list
+  apt-get update
+  apt-get install -y mde-base
 fi
 exit 0
