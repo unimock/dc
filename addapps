@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.7.1"
+VERSION="0.7.2"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -145,7 +145,7 @@ show_help() {
     echo ""
     echo "examples:"
     echo ""
-    echo "$IAM list              # list and show version of additional applications"
+    echo "$IAM ls                # list and show version of additional applications"
     echo "$IAM refresh           # refresh application versions from addapp store"
     echo "$IAM update            # update all outdeted applications"
     echo "$IAM install <package> # installs or update an application"
@@ -190,6 +190,9 @@ while true ; do
 done
 
 update_done="0"
+MASK="|%-1s|%-15s|%-8s|%-8s|%-25s|\n"
+printf "$MASK" "  " "application" "version" "latest" "description"
+printf "$MASK" "--" "---------------" "--------" "--------" "-------------------------"
 while read -r i ; do
   list_type=$( echo "$i"     | cut -d";" -f1)
   name=$( echo "$i"     | cut -d";" -f2)
@@ -199,7 +202,6 @@ while read -r i ; do
   url=$(  echo "$i"     | cut -d";" -f6 | sed -e "s/<VERSION>/$ver/g")
   if [ "$name" = "" ] ; then continue ; fi
   state="☐ "
-
   version=""
   if [ -e /usr/local/bin/$name ] ; then
     state="✅"
@@ -208,7 +210,7 @@ while read -r i ; do
       if [[ "$version" == "" ]] ; then
         state="💡"
       elif [[ "$version" != "$ver" ]] ; then
-        state="☑"
+        state="☑ "
         if [[ "$1" == "update" ]] ; then
           _install "$list_type" "$name" "$url"
           update_done="1"
@@ -216,8 +218,8 @@ while read -r i ; do
       fi
     fi
   fi
-  if [[ "$1" == "list" ]] ; then
-    printf "%-1s %-15s %-8s %-8s %-20s\n" "$state" "$name" "$version" "$ver" "$bez" 
+  if [[ "$1" == "ls" ]] ; then
+    printf "$MASK" "$state" "$name" "$version" "$ver" "$bez" 
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$list_type" "$name" "$url"
