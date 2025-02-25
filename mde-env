@@ -51,8 +51,10 @@ while true ; do
 done
 if [ "$1" = "install" ] ; then
   echo "calling $1"
+  sudo apt-get install -y mde-base
 fi
 if [ "$1" = "remove" ] ; then
   echo "calling $1"
+  sudo apt-get purge -y mde-base
 fi
 exit 0
