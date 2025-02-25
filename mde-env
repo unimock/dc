@@ -49,5 +49,7 @@ while true ; do
   esac
   shift
 done
-
+if [ "$1" = "install" ] ; then
+  echo "calling install"
+fi
 exit 0
