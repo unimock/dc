@@ -108,7 +108,7 @@ _install() {
   sudo chmod 755 /usr/local/bin/$name
   sudo chown root:root /usr/local/bin/$name
   if [ "$type" = "i" ] ; then # installer script
-    /usr/local/bin/${name} install
+    echo /usr/local/bin/${name} install
   fi
   if [ "$name" = "addapps" ] ; then
     x=$( mktemp )
