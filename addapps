@@ -120,7 +120,7 @@ _install() {
   rm $FI
 
   if [ "$list_type" = "i" ] ; then # installer script
-    echo /usr/local/bin/${name} install
+    /usr/local/bin/${name} install
   fi
 }
 ####################################################################################
