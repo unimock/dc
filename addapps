@@ -118,6 +118,11 @@ _install() {
     rm $x
   fi
   rm $FI
+
+        if [ "$type" = "i" ] ; then # installer script
+    echo /usr/local/bin/${name} install
+  fi
+echo "soso"
 }
 ####################################################################################
 _remove() {
@@ -223,10 +228,6 @@ while read -r i ; do
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
     _install "$type" "$name" "$url"
-      if [ "$type" = "i" ] ; then # installer script
-    echo /usr/local/bin/${name} install
-  fi
-
     exit 0
   fi
  
