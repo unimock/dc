@@ -259,7 +259,7 @@ for node in $list ; do
 
   if [ "$state" = "off" ] ; then
     dstate="⏰"   # node not disabled in node.yml
-  elif [ "$state" = "" ]
+  elif [ "$state" = "" ] ; then
     # state="", d.h. node nicht erreichbar
     dstate="❓"
     return_code=1
