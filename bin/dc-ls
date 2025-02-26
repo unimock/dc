@@ -256,7 +256,17 @@ for node in $list ; do
   #dstate="⏰"
   #dstate="❓"
   dstate="??"
-  if [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
+
+  if [ "$state" = "off" ] ; then
+    dstate="⏰"   # node not disabled in node.yml
+  elif [ "$state" = "" ]
+    # state="", d.h. node nicht erreichbar
+    dstate="❓"
+    return_code=1
+  elif [ "$state" != "$type" ] ; then
+    dstate="❌"
+    return_code=1
+  elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     dstate="✅"
     if [ "$size" != "" ] ; then
       if [ $size -gt 89 ] ; then
@@ -267,17 +277,7 @@ for node in $list ; do
         return_code=1
       fi
     fi
-  elif [ "$state" = "ping" ] ; then
-    # node ist via ping erreichbar, aber stat != type
-    dstate="❌"
-    return_code=1
-  elif [ "$state" = "off" ] ; then
-    dstate="⏰"
-  else
-    # state="", d.h. node nicht erreichbar
-    dstate="❓"
-    return_code=1
-  fi
+  fi  
   #
   # Ausgabe
   #
