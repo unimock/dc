@@ -263,7 +263,7 @@ for node in $list ; do
     # state="", d.h. node nicht erreichbar
     dstate="❓"
     return_code=1
-  elif [ "$state" != "$type" ] ; then
+  elif [ "$state" != "$typ" ] ; then
     dstate="❌"
     return_code=1
   elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
