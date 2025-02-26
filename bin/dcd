@@ -5,11 +5,12 @@ if [ ! -f ./dcd.list ] ; then
 fi
 
 if [ "$1" = "pull" ] ; then
+  HNAME=$(hostname)
   dc data mount
-  rm -rvf ./dcd
+  rm -rvf ./dcd.${HNAME}
   list=$(cat dcd.list)
   for i in $list ; do
-    ( cd data ; rsync -Rav $i ../dcd)
+    ( cd data ; rsync -Rav $i ../dcd.${HNAME})
   done
   dc data umount
 fi
