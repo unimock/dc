@@ -1,0 +1,69 @@
+#!/bin/bash
+
+show_help()
+{
+  echo ""
+  echo "usage: `basename $0` <content-directory> [selfextractor-file]"
+  echo ""
+  echo "example:"
+  echo ""
+  echo "`basename $0` ./hugo  # create directory and a template installer script."
+  echo ""
+  echo "# copy desired content to the ./hugo directory and modify installer script:"
+  echo "vi ./hugo/installer"
+  echo ""
+  echo "`basename $0` ./hugo # re-create installable selfextractor file: ./hugo.sh"
+  echo "#or:"
+  echo "`basename $0` ./hugo /tmp/my-selfextractor.sh"
+  echo ""
+}
+
+if [ "$1" = "" ] ; then
+  show_help
+  exit 0
+fi
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
+    show_help
+    exit 0
+    ;;
+  -v|--version)
+    if [ -f /opt/dc/VERSION ] ; then
+      sudo cat /opt/dc/VERSION
+    else
+      echo ""
+    fi
+    exit 0
+    ;;
+  
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+if [ "$1" = "remove" ] ; then
+  echo "calling $1"
+  #sudo apt-get purge -y mde-base
+  #sudo rm -f /etc/apt/sources.list.d/mde.list*
+  #sudo rm -f /etc/apt/keyrings/mde.gpg
+fi
+
+if [ "$1" = "install" ] ; then
+  echo "calling $1"
+  #sudo mkdir -p /etc/apt/keyrings/
+  #sudo rm -f /etc/apt/keyrings/mde.gpg
+  #wget -O - http://mde.gate-7.de/apt/g7-apt-key | sudo gpg --dearmor -o /etc/apt/keyrings/mde.gpg
+  #echo  "deb [signed-by=/etc/apt/keyrings/mde.gpg] https://mde.gate-7.de/apt mde main" | sudo tee /etc/apt/sources.list.d/mde.list
+  #sudo apt-get update
+  #sudo apt-get install -y mde-base
+fi
+exit 0
