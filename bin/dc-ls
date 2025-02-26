@@ -285,6 +285,6 @@ for node in $list ; do
   if [ "${insp_last_inspect}" != "" ] ; then
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
-  printf "$MASK" "${dstate}" "${node}" "$state" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  printf "$MASK" "${dstate}" "${node}" "${state}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
 exit $return_code
