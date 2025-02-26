@@ -266,6 +266,8 @@ for node in $list ; do
   elif [ "$state" != "$typ" ] ; then
     dstate="❌"
     return_code=1
+  elif [ "$state" = "ping" ] ; then
+    dstate="✅"
   elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     dstate="✅"
     if [ "$size" != "" ] ; then
