@@ -52,9 +52,6 @@ while true ; do
 done
 if [ "$1" = "remove" ] ; then
   echo "calling $1"
-  #sudo apt-get purge -y mde-base
-  #sudo rm -f /etc/apt/sources.list.d/mde.list*
-  #sudo rm -f /etc/apt/keyrings/mde.gpg
 fi
 
 if [ "$1" = "install" ] ; then
@@ -62,12 +59,10 @@ if [ "$1" = "install" ] ; then
     # dc already installed
     (cd /opt/dc ; git pull)
     dc install
+  else
+    git clone https://github.com/unimock/dc.git /opt/dc
+    /opt/dc/bin/dc-install --force
+    /opt/dc/helper/install/docker
   fi
-  #sudo mkdir -p /etc/apt/keyrings/
-  #sudo rm -f /etc/apt/keyrings/mde.gpg
-  #wget -O - http://mde.gate-7.de/apt/g7-apt-key | sudo gpg --dearmor -o /etc/apt/keyrings/mde.gpg
-  #echo  "deb [signed-by=/etc/apt/keyrings/mde.gpg] https://mde.gate-7.de/apt mde main" | sudo tee /etc/apt/sources.list.d/mde.list
-  #sudo apt-get update
-  #sudo apt-get install -y mde-base
 fi
 exit 0
