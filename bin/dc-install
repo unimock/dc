@@ -86,9 +86,7 @@ _help() {
   echo 'source <(/opt/dc/bin/dc completion) #dc-install' >> $FI
   FI=${HOME}/.ssh/config
   echo "$IAM: modify <$FI>..."
-  if [ ! -f $FI ] ; then
-    printf "#\n" > $FI
-  fi
+  touch $FI
   sed -i '/#dc-install/d' $FI
   if [ ! -s $FI ] ; then # not empty
     sed -i '1s|^|Include '${HOME}'/.dc/var/ssh/config/* #dc-install\n|' $FI
