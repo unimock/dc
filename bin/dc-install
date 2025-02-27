@@ -77,7 +77,7 @@ _help() {
   echo "$IAM: modify <$FI>..."
   touch $FI
   sed -i '/#dc-install/d' $FI        
-  sed -i '1 i\source ${HOME}/.dc/etc/config #dc-install'     $FI
+  sed -i '1 i\source ${HOME}/.dc/etc/config #dc-install' $FI
   sed -i '1 i\export PATH=/opt/dc/bin:$PATH #dc-install' $FI
   FI=${HOME}/.bash_aliases
   echo "$IAM: modify <$FI>..."
@@ -88,11 +88,7 @@ _help() {
   echo "$IAM: modify <$FI>..."
   touch $FI
   sed -i '/#dc-install/d' $FI
-  if [ ! -s $FI ] ; then # not empty
-    sed -i '1s|^|Include '${HOME}'/.dc/var/ssh/config/* #dc-install\n|' $FI
-  else
-    echo "Include ${HOME}/.dc/var/ssh/config/* #dc-install" >> $FI
-  fi
+  sed -i '1 i\Include '${HOME}'/.dc/var/ssh/config/* #dc-install' $FI
   # install additional apt packages
   for p in ${APT_PACKAGES} ; do
     dpkg -s $p >/dev/null 2>&1
