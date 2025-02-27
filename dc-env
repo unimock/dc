@@ -33,7 +33,7 @@ while true ; do
     ;;
   -v|--version)
     if [ -f /opt/dc/VERSION ] ; then
-      sudo cat /opt/dc/VERSION
+      cat /opt/dc/VERSION
     else
       echo ""
     fi
@@ -58,7 +58,11 @@ if [ "$1" = "remove" ] ; then
 fi
 
 if [ "$1" = "install" ] ; then
-  echo "calling $1"
+  if [ -f /opt/dc/VERSION ] ; then
+    # dc already installed
+    (cd /opt/dc ; git pull)
+    dc install
+  fi
   #sudo mkdir -p /etc/apt/keyrings/
   #sudo rm -f /etc/apt/keyrings/mde.gpg
   #wget -O - http://mde.gate-7.de/apt/g7-apt-key | sudo gpg --dearmor -o /etc/apt/keyrings/mde.gpg
