@@ -65,14 +65,13 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   mkdir -p  ${MDE_DC_LOG_DIR}/$JOB_NAME
   mail_to=""
   mail_subject=""
-
   while read line ; do
     ifs=$IFS ; IFS=":" ; A=($line) ; IFS=$ifs
     echo "execute: <${A[0]}> <${A[1]}> <${A[2]}> <${A[3]}>"
     if [ "${A[0]}" = "cmd" ] ; then
-       echo "#"            >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
-       echo "# ${A[1]} :"  >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
-       echo "#"            >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
+       echo ""            >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
+       echo "### ${A[1]} :"  >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
+       echo ""            >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
        bash -c "${A[1]}"   >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1 </dev/null
     elif [ "${A[0]}" = "job" ] ; then
        A[1]=$( echo ${A[1]} | xargs)  # remove blanks
@@ -139,16 +138,21 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   done
   echo "checks=$checks errors=$errors"
   rm -f $FI
-  echo "#"                                     >> $FI
-  echo "# job results:"                        >> $FI
-  echo "#"                                     >> $FI
+  printf "\n"                                 >> $FI
+  printf "# batch $JOB_NAME report\n"         >> $FI
+  printf "\n"                                 >> $FI
+  printf "## job results:\n"                  >> $FI
+  printf "\n"                                 >> $FI
   E_FI=""
+  MASK="|%2s|%-25s|%8s|%8s|%-8s|\n"
+  printf ${MASK} "  " "batch job                " "start   " "end     " "duration" | tee -a $FI
+  printf ${MASK} "--" "-------------------------" "--------" "--------" "--------" | tee -a $FI
   for ((idx=0; idx<${checks}; ++idx)); do
     sym="❌"
     if [ "${R_RESULT[idx]}" = "OK" ] ; then
       sym="✅"
     fi
-    printf " %s %-5s %-25s  %s %s (%s)\n" "$sym" ${R_RESULT[idx]}  ${R_FILE[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
+    printf "${MASK}" "$sym" ${R_FILE[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
     E_FI="${E_FI} ${MDE_DC_LOG_DIR}/$JOB_NAME/${R_FILE[$idx]}"
   done
   if [ -f ${MDE_DC_LOG_DIR}/$JOB_NAME/body ] ; then 
@@ -177,13 +181,26 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     auth=""
     if [ "$mail_smtp_user" != "" ] ; then
       auth="  -au $mail_smtp_user -ap $mail_smtp_pass "
-    fi 
-    swaks --to $mail_to --from $mail_sender \
-          -s   $mail_smtp_host \
-          -tlso $auth \
-          --header "Subject: $subject" \
-          --attach-type "text/plain" --attach-body @$FI \
-          ${attachments} -S 2
+    fi
+    # check if pandoc is installed
+    #if [ "$(which pandoc)" != "" ] ; then
+    #  tfile=$(mktemp)
+    #  pandoc -f markdown -t html5 $FI -o ${tfile}
+    #  swaks --to $mail_to --from $mail_sender \
+    #        -s   $mail_smtp_host \
+    #        -tlso $auth \
+    #        --header "Subject: $subject" \
+    #        --attach-type "text/html" --attach-body @${tfile} \
+    #        ${attachments} -S 2
+    #  rm ${tfile}
+    #else
+      swaks --to $mail_to --from $mail_sender \
+            -s   $mail_smtp_host \
+            -tlso $auth \
+            --header "Subject: $subject" \
+            --attach-type "text/markdown" --attach-body @$FI \
+            ${attachments} -S 2
+    #fi
   fi
   exit 0
 fi

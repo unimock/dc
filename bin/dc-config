@@ -375,19 +375,22 @@ if [ "$CMD" = "show"  ] ; then
 fi  
 
 if [ "$CMD" = "check" ] ; then
-  echo " ✅ dc version: $( cat /opt/dc/VERSION)"
-  echo " ✅ last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
+  MASK="|%s|%-80s|\n"
+  printf $MASK "  " "configuration issues"
+  printf $MASK "--" "--------------------------------------------------------------------------------"
+  printf $MASK "✅" "dc version: $( cat /opt/dc/VERSION)"
+  printf $MASK "✅" "last modification of ${MDE_DC_YAML} <$(date -r ${MDE_DC_YAML} "+%Y-%m-%d %H:%M:%S")>"
   grep "Include $HOME/.dc/var/ssh/config/\*"  ~/.ssh/config >/dev/null 2>&1
   if [ "$?" != "0" ] ; then
-    echo " ❌ missing ssh config dir: <Include $HOME/.dc/var/ssh/config/\*> in ~/.ssh/config"
+    printf $MASK "❌" "missing ssh config dir: <Include $HOME/.dc/var/ssh/config/\*> in ~/.ssh/config"
   fi
   nodes=$( dc-yq  '.apps.*.dc.home.[].node'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $nodes ; do
     res=$(  dc-yq '.nodes.'$h'.state' ${MDE_DC_YAML} ) 
     if [ "$res" = "null" ] ; then
-      echo " ❌ missing node definition \".nodes.$h.state:\" in <${MDE_DC_YAML}>"
+      printf $MASK "❌" "missing node definition \".nodes.$h.state:\" in <${MDE_DC_YAML}>"
     elif [ "$res" != "active" ] ; then
-      echo " 💡 \".nodes.$h.state:\" != active"
+      printf $MASK "💡" "\".nodes.$h.state:\" != active"
     fi
   done
 
@@ -402,30 +405,29 @@ if [ "$CMD" = "check" ] ; then
     #
     anz=$( dc-yq '.apps' ${MDE_DC_YAML} | grep "^${p}:"  | wc -l)
     if [ "$anz" != "1" ] ; then
-      echo " ❌ app name [$p] not unique"
+      printf $MASK "❌" "app name [$p] not unique"
     fi
     #
     # check if app name overrules (mailcowdockerized)
     #
     app_name=$( dc-yq '.apps.'$p'.dc.app_name' ${MDE_DC_YAML} )
     if [ "$app_name" != "null" -a "$app_name" != "" ] ; then
-      echo " 💡 [$p] app name overrule <app_name: $app_name> in $cfg"
+      printf $MASK "💡" "[$p] app name overrule <app_name: $app_name> in $cfg"
     fi
 
     vol_list=$(dc-yq '.apps.'$p'.compose.services.*.volumes.[].source' ${MDE_DC_YAML} | grep -v "^/etc/"  | grep -v "^/var/" | grep -v "^/lib/" | sort | uniq )
 
     for h in "${!p_on_nodes[@]}"; do
       if [ "${s_on_nodes[$h]}" != "active" ] ; then
-         echo " 💡 [$p] home.[$h].state: ${s_on_nodes[$h]} != active in $cfg"
+         printf $MASK "💡" "[$p] home.[$h].state: ${s_on_nodes[$h]} != active in $cfg"
       fi
       ssh ${p_on_nodes[$h]} exit 0 >/dev/null 2>&1
       if [ "$?" != "0" ] ; then
-        echo " ❌ [$p] error node <${p_on_nodes[$h]}> not reachable, so volume check not possible"
+        printf $MASK "❌" "[$p] error node <${p_on_nodes[$h]}> not reachable, so volume check not possible"
       else
         # do volume check
         if [ "$ignore_vol_check" != "true" ] ; then
           for vol in $vol_list ; do
-            #echo "  $vol" 
             if [[ "$vol" == "${MDE_DC_VOL_Logs}/$p"         || \
                   "$vol" == "${MDE_DC_VOL_Logs}/$p/"*       || \
                   "$vol" == "${MDE_DC_VOL_Apps}/$p"     || \
@@ -438,14 +440,14 @@ if [ "$CMD" = "check" ] ; then
               # check if $vol exists on node
               ssh ${p_on_nodes[$h]} ls -d $vol >/dev/null 2>&1
               if [ "$?" != "0" ] ; then
-                echo " ❌ [$p] missing volume directory <$vol> on node <${p_on_nodes[$h]}>"
+                printf $MASK "❌" "[$p] missing volume directory <$vol> on node <${p_on_nodes[$h]}>"
               fi
             else
-              echo " 💡 [$p] volume config <$vol> in $cfg" 
+              printf $MASK "💡" "[$p] volume config <$vol> in $cfg" 
             fi
           done
         else
-          echo " 💡 [$p] ignore volume check <ignore_volume_check: true> in $cfg"
+          printf $MASK "💡" "[$p] ignore volume check <ignore_volume_check: true> in $cfg"
         fi
       fi
     done

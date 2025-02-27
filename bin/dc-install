@@ -88,7 +88,8 @@ _help() {
   echo "$IAM: modify <$FI>..."
   touch $FI
   sed -i '/#dc-install/d' $FI
-  echo "Include ${HOME}/.dc/var/ssh/config/* #dc-install" >> $FI
+  sed -i '1s|^|Include '${HOME}'/.dc/var/ssh/config/* #dc-install\n|' $FI
+  #echo "Include ${HOME}/.dc/var/ssh/config/* #dc-install" >> $FI
 
   # install additional apt packages
   for p in ${APT_PACKAGES} ; do
