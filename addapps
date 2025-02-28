@@ -25,7 +25,7 @@ a;mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
 a;hcloud;Hetzner-Cloud CLI;1.50.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 a;http-here;http-here;;;https://github.com/western/http-here/releases/download/v1.11.4/http-here.gz
 i;mde-env;mde-base installer;0.0.3;--version;https://mde.gate-7.de/addapps/mde-env
-i;dc-env;dc installer;1.14.1;--version;https://mde.gate-7.de/addapps/dc-env
+i;dc-env;dc installer;1.15.0;--version;https://mde.gate-7.de/addapps/dc-env
 "
 ####################################################################################
 addapps_spinner() {
@@ -238,7 +238,11 @@ while read -r i ; do
   fi
   if [[ "$1" == ".getver" && "$name" != "addapps" ]] ; then
     if [ -f ./$name ] ; then
-      eval $(grep "^VERSION=" ./$name 2>/dev/null)
+      if [ "$name" = "dc-env" ] ; then
+        VERSION=$(cat /opt/dc/VERSION)
+      else
+        eval $(grep "^VERSION=" ./$name 2>/dev/null)
+      fi
       echo "$name : $ver -> $VERSION"
       sed -i "/^.;${name};/s/$ver/$VERSION/g" ./addapps
     fi
