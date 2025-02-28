@@ -11,7 +11,7 @@ while [ "$#" -gt 0 ]; do
     --state) opt_state="$2" ; shift 2 ;;
     -n)      on_node="$2"   ; shift 2 ;;
     -g)      group="$2"     ; shift 2 ;;
-    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ;;
   esac
 done
 eval set -- $CURROPT

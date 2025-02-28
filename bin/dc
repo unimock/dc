@@ -158,7 +158,7 @@ for i in $wrapper_list ; do
     elif [ "$i" = "ls" -a "$1" = "addapps" ] ; then
       addapps ls
     else
-      /opt/dc/bin/dc-$i $@
+      /opt/dc/bin/dc-$i "$@"
     fi
     exit $?
   fi  
@@ -176,7 +176,7 @@ while [ "$#" -gt 0 ]; do
     -i[a,0-9]) HIDX="${1#-i}" ; shift 1 ;; 
     -c)  CONF="$2"          ; shift 2 ;;
     -d)  PROJECT_DIR="$2"   ; shift 2 ;;
-    *)   CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ;;
   esac
 done  
 eval set -- $CURROPT

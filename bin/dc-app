@@ -21,7 +21,7 @@ CURROPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     -v) verbose="1"               ; shift 1 ;;
-    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ;;
   esac
 done
 eval set -- $CURROPT

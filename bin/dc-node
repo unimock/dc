@@ -22,7 +22,7 @@ while [ "$#" -gt 0 ]; do
     -t) opt_type="$2"             ; shift 2 ;;
     -a) opt_app="$2"          ; shift 2 ;;
     -v) shift ; verbose="1" ;;
-    *)  CURROPT="$CURROPT \"$1\"" ; shift 1 ;;
+    *)  CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ;;
   esac
 done
 eval set -- $CURROPT
@@ -76,11 +76,11 @@ shift
 if [ "$CMD" = "config"  ] ; then
   cmd=$1
   shift
-  dc-config $cmd node ${hlist} $@
+  dc-config $cmd node ${hlist} "$@"
   exit $?
 fi
 if [ "$CMD" = "vserver" ] ; then
-  dc-vserver ${hlist} $@
+  dc-vserver ${hlist} "$@"
   exit $?
 fi
 

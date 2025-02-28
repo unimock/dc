@@ -65,7 +65,7 @@ while [ "$#" -gt 0 ]; do
     -i) SIDX=${2%:*} ; TIDX=${2#*:} ; shift 2 ;;
     -n) SHST=${2%:*} ; THST=${2#*:} ; shift 2 ;;
     --images) with_images=1;          shift 1 ;;
-    *)  CURROPT="$CURROPT \"$1\"" ;   shift 1 ;;
+    *)  CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ;;
   esac
 done
 eval set -- $CURROPT

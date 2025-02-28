@@ -350,7 +350,6 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
     exit 1
   fi
   name="$1" ; shift
-  rest=$@
   if [ "$TYP" = "node" ] ; then
     config_dir=$( dc-yq '.nodes.'$name'.node_dir' ${MDE_DC_YAML}  )
     file="node.yml"
@@ -365,9 +364,9 @@ if [ "$CMD" = "yq" -o  "$CMD" = "edit"  ] ; then
   if [ "$CMD" = "edit" ] ; then
     vi $config_dir
   else
-    echo "currently not suppoprted!!!!"
+    dc-yq "$@" ${config_dir}/${file}
   fi
-  exit $?  
+  exit $?
 fi
 
 if [ "$CMD" = "show"  ] ; then
