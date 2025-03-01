@@ -13,7 +13,7 @@ hcloud:
   # dc-hcloud server-type list
   type: cx11
   # dc-hcloud image list
-  image: ubuntu-22.04
+  image: ubuntu-24.04
   #dc-hcloud location list
   location: fsn1
   #dc-hcloud ssh-key list
@@ -34,7 +34,6 @@ TEMPL="/tmp/.hcloud-amd64.yml"
 if [ "$1" = "" -o "$1" = "create" ] ; then
   dc node $HOST config create test.intra dock  # create new node definition with hostname test.intra and type "dc"
   dc node $HOST vserver assign $VSERVER $TEMPL # assign virtual server to node
-  #dc node $HOST vserver rebuild               # only useful for hetznercloud
   dc node $HOST vserver create                 # create assigned hetzner cloud server
   dc node $HOST state                          # check if node returns dc
   ssh $HOST git clone https://github.com/unimock/dc.git /opt/dc
@@ -48,18 +47,19 @@ if [ "$1" = "" -o "$1" = "test" ] ; then
   ssh $HOST dc node $SLAVE config create $IP dc
   ssh $HOST dc ls nodes --inspect
   ssh $HOST dc app hello-world config create $SLAVE hello-world /root/dc/apps/hello-world
-  ssh $HOST dc -a hello-world up
+  ssh $HOST dc app hello-world up
   ssh $HOST dc ls apps --inspect
   PORT=$(ssh $HOST dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
   sleep 1
   netcat -vz $IP $PORT
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  ssh $HOST dc -a hello-world rm                 # stop and remove hello-world app services
-  ssh $HOST dc app hello-world config delete # remove hello-world app definition
-  ssh $HOST dc node $SLAVE config delete         # delete node config definition
-  dc node $HOST vserver delete                   # delete assigned Hetzner cloud server
-  dc node $HOST config  delete                   # delete node definition
+  ssh $HOST dc app hello-world rm              # stop and remove hello-world app services
+  ssh $HOST dc app hello-world config delete   # remove hello-world app definition
+  ssh $HOST dc node $SLAVE config delete       # delete node config definition
+  dc node $HOST vserver delete                 # delete assigned Hetzner cloud server
+  dc node $HOST config  delete                 # delete node definition
+  rm -f $TEMPL
   echo "error_detect=$error_detect"
 fi
 exit $error_detect
