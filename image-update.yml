@@ -18,7 +18,7 @@ general:
   - unimock/share-sshd-docker:1.1.0
   - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
-  - ghcr.io/tale/headplane:0.5.5
+  - ghcr.io/tale/headplane:0.5.7
   - headscale/headscale:0.25.1
 g7:
   - psitrax/psitransfer:v2.2.0
