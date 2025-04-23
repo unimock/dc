@@ -44,7 +44,7 @@ hc:
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2024.12
   - unimock/ow-mqtt:0.1.0
-  - grafana/grafana:11.6.0
+  - grafana/grafana:11.6.1
   - nodered/node-red:4.0.9
   - koenkk/zigbee2mqtt:2.2.1
   - influxdb:2.7.11-alpine
