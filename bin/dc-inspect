@@ -2,7 +2,7 @@
 . /opt/dc/funcs/global
 . /opt/dc/funcs/script_funcs
 
-DISK_USAGE_LIMIT=90 # error if >40%
+DISK_USAGE_LIMIT=98 # error if >95%
 
 CURROPT=""
 while [ "$#" -gt 0 ]; do

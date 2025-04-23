@@ -271,10 +271,10 @@ for node in $list ; do
   elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     dstate="✅"
     if [ "$size" != "" ] ; then
-      if [ $size -gt 89 ] ; then
+      if [ $size -ge 90 ] ; then
         dstate="💡"
       fi
-      if [ $size -gt 97 ] ; then
+      if [ $size -ge 98 ] ; then
         dstate="❌"
         return_code=1
       fi
