@@ -115,7 +115,8 @@ _help() {
     if [[ "$version" != "$ver" ]] ; then
       echo "dc install: external <$name>"
       FI=$(mktemp)
-      wget --no-check-certificate -nv -O $FI $url
+      wget -nv -O $FI $url
+      #wget --no-check-certificate -nv -O $FI $url
       rm -f /opt/dc/external/${name}
       if [[ $url == *".tar.gz" ]] ; then
         tar -C /opt/dc/external/ -xzf $FI
