@@ -42,7 +42,7 @@ atk:
   - jacobalberty/unifi:v8
 hc:
   - smeagolworms4/mqtt-explorer:browser-1.0.3
-  - homeassistant/home-assistant:2024.12
+  - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:11.6.1
   - nodered/node-red:4.0.9
