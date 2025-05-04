@@ -28,7 +28,7 @@ g7:
   - docker:27.5.1-dind-alpine3.21
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
   - ghcr.io/hoellen/nextcloud:30.0.6
-  - freshrss/freshrss:1.26.0-alpine
+  - freshrss/freshrss:1.26.2-alpine
   - vaultwarden/server:1.33.2-alpine
   - drone/drone:2.25.0
   - unimock/mailmonit-docker:1.0.0
@@ -37,7 +37,7 @@ g7:
   - gitea/act_runner:0.2.11
   - coredns/coredns:1.12.1
   - ghcr.io/wg-easy/wg-easy:15.0.0-beta.12
-  - ghcr.io/pocket-id/pocket-id:v0.51.0
+  - ghcr.io/pocket-id/pocket-id:v0.51.1
 atk:
   - jacobalberty/unifi:v8
 hc:
@@ -46,7 +46,7 @@ hc:
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:11.6.1
   - nodered/node-red:4.0.9
-  - koenkk/zigbee2mqtt:2.2.1
+  - koenkk/zigbee2mqtt:2.3.0
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
