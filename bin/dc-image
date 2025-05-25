@@ -138,6 +138,10 @@ if [ "${1}" = "update" ] ; then
   app_dir=$(dc-yq '.apps.'$app'.app_dir')
 
   ( cd ${app_dir} ; dc docker pull ${image} )
+  if [ "$?" != "0" ] ; then
+    echo "error: downloading image <${image}>!!!"
+    exit 1
+  fi
   name=${image%:*}
   version=${image#*:}
   services=$(dc-yq '(.services.* | path )[-1]' $yaml_file )
