@@ -37,7 +37,7 @@ g7:
   - gitea/act_runner:0.2.11
   - coredns/coredns:1.12.1
   - ghcr.io/wg-easy/wg-easy:15.0.0-beta.12
-  - ghcr.io/pocket-id/pocket-id:v0.53.0
+  - ghcr.io/pocket-id/pocket-id:v1.0.0
 atk:
   - jacobalberty/unifi:v8
 hc:
