@@ -18,8 +18,8 @@ general:
   - unimock/share-sshd-docker:1.1.0
   - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
-  - ghcr.io/tale/headplane:0.5.10
-  - headscale/headscale:0.25.1
+  - ghcr.io/tale/headplane:0.6.0
+  - headscale/headscale:0.26.0
 g7:
   - psitrax/psitransfer:v2.2.0
   - louislam/uptime-kuma:2.0.0-beta.1
@@ -29,7 +29,7 @@ g7:
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
   - ghcr.io/hoellen/nextcloud:30.0.6
   - freshrss/freshrss:1.26.2-alpine
-  - vaultwarden/server:1.33.2-alpine
+  - vaultwarden/server:1.34.1-alpine
   - drone/drone:2.25.0
   - unimock/mailmonit-docker:1.0.0
   - unimock/prg-docker:1.0.3
