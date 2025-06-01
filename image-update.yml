@@ -46,7 +46,7 @@ hc:
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:12.0.1
   - nodered/node-red:4.0.9
-  - koenkk/zigbee2mqtt:2.3.0
+  - koenkk/zigbee2mqtt:2.4.0
   - influxdb:2.7.12-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
