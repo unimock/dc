@@ -1,6 +1,6 @@
 general:
   - traefik:v3.4.1
-  - gitea/gitea:1.23.8
+  - gitea/gitea:1.24.0
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.76
   - registry:2.8.3
@@ -19,7 +19,7 @@ general:
   - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.0
-  - headscale/headscale:0.26.0
+  - headscale/headscale:0.26.1
 g7:
   - psitrax/psitransfer:v2.2.0
   - louislam/uptime-kuma:2.0.0-beta.3
