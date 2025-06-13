@@ -22,7 +22,7 @@ general:
   - headscale/headscale:0.26.0
 g7:
   - psitrax/psitransfer:v2.2.0
-  - louislam/uptime-kuma:2.0.0-beta.1
+  - louislam/uptime-kuma:2.0.0-beta.3
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:8.3
   - docker:27.5.1-dind-alpine3.21
@@ -36,7 +36,7 @@ g7:
   - unimock/aptrep-docker:1.1.0
   - gitea/act_runner:0.2.11
   - coredns/coredns:1.12.1
-  - ghcr.io/wg-easy/wg-easy:15.0.0-beta.12
+  - ghcr.io/wg-easy/wg-easy:15.0.0
   - ghcr.io/pocket-id/pocket-id:v1.1.0
 atk:
   - jacobalberty/unifi:v8
