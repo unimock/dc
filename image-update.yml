@@ -35,7 +35,7 @@ g7:
   - unimock/prg-docker:1.0.3
   - unimock/aptrep-docker:1.1.0
   - gitea/act_runner:0.2.11
-  - coredns/coredns:1.12.1
+  - coredns/coredns:1.12.2
   - ghcr.io/wg-easy/wg-easy:15.0.0
   - ghcr.io/pocket-id/pocket-id:v1.3.1
 atk:
