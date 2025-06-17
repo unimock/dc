@@ -99,7 +99,7 @@ _dc() {
     COMPREPLY=( $(compgen -W "-t $list" -- "$2") )
   elif [[  "${COMP_WORDS[1]}" == "node"  ]] ; then 
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
-      COMPREPLY=( $(compgen -W "vserver config ports state upgrade update nrc reboot large_files dir_entries cmd image prune list check pull start stop rm rmup up ps ip" -- "$2") )
+      COMPREPLY=( $(compgen -W "vserver config ports state upgrade upgrade-reboot update nrc reboot large_files dir_entries cmd image prune list check pull start stop rm rmup up ps ip" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "vserver" ]] ; then
       # dc node <name> vserver
       if [[ "$COMP_CWORD" == "4" ]] ; then

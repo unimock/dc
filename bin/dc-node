@@ -41,7 +41,8 @@ if [ "$1" = "" ] ; then
   echo "                        #   off .... not pingable and node.state==standby"
   echo "    ip                  # show fqdn of node"
   echo "    ports               # show ports"
-  echo "    upgrade             # do dist-upgrade"
+  echo "    upgrade             # autoremove, dist-upgrade"
+  echo "    upgrade-reboot      # autoremove, dist-upgrade, reboot"
   echo "    update              # update docker-ce"
   echo "    nrc [-a <app>]  # number of all running containers or app container on node"
   echo "    reboot              # reboot node"
@@ -226,22 +227,15 @@ EOF
     echo "# Active containers on <$HOST> before=$BCOUNT now=$NCOUNT "
     echo "#"
   fi
-  if [ "$CMD" = "upgrade" ] ; then
+  if [ "$CMD" = "upgrade" -o "$CMD" = "upgrade-reboot" ] ; then
     BCOUNT=$( dc-node $HOST nrc )
-    echo "#"
-    echo "# Active containers on <$HOST> = $BCOUNT"
-    echo "#"
     dc-node $HOST check
-    #_ask "Start autoremove?"
     ssh $HOST apt-get -y autoremove
-    #_ask "Start apt-get update?"
     ssh $HOST apt-get update
-    #_ask "Start dist-uprade?"
     ssh $HOST apt-get -y dist-upgrade
-    #_ask "Check, if all containers are started!"
-    #_ask "Show running containers!"
-    #_ask "reboot?"
-    dc-node $HOST reboot wait dock
+    if [ "$CMD" = "upgrade-reboot" ] ; then
+      dc-node $HOST reboot wait dock
+    fi
     NCOUNT=$( dc-node $HOST nrc )
     dc-node $HOST check
     echo "#"
