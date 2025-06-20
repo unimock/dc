@@ -47,7 +47,7 @@ hc:
   - grafana/grafana:12.0.2
   - nodered/node-red:4.0.9
   - koenkk/zigbee2mqtt:2.4.0
-  - influxdb:2.7.12-alpine
+  - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
   - eclipse-mosquitto:2.0.21
