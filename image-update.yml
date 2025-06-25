@@ -39,6 +39,7 @@ g7:
   - ghcr.io/wg-easy/wg-easy:15.0.0
   - ghcr.io/pocket-id/pocket-id:v1.4.1
   - jamesread/olivetin:2025.6.22
+  - ghcr.io/gethomepage/homepage:v1.3.2
 atk:
   - jacobalberty/unifi:v8
 hc:
