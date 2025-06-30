@@ -1,6 +1,7 @@
 
 _sf_error=0
 _sf_start=0
+_sf_warning=0
 
 sf_start()
 {
@@ -17,6 +18,14 @@ sf_set_error()
     _sf_error=1
   fi
 }
+sf_set_warning()
+{
+  if [ "$1" != "" ] ; then 
+    _sf_warning=$1
+  else
+    _sf_warning=1
+  fi
+}
 
 sf_end()
 {
@@ -28,7 +37,11 @@ sf_end()
   _sf_duration=$( printf '%dh:%dm:%ds' $(($_sf_secs/3600)) $(($_sf_secs%3600/60)) $(($_sf_secs%60)) ) 
   tim="start=${_sf_start} end=${_sf_end} duration=${_sf_duration}"
   if [ "${_sf_error}" = "0" ] ; then
-    echo "#result=OK $tim"
+    if [ "${_sf_warning}" = "0" ] ; then
+      echo "#result=OK $tim"
+    else
+      echo "#result=WARNING $tim"
+    fi
   else
     echo "#result=ERROR $tim"
   fi

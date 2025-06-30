@@ -69,10 +69,12 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     ifs=$IFS ; IFS=":" ; A=($line) ; IFS=$ifs
     echo "execute: <${A[0]}> <${A[1]}> <${A[2]}> <${A[3]}>"
     if [ "${A[0]}" = "cmd" ] ; then
-       echo ""            >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
+       echo ""               >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
        echo "### ${A[1]} :"  >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
-       echo ""            >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
-       bash -c "${A[1]}"   >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1 </dev/null
+       echo ""               >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
+       bash -c "${A[1]}"     >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1 </dev/null
+       rc=$?
+       echo "return-code of cmd =$rc"         >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
     elif [ "${A[0]}" = "job" ] ; then
        A[1]=$( echo ${A[1]} | xargs)  # remove blanks
        if [ "${A[1]}" != "" ] ; then
@@ -93,12 +95,20 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
        if [ "$ret" != "0" ] ; then
          if [ "$ret" = "124" ] ; then
            echo "    error timeout !!!!!!!!!!!!!!!!!!!!!"  >$JOB_LOG  2>&1
-	 fi
-	 if [ "$CMD" = "debug" ] ; then
-	   sf_set_error $ret                            2>&1 | tee -a $JOB_LOG
-	 else
-	   sf_set_error $ret                                >>$JOB_LOG  2>&1
-	 fi
+	       fi
+	       if [ "$CMD" = "debug" ] ; then
+           if [ "$ret" = "255" ] ; then
+             sf_set_warning                             2>&1 | tee -a $JOB_LOG
+           else
+             sf_set_error $ret                          2>&1 | tee -a $JOB_LOG
+           fi 
+	       else
+           if [ "$ret" = "255" ] ; then
+             sf_set_warning                                 >>$JOB_LOG  2>&1
+           else
+	           sf_set_error $ret                              >>$JOB_LOG  2>&1
+          fi
+	       fi
        fi
        if [ "$CMD" = "debug" ] ; then
          sf_end                                         2>&1 | tee -a $JOB_LOG
@@ -116,6 +126,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   FI=${MDE_DC_LOG_DIR}/$JOB_NAME/report
   list=$(ls -tr ${MDE_DC_LOG_DIR}/$JOB_NAME | grep -v body | grep -v report)
   errors=0
+  warnings=0
   checks=0
   for i in $list ; do
     R_FILE[$checks]=$i
@@ -132,11 +143,15 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       R_DURATION[$checks]=${duration}
     fi
     if [ "${R_RESULT[$checks]}" != "OK" ] ; then
-     errors=$(( errors + 1 ))
+      if [ "${R_RESULT[$checks]}" = "WARNING" ] ; then
+        warnings=$(( warnings + 1 ))
+      else
+        errors=$(( errors + 1 ))
+      fi
     fi
     checks=$(( checks +  1 ))
   done
-  echo "checks=$checks errors=$errors"
+  echo "checks=$checks errors=$errors warnings=$warnings"
   rm -f $FI
   printf "\n"                                 >> $FI
   printf "# batch $JOB_NAME report\n"         >> $FI
@@ -151,6 +166,8 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     sym="❌"
     if [ "${R_RESULT[idx]}" = "OK" ] ; then
       sym="✅"
+    elif [ "${R_RESULT[idx]}" = "WARNING" ] ; then
+      sym="💡"
     fi
     printf "${MASK}" "$sym" ${R_FILE[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
     E_FI="${E_FI} ${MDE_DC_LOG_DIR}/$JOB_NAME/${R_FILE[$idx]}"
@@ -170,7 +187,11 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
 
     if [ "$errors" = "0" ] ; then
-      subject="✅ report: ${JOB_NAME}@${cluster_name}"
+      if [ "$warnings" = "0" ] ; then
+        subject="✅ report: ${JOB_NAME}@${cluster_name}"
+      else
+        subject="💡 report: ${JOB_NAME}@${cluster_name}"
+      fi
     else
       subject="❌ report: ${JOB_NAME}@${cluster_name}"
     fi
