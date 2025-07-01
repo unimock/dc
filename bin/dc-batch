@@ -34,20 +34,24 @@ if [ "$CMD" = "create" ] ; then
   mkdir -p ${MDE_DC_LOG_DIR}/$JOB_NAME
   if [ ! -f  ${MDE_DC_BATCH_DIR}/$JOB_NAME.list ] ; then
     cat <<EOF >${MDE_DC_BATCH_DIR}/$JOB_NAME.list
-###################################################################
-# job .... execute command and report via job report mechanism
-# cmd .... execute command and report output in mail body
-# mail ... set recipient mail address for send-report"
+##################################################################################
+# job ... execute command and report via job report mechanism in attachement
+# JOB ... execute command and report via job report and soutput in mail body
+# cmd ... execute command and report output in mail body
+# mail .. set recipient mail address for send-report"
 #
-#mail:<recipient-mail-address>
+# If return codes of commands will be 255, this entries will be marked as warnings
+#
+#mail:<recipient-mail-address>[,<second-address>]
 #
 #cmd: ls /tmp >/tmp/.log                                  # comment
 #
 #job:[job-name]:<timeout>:<command>                       # comment
 #job:          :5s       : tar cvf /xxx/x.tar /root/batch # comment
+#JOB: dc-ls    :1m       : dc ls                          # comment
 #
 # if no <job-name> is given, basename of <command> will be used.
-###################################################################
+##################################################################################
 EOF
     echo "-> configure your batch jobs in ${MDE_DC_BATCH_DIR}/$JOB_NAME.list"
   fi
