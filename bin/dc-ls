@@ -282,6 +282,7 @@ for node in $list ; do
     if [ "$size" != "" ] ; then
       if [ $size -ge 90 ] ; then
         dstate="⚠️"
+        return_code=255
       fi
       if [ $size -ge 98 ] ; then
         dstate="❌"
