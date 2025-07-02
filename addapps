@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.8.1"
+VERSION="0.8.2"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -25,7 +25,7 @@ a;mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
 a;hcloud;Hetzner-Cloud CLI;1.51.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 a;http-here;http-here;;;https://github.com/western/http-here/releases/download/v1.14.0/http-here.gz
 i;mde-env;mde-base installer;0.0.3;--version;https://mde.gate-7.de/addapps/mde-env
-i;dc-env;dc installer;1.17.0;--version;https://mde.gate-7.de/addapps/dc-env
+i;dc-env;dc installer;1.17.1;--version;https://mde.gate-7.de/addapps/dc-env
 "
 ####################################################################################
 addapps_spinner() {
