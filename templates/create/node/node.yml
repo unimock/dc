@@ -11,6 +11,11 @@ node:
   fqdn: <hostname_or_ip> 
   # sshd port 
   port: "22"
+  # connection.type=wireguard|intermittently
+  #   wireguard .. .... connetion to node will be established via wireguard
+  #   intermittently .. intermittently (workstations, backup server, mobile phones, ..)
+  connection:
+    type:
   groups:
   desc: ""
   info: ""
