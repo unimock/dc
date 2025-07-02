@@ -185,7 +185,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     if [ "${R_RESULT[idx]}" = "OK" ] ; then
       sym="✅"
     elif [ "${R_RESULT[idx]}" = "WARNING" ] ; then
-      sym="💡"
+      sym="⚠ "
     fi
     printf "${MASK}" "$sym" ${R_FILE[idx]} ${R_RC[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
     E_FI="${E_FI} ${MDE_DC_LOG_DIR}/$JOB_NAME/${R_FILE[$idx]}"
@@ -208,7 +208,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       if [ "$warnings" = "0" ] ; then
         subject="✅ report: ${JOB_NAME}@${cluster_name}"
       else
-        subject="💡 report: ${JOB_NAME}@${cluster_name}"
+        subject="⚠️  report: ${JOB_NAME}@${cluster_name}"
       fi
     else
       subject="❌ report: ${JOB_NAME}@${cluster_name}"

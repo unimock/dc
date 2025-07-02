@@ -156,6 +156,7 @@ for node in $list ; do
   mid=$(   dc-yq '.nodes.'$node'.machine_id' ${MDE_DC_YAML} )
   hname=$( dc-yq '.nodes.'$node'.fqdn  '     ${MDE_DC_YAML} )
   typ=$(   dc-yq '.nodes.'$node'.type  '     ${MDE_DC_YAML} )
+  connection=$( dc-yq '.nodes.'$node'.connection.type' ${MDE_DC_YAML} )
   if  [ "$hname" = "" ] ; then
     hname="$node"
   fi
@@ -255,14 +256,22 @@ for node in $list ; do
   #dstate="❌"
   #dstate="⏰"
   #dstate="❓"
+  #dstate="⛓️‍💥"
+  #dstate="☝️"
+  #dstate="⚠️"
   dstate="??"
 
   if [ "$state" = "off" ] ; then
-    dstate="⏰"   # node not disabled in node.yml
+    dstate="⏰"   # node disabled in node.yml 
   elif [ "$state" = "" ] ; then
     # state="", d.h. node nicht erreichbar
-    dstate="❓"
-    return_code=1
+    if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+      #            node derzeit nicht  
+      dstate="⛓️‍💥"
+    else
+      dstate="❓"
+      return_code=1
+    fi
   elif [ "$state" != "$typ" ] ; then
     dstate="❌"
     return_code=1
@@ -272,7 +281,7 @@ for node in $list ; do
     dstate="✅"
     if [ "$size" != "" ] ; then
       if [ $size -ge 90 ] ; then
-        dstate="💡"
+        dstate="⚠️"
       fi
       if [ $size -ge 98 ] ; then
         dstate="❌"
