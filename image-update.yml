@@ -11,7 +11,7 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.35.0
+  - filebrowser/filebrowser:v2.36.0
   - kanboard/kanboard:v1.2.46
   - unimock/syncthing-user-docker:1.30.0
   - unimock/dotproject-docker:2.8.0-4
@@ -48,7 +48,7 @@ hc:
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:12.0.2
   - nodered/node-red:4.0.9
-  - koenkk/zigbee2mqtt:2.4.0
+  - koenkk/zigbee2mqtt:2.5.1
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
