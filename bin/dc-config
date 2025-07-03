@@ -420,21 +420,26 @@ if [ "$CMD" = "check" ] ; then
       if [ "${s_on_nodes[$h]}" != "active" ] ; then
          printf $MASK "💡" "[$p] home.[$h].state: ${s_on_nodes[$h]} != active in $cfg"
       fi
-      ssh ${p_on_nodes[$h]} exit 0 >/dev/null 2>&1
-      if [ "$?" != "0" ] ; then
-        printf $MASK "❌" "[$p] error node <${p_on_nodes[$h]}> not reachable, so volume check not possible"
+      sstate=$( dc node ${p_on_nodes[$h]} state)
+      if [ "$sstate" = "" ] ; then
+        connection=$( dc-yq '.nodes.'${p_on_nodes[$h]}'.connection.type' ${MDE_DC_YAML} )
+        if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+          printf $MASK "⛓️‍💥" "[$p] node disconnected <${p_on_nodes[$h]}>, so volume check not possible"
+        else
+          printf $MASK "❌" "[$p] error node <${p_on_nodes[$h]}> not reachable, so volume check not possible"
+        fi
       else
         # do volume check
         if [ "$ignore_vol_check" != "true" ] ; then
           for vol in $vol_list ; do
-            if [[ "$vol" == "${MDE_DC_VOL_Logs}/$p"         || \
-                  "$vol" == "${MDE_DC_VOL_Logs}/$p/"*       || \
+            if [[ "$vol" == "${MDE_DC_VOL_Logs}/$p"     || \
+                  "$vol" == "${MDE_DC_VOL_Logs}/$p/"*   || \
                   "$vol" == "${MDE_DC_VOL_Apps}/$p"     || \
                   "$vol" == "${MDE_DC_VOL_Apps}/$p/"*   || \
-                  "$vol" == "${MDE_DC_VOL_Cache}/$p"        || \
-                  "$vol" == "${MDE_DC_VOL_Cache}/$p/"*      || \
-                  "$vol" == "${MDE_DC_VOL_Data}/$p"         || \
-                  "$vol" == "${MDE_DC_VOL_Data}/$p/"*          \
+                  "$vol" == "${MDE_DC_VOL_Cache}/$p"    || \
+                  "$vol" == "${MDE_DC_VOL_Cache}/$p/"*  || \
+                  "$vol" == "${MDE_DC_VOL_Data}/$p"     || \
+                  "$vol" == "${MDE_DC_VOL_Data}/$p/"*      \
                ]] ; then
               # check if $vol exists on node
               ssh ${p_on_nodes[$h]} ls -d $vol >/dev/null 2>&1
