@@ -28,11 +28,14 @@ copy_data()
 {
   service=$1 ; s_node=$2 ; t_node=$3 
 
-  dc-rdc   $s_node rdc exec ls ${MDE_DC_VOL_Data}/$service/* >/dev/null 2>&1 
+  #dc-rdc   $s_node rdc exec ls ${MDE_DC_VOL_Data}/$service/* >/dev/null 2>&1 
+  ssh $s_node "ls ${MDE_DC_VOL_Data}/$service/*" >/dev/null 2>&1
   if [ "$?" = "0" ] ; then
-  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Data}/$service      rdc-${t_node}:${MDE_DC_VOL_Data}/$service     real >/dev/null 2>&1
+    #dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Data}/$service rdc-${t_node}:${MDE_DC_VOL_Data}/$service real >/dev/null 2>&1
+    rsync -azvS --numeric-ids --delete -e "ssh" ${MDE_DC_VOL_Data}/$service ${t_node}:${MDE_DC_VOL_Data}/$service
   fi
-  dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Apps}/$service  rdc-${t_node}:${MDE_DC_VOL_Apps}/$service real 
+  rsync -azvS --numeric-ids --delete -e "ssh" ${MDE_DC_VOL_Apps}/$service ${t_node}:${MDE_DC_VOL_Apps}/$service
+  #dc-rdc   $s_node rdc sync ${MDE_DC_VOL_Apps}/$service  rdc-${t_node}:${MDE_DC_VOL_Apps}/$service real 
   ret=$?
   echo -e "#\n# copy_data from $s_node to $t_node for $service (ret=$ret)\n#"
   if [ "$ret" != "0" ] ; then
@@ -158,7 +161,7 @@ for SERVICE in $app_list ; do
     sync
     copy_data            $SERVICE $S_HOST $T_HOST
     dc_command   unpause $SERVICE $S_HOST
-    # copy remove taget containers
+    # copy remove target containers
     # copy images
     # create target containers
     if [ "$image_mismatch" = "1" ] ; then

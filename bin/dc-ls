@@ -66,14 +66,6 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     main_service=$( dc-yq '.apps.'$p'.dc.main_service'    ${MDE_DC_YAML} )
     p_image=$( dc-yq '.apps.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
     ndc=$(dc-yq '(.apps.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
-    #state="✅"
-    #state="💡"
-    #state="☑ "
-    #state="☐ "
-    #state="s "
-    #state="❌"
-    #state="⏰"
-    #state="❓"
     idx=0
     for h in $p_nodes ; do
       app_node_state=$( dc-yq '.apps.'$p'.dc.home.['$idx'].state' ${MDE_DC_YAML} )
@@ -97,8 +89,14 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
 	          nrc=0
             state="⏰"
           else
-            state="❓"
-            return_code=1
+            #            node derzeit nicht
+            connection=$( dc-yq '.nodes.'$h'.connection.type' ${MDE_DC_YAML} )
+            if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+              state="⛓️‍💥"
+            else
+              state="❓"
+              return_code=1
+            fi
           fi
         fi  
       else

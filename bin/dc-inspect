@@ -57,10 +57,15 @@ for node in $nodes ; do
          node_up=1
          state="Running"
       else
-        node_up=0
-        node_error_marker=1
-        error_list="$error_list $node:not_running"
-        error=1
+          node_up=0
+          connection=$( dc-yq '.nodes.'$node'.connection.type' ${MDE_DC_YAML} )
+          if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+            state="not running (connection.type=$connection)"
+          else
+            node_error_marker=1
+            error_list="$error_list $node:not_running"
+            error=1
+          fi
       fi
     else
       state=$H_STATE
