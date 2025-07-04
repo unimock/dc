@@ -159,8 +159,13 @@ if [ "$CMD" = "state" ] ; then
     fi
     if [ "$state" = "" ] ; then
       # check if node is off state==standby
-      if [ `dc-yq '.nodes.'$HOST'.state' ${MDE_DC_YAML}` = "standby" ] ; then
+      if [ `dc-yq '.nodes.'${HOST}'.state' ${MDE_DC_YAML}` = "standby" ] ; then
         state="off"
+      else
+        connection=$( dc-yq '.nodes.'${HOST}'.connection.type' ${MDE_DC_YAML} )
+        if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+          state="off"
+        fi
       fi
     fi	    
     echo "$state"

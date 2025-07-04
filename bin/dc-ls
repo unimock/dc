@@ -86,17 +86,19 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
               return_code=1
             fi
           elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
-	          nrc=0
-            state="⏰"
-          else
-            #            node derzeit nicht
+            nrc=0
             connection=$( dc-yq '.nodes.'$h'.connection.type' ${MDE_DC_YAML} )
             if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
               state="⛓️‍💥"
             else
+              state="⏰"
+            fi
+          else
+            #            node derzeit nicht
+            #
               state="❓"
               return_code=1
-            fi
+            #fi
           fi
         fi  
       else
@@ -260,16 +262,15 @@ for node in $list ; do
   dstate="??"
 
   if [ "$state" = "off" ] ; then
-    dstate="⏰"   # node disabled in node.yml 
-  elif [ "$state" = "" ] ; then
-    # state="", d.h. node nicht erreichbar
     if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-      #            node derzeit nicht  
       dstate="⛓️‍💥"
     else
-      dstate="❓"
-      return_code=1
+      dstate="⏰"   # node disabled in node.yml
     fi
+  elif [ "$state" = "" ] ; then
+    # state="", d.h. node nicht erreichbar
+    dstate="❓"
+    return_code=1
   elif [ "$state" != "$typ" ] ; then
     dstate="❌"
     return_code=1
