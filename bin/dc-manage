@@ -133,8 +133,8 @@ for SERVICE in $app_list ; do
     fi
     target_node_state=$( dc-node $T_HOST state )
     if [ "$target_node_state" = "off" ] ; then
-      echo " target node defined as state=standby in node definition and is not reachable"
-      error_detect="1"
+      echo " target node defined as state=standby or connection.type != \"\" in node definition and is not reachable"
+      #error_detect="1"
       continue
     fi      
 
