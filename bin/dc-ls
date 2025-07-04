@@ -89,7 +89,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
             nrc=0
             connection=$( dc-yq '.nodes.'$h'.connection.type' ${MDE_DC_YAML} )
             if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-              state="⛓️‍💥"
+              state="🔃"
             else
               state="⏰"
             fi
@@ -263,7 +263,7 @@ for node in $list ; do
 
   if [ "$state" = "off" ] ; then
     if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-      dstate="⛓️‍💥"
+      dstate="🔃"
     else
       dstate="⏰"   # node disabled in node.yml
     fi

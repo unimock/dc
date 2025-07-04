@@ -426,7 +426,7 @@ if [ "$CMD" = "check" ] ; then
       elif  [ "$sstate" = "off" ] ; then
         connection=$( dc-yq '.nodes.'${p_on_nodes[$h]}'.connection.type' ${MDE_DC_YAML} )
         if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-          printf $MASK "⛓️‍💥" "[$p] node disconnected <${p_on_nodes[$h]}>, so volume check not possible"
+          printf $MASK "🔃" "[$p] node disconnected <${p_on_nodes[$h]}>, so volume check not possible"
         fi
       else
         # do volume check
