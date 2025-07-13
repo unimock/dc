@@ -56,4 +56,3 @@ hc:
   - unimock/rfid-mqtt-docker:0.0.1
 ibb:
   - mysql:5.7
-
