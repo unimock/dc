@@ -11,7 +11,7 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.37.0
+  - filebrowser/filebrowser:v2.39.0
   - kanboard/kanboard:v1.2.46
   - unimock/syncthing-user-docker:1.30.0
   - unimock/dotproject-docker:2.8.0-4
@@ -38,7 +38,7 @@ g7:
   - coredns/coredns:1.12.2
   - ghcr.io/wg-easy/wg-easy:15.1.0
   - ghcr.io/pocket-id/pocket-id:v1.6.2
-  - jamesread/olivetin:2025.6.22
+  - jamesread/olivetin:2025.7.13
   - ghcr.io/gethomepage/homepage:v1.3.2
 atk:
   - jacobalberty/unifi:v8
@@ -52,7 +52,7 @@ hc:
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
-  - eclipse-mosquitto:2.0.21
+  - eclipse-mosquitto:2.0.22
   - unimock/rfid-mqtt-docker:0.0.1
 ibb:
   - mysql:5.7
