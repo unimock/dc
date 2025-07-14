@@ -56,3 +56,6 @@ hc:
   - unimock/rfid-mqtt-docker:0.0.1
 ibb:
   - mysql:5.7
+mok:
+  - chuckcharlie/cups-avahi-airprint:1.2.1
+  - ghcr.io/obeone/nfs-server:v2.2.3
