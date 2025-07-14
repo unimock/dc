@@ -250,15 +250,20 @@ for node in $list ; do
   insp_last_inspect=""
   eval `cat $node_data_file`
   #dstate="✅"
-  #dstate="💡"
   #dstate="☑"
-  #dstate="☐ "
+  #dstate="💡"
+  #dstate="☐"
+  #dstate="⬜"
+  #dstate="⚪"
   #dstate="❌"
   #dstate="⏰"
   #dstate="❓"
   #dstate="⛓️‍💥"
   #dstate="☝️"
   #dstate="⚠️"
+  #dstate="🔁"
+  #dstate="🔃"
+
   dstate="??"
 
   if [ "$state" = "off" ] ; then

@@ -106,9 +106,9 @@ if [ "$1" = "ls" ] ; then
     if [ "${state[$idx]}" = "o" ] ; then
       dstate="✅"
     elif  [ "${state[$idx]}" = "!" ] ; then
-      dstate="💡"
+      dstate="🔁"
       new_version=${u_ver[$idx]}
-      return_code=1
+      return_code=254
     fi	  
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
