@@ -101,7 +101,7 @@ if [ "$1" = "ls" ] ; then
   printf "$MASK" "--" "----------------" "------------------------------" "--------------------" "--------------------"
   found="0"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
-    dstate="☐ "
+    dstate="⬜"
     new_version="                    " 
     if [ "${state[$idx]}" = "o" ] ; then
       dstate="✅"
