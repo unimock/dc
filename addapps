@@ -201,16 +201,16 @@ while read -r i ; do
   ver_cmd=$(  echo "$i" | cut -d";" -f5)
   url=$(  echo "$i"     | cut -d";" -f6 | sed -e "s/<VERSION>/$ver/g")
   if [ "$name" = "" ] ; then continue ; fi
-  state="☐ "
+  state="⬜"
   version=""
   if [ -e /usr/local/bin/$name ] ; then
     state="✅"
     if [ "$ver_cmd" != "" ] ; then
       version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | head -n1 | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
       if [[ "$version" == "" ]] ; then
-        state="🔁"
+        state="💡"
       elif [[ "$version" != "$ver" ]] ; then
-        state="☑ "
+        state="🔁"
         if [[ "$1" == "update" ]] ; then
           _install "$list_type" "$name" "$url"
           update_done="1"
