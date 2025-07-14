@@ -19,8 +19,14 @@ sf_set_error()
 }
 sf_set_warning()
 {
-  if [  ${_sf_error} = "0" ] ; then # do not overrule errors
+  if [  ${_sf_error} = "0" -o ${_sf_error} = "254" ] ; then # overrule OK and UPDATE
     _sf_error=255
+  fi
+}
+sf_set_update()
+{
+  if [ ${_sf_error} = "0" -a  ] ; then # overrule only OK
+    _sf_error=254
   fi
 }
 
@@ -33,8 +39,10 @@ sf_end()
   _sf_end=$( date --date @${_sf_end} +"%H:%M:%S" )
   _sf_duration=$( printf '%dh:%dm:%ds' $(($_sf_secs/3600)) $(($_sf_secs%3600/60)) $(($_sf_secs%60)) ) 
   tim="start=${_sf_start} end=${_sf_end} duration=${_sf_duration} rc=${_sf_error}"
-  if [ "${_sf_error}" = "255" ] ; then
+  if   [ "${_sf_error}" = "255" ] ; then
     echo "#result=WARNING $tim"
+  elif [ "${_sf_error}" = "254" ] ; then
+    echo "#result=UPDATES $tim"
   elif [ "${_sf_error}" = "0" ] ; then
       echo "#result=OK $tim"
   else

@@ -143,8 +143,8 @@ if [ "$opt_short" = "1" ] ; then
   exit 0
 fi
 MASK="|%2s|%-8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-2s|%-16s|%s|\n"
-printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "dock_ver" "mde_ver"  "M" "P"  "HD"  "id" "last_inspection"  "description"
-printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--" "---" "--" "----------------" "-----------"
+printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "dock_ver" "mde_ver"  "M" "HD"  "id" "last_inspection"  "description"
+printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--" "----------------" "-----------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
@@ -164,7 +164,6 @@ for node in $list ; do
   mde_ver=""
   os_ver=""
   size=""
-  mde_patch=""
   mde_monitor=""
   serial=""
   arch=""
@@ -193,8 +192,6 @@ for node in $list ; do
           if [ "$state" = "dock" -o "$state" = "dc" ] ; then
             dock_ver=$( DOCKER_HOST="ssh://$node" docker version --format '{{.Server.Version}}' 2>/dev/null )
           fi
-          # get mde_patch
-          mde_patch=$( ssh $node cat /etc/mde/patch 2>/dev/null )
           size=0
           size_list=$(ssh $node df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
           for x in $size_list ; do
@@ -233,7 +230,6 @@ for node in $list ; do
     echo "insp_dock_ver=\"${dock_ver}\""       >> $node_data_file
     echo "insp_mde_ver=\"${mde_ver}\""         >> $node_data_file
     echo "insp_mde_monitor=\"${mde_monitor}\"" >> $node_data_file
-    echo "insp_mde_patch=\"${mde_patch}\""     >> $node_data_file
     echo "insp_hd_size=\"${size}\""            >> $node_data_file
     echo "insp_machine_id=\"${serial}\""       >> $node_data_file
     echo "insp_arch=\"${arch}\""               >> $node_data_file
@@ -243,7 +239,6 @@ for node in $list ; do
   insp_dock_ver=""
   insp_mde_ver=""
   insp_mde_monitor=""
-  insp_mde_patch=""
   insp_hd_size=""
   insp_machine_id=""
   insp_arch=""
@@ -301,6 +296,6 @@ for node in $list ; do
   if [ "${insp_last_inspect}" != "" ] ; then
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
-  printf "$MASK" "${dstate}" "${node}" "${state}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_mde_patch}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
+  printf "$MASK" "${dstate}" "${node}" "${state}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
 done
 exit $return_code

@@ -143,6 +143,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   list=$(ls -tr ${MDE_DC_LOG_DIR}/$JOB_NAME | grep -v body | grep -v report)
   errors=0
   warnings=0
+  updates=0
   checks=0
   for i in $list ; do
     R_FILE[$checks]=$i
@@ -161,15 +162,14 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     fi
     if [ "${R_RESULT[$checks]}" != "OK" ] ; then
       if [ "${R_RESULT[$checks]}" = "WARNING" ] ; then
-        
         warnings=$(( warnings + 1 ))
-      else
-        errors=$(( errors + 1 ))
+      elif [ "${R_RESULT[$checks]}" = "UPDATES" ] ; then
+        updates=$(( updates + 1 ))
       fi
     fi
     checks=$(( checks +  1 ))
   done
-  echo "checks=$checks errors=$errors warnings=$warnings"
+  echo "checks=$checks errors=$errors warnings=$warnings updates=$updates"
   rm -f $FI
   printf "\n"                                 >> $FI
   printf "# batch $JOB_NAME report\n"         >> $FI
@@ -181,11 +181,19 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   printf ${MASK} "  " "batch job                " "ret" "start   " "end     " "duration" | tee -a $FI
   printf ${MASK} "--" "-------------------------" "---" "--------" "--------" "--------" | tee -a $FI
   for ((idx=0; idx<${checks}; ++idx)); do
+    #sym="❌"
+    #if [ "${R_RESULT[idx]}" = "OK" ] ; then
+    #  sym="✅"
+    #elif [ "${R_RESULT[idx]}" = "WARNING" ] ; then
+    #  sym="⚠️"
+    #fi
     sym="❌"
-    if [ "${R_RESULT[idx]}" = "OK" ] ; then
-      sym="✅"
-    elif [ "${R_RESULT[idx]}" = "WARNING" ] ; then
+    if [ "${R_RC[idx]}" = "255" ] ; then
       sym="⚠️"
+    elif [ "${R_RC[idx]}" = "254" ] ; then
+      sym="☑ "
+    elif [ "${R_RC[idx]}" = "0" ] ; then
+      sym="✅"
     fi
     printf "${MASK}" "$sym" ${R_FILE[idx]} ${R_RC[idx]} ${R_START[idx]} ${R_END[idx]} ${R_DURATION[idx]} | tee -a $FI
     E_FI="${E_FI} ${MDE_DC_LOG_DIR}/$JOB_NAME/${R_FILE[$idx]}"
@@ -206,9 +214,13 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
 
     if [ "$errors" = "0" ] ; then
       if [ "$warnings" = "0" ] ; then
-        subject="✅ report: ${JOB_NAME}@${cluster_name}"
-      else
-        subject="⚠️  report: ${JOB_NAME}@${cluster_name}"
+        if [ "$updates" = "0" ] ; then
+          subject="✅ report: ${JOB_NAME}@${cluster_name}"
+        else
+          subject="☑ report: ${JOB_NAME}@${cluster_name}"
+        fi
+      else  
+          subject="⚠️ report: ${JOB_NAME}@${cluster_name}"
       fi
     else
       subject="❌ report: ${JOB_NAME}@${cluster_name}"
