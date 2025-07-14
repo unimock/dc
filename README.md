@@ -1,6 +1,5 @@
 [![Deploy Status](https://git.gate-7.de/mok/addapps/actions/workflows/deploy.yaml/badge.svg)](https://git.gate-7.de/mok/addapps/actions)
 
-
 # additional applications
 
 # initial installation
