@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.8.5"
+VERSION="0.8.6"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -188,7 +188,7 @@ while true ; do
   esac
   shift
 done
-
+ls_ret=0
 update_done="0"
 MASK="|%-1s|%-15s|%-8s|%-8s|%-25s|\n"
 printf "$MASK" "  " "application" "version" "latest" "description"
@@ -209,9 +209,14 @@ while read -r i ; do
       version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | head -n1 | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
       if [[ "$version" == "" ]] ; then
         state="💡"
+        ls_ret=255  # warn
       elif [[ "$version" != "$ver" ]] ; then
-        state="🔁"
-        if [[ "$1" == "update" ]] ; then
+        state="☑ "
+        if [[ "$1" == "ls" ]] ; then
+          if [[ "${ls_ret}" == "0" ]] ; then
+            ls_ret=254 # update
+          fi
+        elif [[ "$1" == "update" ]] ; then
           _install "$list_type" "$name" "$url"
           update_done="1"
         fi
@@ -248,9 +253,10 @@ while read -r i ; do
     fi
   fi
 done <<< "$(echo "$list")"
-if [[ "$1" == "update" && "$update_done" == "1" ]] ; then
+if [[ "$1" == "ls" ]] ; then
+  exit ${ls_ret}
+elif [[ "$1" == "update" && "$update_done" == "1" ]] ; then
   echo ""
   $0 list
 fi
-
 exit 0
