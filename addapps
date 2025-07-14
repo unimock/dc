@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.8.4"
+VERSION="0.8.5"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -208,7 +208,7 @@ while read -r i ; do
     if [ "$ver_cmd" != "" ] ; then
       version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | head -n1 | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
       if [[ "$version" == "" ]] ; then
-        state="💡"
+        state="🔁"
       elif [[ "$version" != "$ver" ]] ; then
         state="☑ "
         if [[ "$1" == "update" ]] ; then
