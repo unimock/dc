@@ -142,9 +142,9 @@ if [ "$opt_short" = "1" ] ; then
   done 
   exit 0
 fi
-MASK="|%2s|%-8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-16s|%s|\n"
-printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "dock_ver" "mde_ver"  "M" "HD"  "id"  "last_inspection"  "description            "
-printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--"  "---" "----------------" "-----------------------"
+MASK="|%2s|%-8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-16s|%-25s|\n"
+printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "dock_ver" "mde_ver"  "M" "HD"  "id"  "last_inspection"  "description"
+printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--"  "---" "----------------" "-------------------------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
