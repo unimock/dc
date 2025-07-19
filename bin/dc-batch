@@ -161,7 +161,9 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       R_DURATION[$checks]=${duration}
     fi
     if [ "${R_RESULT[$checks]}" != "OK" ] ; then
-      if [ "${R_RESULT[$checks]}" = "WARNING" ] ; then
+      if [ "${R_RESULT[$checks]}" = "ERROR" ] ; then
+        errors=$(( errors + 1 ))
+      elif [ "${R_RESULT[$checks]}" = "WARNING" ] ; then
         warnings=$(( warnings + 1 ))
       elif [ "${R_RESULT[$checks]}" = "UPDATES" ] ; then
         updates=$(( updates + 1 ))
