@@ -39,7 +39,7 @@ g7:
   - coredns/coredns:1.12.2
   - ghcr.io/wg-easy/wg-easy:15.1.0
   - ghcr.io/pocket-id/pocket-id:v1.6.2
-  - jamesread/olivetin:2025.7.13
+  - jamesread/olivetin:2025.7.19
 atk:
   - jacobalberty/unifi:v8
 hc:
