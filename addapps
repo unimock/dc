@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.8.8"
+VERSION="0.9.0"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -145,7 +145,7 @@ show_help() {
     echo ""
     echo "examples:"
     echo ""
-    echo "$IAM ls                # list and show version of additional applications"
+    echo "$IAM ls [--installed]  # list and show version of [installed] additional applications"
     echo "$IAM refresh           # refresh application versions from addapp store"
     echo "$IAM update            # update all outdeted applications"
     echo "$IAM install <package> # installs or update an application"
@@ -165,8 +165,8 @@ if [[ "$1" == "" ]] ; then
   show_help
   exit 0
 fi
-
-options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+only_installed=0
+options=$(getopt -l "help,version,installed" -o "hvp:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -177,6 +177,9 @@ while true ; do
   -v|--version) 
     echo "$VERSION"
     exit 0
+    ;;
+  --installed)
+    only_installed=1
     ;;
   -p)
     shift
@@ -203,15 +206,19 @@ while read -r i ; do
   if [ "$name" = "" ] ; then continue ; fi
   state="⬜"
   version=""
+  installed=0
   if [ -e /usr/local/bin/$name ] ; then
     state="✅"
+    installed=1
     if [ "$ver_cmd" != "" ] ; then
       version=$( /usr/local/bin/$name $ver_cmd 2>/dev/null | head -n1 | sed -e "s/(.*)//g" | grep -o '[0-9,.]*' )
       if [[ "$version" == "" ]] ; then
         state="💡"
+        installed=1
         ls_ret=255  # warn
       elif [[ "$version" != "$ver" ]] ; then
         state="☑ "
+        installed=1
         if [[ "$1" == "ls" ]] ; then
           if [[ "${ls_ret}" == "0" ]] ; then
             ls_ret=254 # update
@@ -224,7 +231,9 @@ while read -r i ; do
     fi
   fi
   if [[ "$1" == "ls" ]] ; then
-    printf "$MASK" "$state" "$name" "$version" "$ver" "$bez" 
+    if [[ "$only_installed" == "0" || ( "$only_installed" == "1" && "$installed" == "1" ) ]] ; then
+      printf "$MASK" "$state" "$name" "$version" "$ver" "$bez"
+    fi
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$list_type" "$name" "$url"
