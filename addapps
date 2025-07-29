@@ -201,7 +201,7 @@ while true ; do
 done
 ls_ret=0
 update_done="0"
-if [ "$short" = "0" ] ; then
+if [[ "$short" == "0" || "$1" != "refresh" ]] ; then
   MASK="|%-1s|%-15s|%-8s|%-8s|%-25s|\n"
   printf "$MASK" "  " "application" "version" "latest" "description"
   printf "$MASK" "--" "---------------" "--------" "--------" "-------------------------"
