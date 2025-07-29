@@ -53,9 +53,9 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     echo "$app_list"
     exit 0
   fi
-  MASK="|%2s|%-12s|%-2s|%-8s|%-20s|%s|%-35s|%s|\n"
+  MASK="|%2s|%-12s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|\n"
   printf "$MASK" "" "app" "#c" "node" "groups" "!"  "description" "app_directory"
-  printf "$MASK" "${LINE:0:2}" "${LINE:0:12}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:30}"
+  printf "$MASK" "${LINE:0:2}" "${LINE:0:12}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}"
   for p in $app_list ; do
     p_nodes=$(   dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
     p_desc=$(    dc-yq '.apps.'$p'.dc.desc'         ${MDE_DC_YAML} )
@@ -142,9 +142,9 @@ if [ "$opt_short" = "1" ] ; then
   done 
   exit 0
 fi
-MASK="|%2s|%-8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-8s|%-8s|%1s|%-2s|%-3s|%-16s|%-25s|\n"
-printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "dock_ver" "mde_ver"  "M" "HD"  "id"  "last_inspection"  "description"
-printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "--------" "--------" "-" "--"  "---" "----------------" "-------------------------"
+MASK="|%2s|%-8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-7s|%-7s|%1s|%-2s|%-2s|%-16s|%-25s|\n"
+printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "docker " "mde_ver"  "M" "HD"  "id"  "last_inspection"  "description"
+printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "-------" "-------" "-" "--"  "--" "----------------" "-------------------------"
 for node in $list ; do
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
@@ -253,7 +253,6 @@ for node in $list ; do
   #dstate="❌"
   #dstate="⏰"
   #dstate="❓"
-  #dstate="⛓️‍💥"
   #dstate="☝️"
   #dstate="⚠️"
   #dstate="🔁"
