@@ -374,6 +374,7 @@ if [ "$CMD" = "show"  ] ; then
 fi  
 
 if [ "$CMD" = "check" ] ; then
+  ret=0
   MASK="|%s|%-80s|\n"
   printf $MASK "  " "configuration issues"
   printf $MASK "--" "--------------------------------------------------------------------------------"
@@ -382,12 +383,14 @@ if [ "$CMD" = "check" ] ; then
   grep "Include $HOME/.dc/var/ssh/config/\*"  ~/.ssh/config >/dev/null 2>&1
   if [ "$?" != "0" ] ; then
     printf $MASK "❌" "missing ssh config dir: <Include $HOME/.dc/var/ssh/config/\*> in ~/.ssh/config"
+    ret=1
   fi
   nodes=$( dc-yq  '.apps.*.dc.home.[].node'   ${MDE_DC_YAML}  | sort | uniq)
   for h in $nodes ; do
     res=$(  dc-yq '.nodes.'$h'.state' ${MDE_DC_YAML} ) 
     if [ "$res" = "null" ] ; then
       printf $MASK "❌" "missing node definition \".nodes.$h.state:\" in <${MDE_DC_YAML}>"
+      ret=1
     elif [ "$res" != "active" ] ; then
       printf $MASK "💡" "\".nodes.$h.state:\" != active"
     fi
@@ -405,6 +408,7 @@ if [ "$CMD" = "check" ] ; then
     anz=$( dc-yq '.apps' ${MDE_DC_YAML} | grep "^${p}:"  | wc -l)
     if [ "$anz" != "1" ] ; then
       printf $MASK "❌" "app name [$p] not unique"
+      ret=1
     fi
     #
     # check if app name overrules (mailcowdockerized)
@@ -423,6 +427,7 @@ if [ "$CMD" = "check" ] ; then
       sstate=$( dc node ${p_on_nodes[$h]} state)
       if [ "$sstate" = "" ] ; then
         printf $MASK "❌" "[$p] error node <${p_on_nodes[$h]}> not reachable, so volume check not possible"
+        ret=1
       elif  [ "$sstate" = "off" ] ; then
         connection=$( dc-yq '.nodes.'${p_on_nodes[$h]}'.connection.type' ${MDE_DC_YAML} )
         if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
@@ -445,6 +450,7 @@ if [ "$CMD" = "check" ] ; then
               ssh ${p_on_nodes[$h]} ls -d $vol >/dev/null 2>&1
               if [ "$?" != "0" ] ; then
                 printf $MASK "❌" "[$p] missing volume directory <$vol> on node <${p_on_nodes[$h]}>"
+                ret=1
               fi
             else
               printf $MASK "💡" "[$p] volume config <$vol> in $cfg" 
@@ -456,6 +462,7 @@ if [ "$CMD" = "check" ] ; then
       fi
     done
   done
+  exit $ret
 fi 
 exit 0
 
