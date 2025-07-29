@@ -257,7 +257,7 @@ while read -r i ; do
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$list_type" "$name" "$url"
-    echo ""
+    #echo ""
     #$0 ls
     exit
   fi
