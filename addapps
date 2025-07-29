@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.9.2"
+VERSION="0.10.0"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -145,7 +145,7 @@ show_help() {
     echo ""
     echo "examples:"
     echo ""
-    echo "$IAM ls [--installed]  # list and show version of [installed] additional applications"
+    echo "$IAM ls [--installed|--updatable] [--short]  # list and show version of [installed] additional applications"
     echo "$IAM refresh           # refresh application versions from addapp store"
     echo "$IAM update            # update all outdeted applications"
     echo "$IAM install <package> # installs or update an application"
@@ -165,8 +165,10 @@ if [[ "$1" == "" ]] ; then
   show_help
   exit 0
 fi
+short=0
 only_installed=0
-options=$(getopt -l "help,version,installed" -o "hvp:" -a -- "$@")
+only_updatable=0
+options=$(getopt -l "help,version,installed,short,updatable" -o "hvps:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -181,6 +183,12 @@ while true ; do
   --installed)
     only_installed=1
     ;;
+  --updatable)
+    only_updatable=1
+    ;;
+  -s|--short)
+    short=1
+    ;;
   -p)
     shift
     xxxxx="$1"
@@ -193,9 +201,11 @@ while true ; do
 done
 ls_ret=0
 update_done="0"
-MASK="|%-1s|%-15s|%-8s|%-8s|%-25s|\n"
-printf "$MASK" "  " "application" "version" "latest" "description"
-printf "$MASK" "--" "---------------" "--------" "--------" "-------------------------"
+if [ "$short" = "0" ] ; then
+  MASK="|%-1s|%-15s|%-8s|%-8s|%-25s|\n"
+  printf "$MASK" "  " "application" "version" "latest" "description"
+  printf "$MASK" "--" "---------------" "--------" "--------" "-------------------------"
+fi
 while read -r i ; do
   list_type=$( echo "$i"     | cut -d";" -f1)
   name=$( echo "$i"     | cut -d";" -f2)
@@ -207,6 +217,7 @@ while read -r i ; do
   state="⬜"
   version=""
   installed=0
+  updatable=0
   if [ -e /usr/local/bin/$name ] ; then
     state="✅"
     installed=1
@@ -219,26 +230,35 @@ while read -r i ; do
       elif [[ "$version" != "$ver" ]] ; then
         state="☑ "
         installed=1
+        updatable=1
         if [[ "$1" == "ls" ]] ; then
           if [[ "${ls_ret}" == "0" ]] ; then
             ls_ret=254 # update
           fi
         elif [[ "$1" == "update" ]] ; then
-          _install "$list_type" "$name" "$url"
-          update_done="1"
+          if [[ "$2" == "" ||  "$2" == "$name" ]] ; then
+            _install "$list_type" "$name" "$url"
+            update_done="1"
+          fi
         fi
       fi
     fi
   fi
   if [[ "$1" == "ls" ]] ; then
-    if [[ "$only_installed" == "0" || ( "$only_installed" == "1" && "$installed" == "1" ) ]] ; then
-      printf "$MASK" "$state" "$name" "$version" "$ver" "$bez"
+    if [[ ( "$only_installed" == "0" && "$only_updatable" == "0" ) || \
+          ( "$only_installed" == "1" && "$installed" == "1" )      || \
+          ( "$only_updatable" == "1" && "$updatable" == "1" )   ]] ; then
+      if [ "$short" = "0" ] ; then
+        printf "$MASK" "$state" "$name" "$version" "$ver" "$bez"
+      else
+        printf "%s\n" "$name"
+      fi
     fi
   fi
   if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$list_type" "$name" "$url"
     echo ""
-    $0 ls
+    #$0 ls
     exit
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
