@@ -259,7 +259,7 @@ while read -r i ; do
     _install "$list_type" "$name" "$url"
     #echo ""
     #$0 ls
-    exit
+    exit $?
   fi
   if [[ "$1" == "install" && "$2" == "$name" ]] ; then
     _install "$list_type" "$name" "$url"
