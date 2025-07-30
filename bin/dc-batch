@@ -235,6 +235,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
         fi
       done
     fi
+    cluster_name=$(   dc-yq '.config.cluster.name'   )
     if [ "$errors" = "0" ] ; then
       if [ "$warnings" = "0" ] ; then
         if [ "$updates" = "0" ] ; then
@@ -252,7 +253,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       #
       # send report mail
       #
-      cluster_name=$(   dc-yq '.config.cluster.name'   )
       mail_sender=$(    dc-yq '.config.mail.sender'    )
       mail_smtp_user=$( dc-yq '.config.mail.smtp.user' )
       mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
