@@ -274,7 +274,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
             --header "Subject: $subject" \
             --attach-type "text/markdown" --attach-body @$FI \
             ${attachments} -S 2
-      echo "mail send"
+      #echo "mail send"
     fi
   fi
   #echo "rc=$rc"
