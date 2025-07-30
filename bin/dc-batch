@@ -67,6 +67,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   #
   rm -rf    ${MDE_DC_LOG_DIR}/$JOB_NAME
   mkdir -p  ${MDE_DC_LOG_DIR}/$JOB_NAME
+  mail_condition=""
   mail_to=""
   mail_subject=""
   while read line ; do
@@ -133,6 +134,8 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
        fi
     elif [ "${A[0]}" = "mail" ] ; then
       mail_to="${A[1]}"
+    elif [ "${A[0]}" = "mail_condition" ] ; then
+      mail_condition="${A[1]}"
     fi
   done < <(grep -v '^\s*$\|^\s*\#' ${MDE_DC_BATCH_DIR}/$JOB_NAME.list)
 
@@ -183,12 +186,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   printf ${MASK} "  " "batch job                " "ret" "start   " "end     " "duration" | tee -a $FI
   printf ${MASK} "--" "-------------------------" "---" "--------" "--------" "--------" | tee -a $FI
   for ((idx=0; idx<${checks}; ++idx)); do
-    #sym="❌"
-    #if [ "${R_RESULT[idx]}" = "OK" ] ; then
-    #  sym="✅"
-    #elif [ "${R_RESULT[idx]}" = "WARNING" ] ; then
-    #  sym="⚠️"
-    #fi
     sym="❌"
     if [ "${R_RC[idx]}" = "255" ] ; then
       sym="⚠️"
@@ -203,17 +200,41 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   if [ -f ${MDE_DC_LOG_DIR}/$JOB_NAME/body ] ; then 
     cat ${MDE_DC_LOG_DIR}/$JOB_NAME/body >> $FI
   fi
+  rc=0
+  if [ "$errors" = "0" ] ; then
+    if [ "$warnings" = "0" ] ; then
+      if [ "$updates" = "0" ] ; then
+        rc=0
+      else
+        rc=254
+      fi
+    else  
+        rc=255
+    fi
+  else
+    rc=1
+  fi
 
-  #
-  # send report mail
-  #
   if [ "$mail_to" != "" ] ; then
-    cluster_name=$(   dc-yq '.config.cluster.name'   )
-    mail_sender=$(    dc-yq '.config.mail.sender'    )
-    mail_smtp_user=$( dc-yq '.config.mail.smtp.user' )
-    mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
-    mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
+    mail_condition=$( echo ${mail_condition} | sed "s/,/ /g" )
+    #echo "mail_condition: $mail_condition"
+    #echo "errors: $errors"
+    #echo "warnings: $warnings"
+    #echo "updates: $updates"
 
+    send=1
+    if [ "${mail_condition}" != "" ] ; then
+      send=0
+      for f in ${mail_condition} ; do
+        if [[ ( "$f" == "errors"   && "$errors"   != "0" ) || \
+              ( "$f" == "warnings" && "$warnings" != "0" ) || \
+              ( "$f" == "updates"  && "$updates"  != "0" )
+              ]] ; then
+          send=1
+          break
+        fi
+      done
+    fi
     if [ "$errors" = "0" ] ; then
       if [ "$warnings" = "0" ] ; then
         if [ "$updates" = "0" ] ; then
@@ -227,37 +248,36 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     else
       subject="❌ report: ${JOB_NAME}@${cluster_name}"
     fi
-    attachments=""
-    for t in ${E_FI} ; do
-        attachments="${attachments} --attach-type "text/plain" --attach @${t}" # will build list of files to attach
-    done
-    auth=""
-    if [ "$mail_smtp_user" != "" ] ; then
-      auth="  -au $mail_smtp_user -ap $mail_smtp_pass "
-    fi
-    # check if pandoc is installed
-    #if [ "$(which pandoc)" != "" ] ; then
-    #  tfile=$(mktemp)
-    #  pandoc -f markdown -t html5 $FI -o ${tfile}
-    #  swaks --to $mail_to --from $mail_sender \
-    #        -s   $mail_smtp_host \
-    #        -tlso $auth \
-    #        --header "Subject: $subject" \
-    #        --attach-type "text/html" --attach-body @${tfile} \
-    #        ${attachments} -S 2
-    #  rm ${tfile}
-    #else
+    if [ "$send" = "1" ] ; then
+      #
+      # send report mail
+      #
+      cluster_name=$(   dc-yq '.config.cluster.name'   )
+      mail_sender=$(    dc-yq '.config.mail.sender'    )
+      mail_smtp_user=$( dc-yq '.config.mail.smtp.user' )
+      mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
+      mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
+  
+      attachments=""
+      for t in ${E_FI} ; do
+          attachments="${attachments} --attach-type "text/plain" --attach @${t}" # will build list of files to attach
+      done
+      auth=""
+      if [ "$mail_smtp_user" != "" ] ; then
+        auth="  -au $mail_smtp_user -ap $mail_smtp_pass "
+      fi
       swaks --to $mail_to --from $mail_sender \
             -s   $mail_smtp_host \
             -tlso $auth \
             --header "Subject: $subject" \
             --attach-type "text/markdown" --attach-body @$FI \
             ${attachments} -S 2
-    #fi
+      echo "mail send"
+    fi
   fi
-  exit 0
+  echo "rc=$rc"
+  exit $rc
 fi
-
 exit 0
 
 
