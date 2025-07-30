@@ -62,6 +62,7 @@ fi
 # run / debug
 ############################################################
 if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
+  cluster_name=$(   dc-yq '.config.cluster.name'   )
   #
   # cleanup log files
   #
@@ -70,6 +71,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   mail_condition=""
   mail_to=""
   mail_subject=""
+  echo '```'
   while read line ; do
     ifs=$IFS ; IFS=":" ; A=($line) ; IFS=$ifs
     echo "execute: <${A[0]}> <${A[1]}> <${A[2]}> <${A[3]}>"
@@ -138,7 +140,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       mail_condition="${A[1]}"
     fi
   done < <(grep -v '^\s*$\|^\s*\#' ${MDE_DC_BATCH_DIR}/$JOB_NAME.list)
-
+  echo '```'
   #
   # create report
   #
@@ -174,10 +176,10 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     fi
     checks=$(( checks +  1 ))
   done
-  echo "checks=$checks errors=$errors warnings=$warnings updates=$updates"
+  #echo "checks=$checks errors=$errors warnings=$warnings updates=$updates"
   rm -f $FI
   printf "\n"                                 >> $FI
-  printf "# batch $JOB_NAME report\n"         >> $FI
+  printf "# batch %s report on cluster %s @ %s\n" "$JOB_NAME" "$cluster_name"  "$(hostname)" >> $FI
   printf "\n"                                 >> $FI
   printf "## job results:\n"                  >> $FI
   printf "\n"                                 >> $FI
@@ -235,7 +237,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
         fi
       done
     fi
-    cluster_name=$(   dc-yq '.config.cluster.name'   )
+    
     if [ "$errors" = "0" ] ; then
       if [ "$warnings" = "0" ] ; then
         if [ "$updates" = "0" ] ; then
@@ -275,7 +277,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       echo "mail send"
     fi
   fi
-  echo "rc=$rc"
+  #echo "rc=$rc"
   exit $rc
 fi
 exit 0
