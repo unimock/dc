@@ -142,7 +142,9 @@ for i in `seq 0 ${age_array[-1]}` ; do
     free=$( df -h $TDIR | grep "^/" | awk '{ print $4 }'  ) 
     pers=$( df -h $TDIR | grep "^/" | awk '{ print $5 }'  ) 
   fi
-  printf "%03d|%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" $i "${arr_a[$i]}" "${dat}" "$cmd" "$comp" "$used" "$free" "$pers"
+  if [[ "${arr_a[$i]}" != "" || "${dat}" != "" ]] ; then
+    printf "%03d|%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" $i "${arr_a[$i]}" "${dat}" "$cmd" "$comp" "$used" "$free" "$pers"
+  fi
 done
 echo ""
 exit 0
