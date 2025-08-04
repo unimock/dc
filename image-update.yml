@@ -20,7 +20,7 @@ general:
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.0
   - headscale/headscale:0.26.1
-  - ghcr.io/gethomepage/homepage:v1.4.0
+  - ghcr.io/gethomepage/homepage:v1.4.3
 g7:
   - psitrax/psitransfer:v2.3.0
   - louislam/uptime-kuma:2.0.0-beta.3
@@ -48,7 +48,7 @@ hc:
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:12.1.0
   - nodered/node-red:4.1.0
-  - koenkk/zigbee2mqtt:2.5.1
+  - koenkk/zigbee2mqtt:2.6.0
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
