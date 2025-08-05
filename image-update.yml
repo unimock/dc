@@ -15,7 +15,7 @@ general:
   - kanboard/kanboard:v1.2.46
   - unimock/syncthing-user-docker:1.30.0
   - unimock/dotproject-docker:2.8.0-4
-  - unimock/share-sshd-docker:1.1.0
+  - unimock/share-sshd-docker:1.2.0
   - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.0
