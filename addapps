@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.10.0"
+VERSION="0.11.0"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -15,6 +15,7 @@ a;selfextractor;selfextractor;0.0.2;--version;https://mde.gate-7.de/addapps/self
 a;md-exec;execute md code sections;1.0.2;--version;https://raw.githubusercontent.com/unimock/addapps/main/md-exec
 a;sshenc;ssh encryption;0.0.0;--version;https://mde.gate-7.de/addapps/sshenc
 a;2facli;2FA CLI;0.0.2;--version;https://mde.gate-7.de/addapps/2facli
+a;wg-cert-mgr;my wg cert manager;0.9.0;--version;https://mde.gate-7.de/addapps/wg-cert-mgr
 a;crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
 a;print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
 a;stsync;syncting stc CLI;0.0.6;--version;https://mde.gate-7.de/addapps/stsync

@@ -1,0 +1,403 @@
+#!/bin/bash
+#
+# https://blog.ruanbekker.com/blog/2020/01/11/setup-a-wireguard-vpn-server-on-linux/
+#
+# apt-get install -y wireguard-tools gocryptfs swaks qrencode
+#
+#mde-help: TBD
+#
+####################################################################################################################################
+# remember to call "./addapps .getver" after version modifications!
+VERSION="0.9.0"
+IAM="wg-cert-mgr"
+
+_create_client_config_template()
+{
+cat <<EOF > $1
+
+
+[Interface]
+PrivateKey = <client/privatekey>
+Address = <config/address>
+DNS = <config/dns>
+
+[Peer]
+PublicKey = <server/publickey>
+PresharedKey = <client/presharedkey>
+AllowedIPs = <config/allowedips>
+Endpoint = <config/endpoint>
+PersistentKeepalive = 25
+
+EOF
+}
+####################################################################################################################################
+_create_config_yml()
+{
+cat <<EOF > ./config.yml
+servers:
+  abc:
+    name: company server
+    clients:
+      - user1
+#     - user2
+# home:
+#   name: fritzbox@home
+#   clients:
+#     - user1
+EOF
+}
+####################################################################################################################################
+_parse_yaml() {
+    local prefix=$2
+    local s
+    local w
+    local fs
+    s='[[:space:]]*'
+    w='[a-zA-Z0-9_]*'
+    fs="$(echo @|tr @ '\034')"
+    sed -ne "s|^\(${s}\)\($w\)${s}:${s}\"\(.*\)\"${s}\$|\1$fs\2$fs\3|p" \
+        -e "s|^\(${s}\)\($w\)${s}[:-]${s}\(.*\)${s}\$|\1$fs\2$fs\3|p" "$1" |
+    awk -F"$fs" '{
+      indent = length($1)/2;
+      if (length($2) == 0) { conj[indent]="+";} else {conj[indent]="";}
+      vname[indent] = $2;
+      for (i in vname) {if (i > indent) {delete vname[i]}}
+      if (length($3) > 0) {
+              vn=""; for (i=0; i<indent; i++) {vn=(vn)(vname[i])("_")}
+              printf("%s%s%s%s=(\"%s\")\n", "'"$prefix"'",vn, $2, conj[indent-1],$3);
+      }
+    }' | sed 's/_=/+=/g'
+}
+
+####################################################################################
+show_help()
+{
+  echo " usage: `basename $0`  update|parse_yaml|show|send"
+  echo ""
+  echo " commands:"
+  echo ""
+  echo "   mount .... decypt ${WG_ENV}.enc to ${WG_ENV}"
+  echo "   umount ... encypt ${WG_ENV} to ${WG_ENV}.enc"
+  echo "   update ... re-create keys and config"
+  echo "   show ..... show peer configurations"
+  echo "   send ..... send encrypted installation package"
+  echo ""
+}
+####################################################################################################################################
+# magic main
+####################################################################################################################################
+WG_ENV="./wireguard"
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help)
+    show_help
+    exit 0
+    ;;
+  -v|--version)
+    echo "$VERSION"
+    exit 0
+    ;;
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+
+if [ "$2" = "" ] ; then
+  show_help
+  exit 0
+fi
+
+
+#
+# Check for necessary packages
+#
+if [ "$(which gocryptfs)" = "" ] ; then 
+  echo "Error: missing package gocryptfs"
+  echo "Call: apt-get install -y gocryptfs"
+  exit 1
+fi
+if [ "$(which swaks)" = "" ] ; then 
+  echo "Error: missing package gocryptfs"
+  echo "Call: apt-get install -y swaks"
+  exit 1
+fi
+
+CMD="$1"
+shift
+
+#
+# de-/encypt wireguard environment
+#
+#sudo apt-get install -y gocryptfs
+#mkdir ${WG_ENV} ${WG_ENV}.enc
+#gocryptfs --init ${WG_ENV}.enc
+#gocryptfs ${WG_ENV}.enc ${WG_ENV}
+#fusermount -u ${WG_ENV}
+#rmdir ${WG_ENV}
+
+if [ "$CMD" = "umount" ] ; then # verscShluesseln
+  if [ ! -e ${WG_ENV}.enc -o ! -e ${WG_ENV} ] ; then
+    echo "Error unable to decrypt ${WG_ENV}.enc, because ${WG_ENV} or ${WG_ENV}.enc missing!"
+    exit 1
+  fi
+  echo "encypt ${WG_ENV} to ${WG_ENV}.enc ..."
+  fusermount -u ${WG_ENV}
+  rmdir ${WG_ENV}
+  exit 0
+fi
+if [ "$CMD" = "mount" ] ; then # entschluesseln
+  echo "decypt ${WG_ENV}.enc to ${WG_ENV} ..."
+  if [ -e ${WG_ENV} ] ; then
+    echo "Error unable to decrypt ${WG_ENV}.enc, because ${WG_ENV} exist!"
+    exit 1
+  fi
+  mkdir ${WG_ENV}
+  gocryptfs ${WG_ENV}.enc ${WG_ENV}
+  ls -la wireguard
+  exit 0
+fi
+if [ ! -d ${WG_ENV} ] ; then
+  echo "Error ${WG_ENV} does not exist. mount first"
+  exit 1
+fi
+cd ${WG_ENV}
+
+if [ ! -f ./config.yml ] ; then
+  _create_config_yml
+  echo "!"
+  echo "! ./config.yml created. Modify it and call: `basename $0` update"
+  echo "!"
+  exit 0
+fi
+
+if [ "$CMD" = "parse_yaml" ] ; then
+  _parse_yaml ./config.yml
+  exit 0
+fi
+
+smtp_subj="" ; smtp_from="" ; smtp_opt="" ; smtp_port="" ; smtp_user="" ; smtp_pass="" ; smtp_host=""
+
+eval "$(_parse_yaml config.yml)"
+
+if [ "$CMD" = "update" ] ; then
+  rm -rf ./peers
+  mkdir -p ./peers
+  servers="$(_parse_yaml config.yml | grep "^servers_" | cut -d "_" -f2 | uniq)"
+  for SV in $servers ; do
+    mkdir -p ./servers/${SV}
+    if [ ! -f ./servers/${SV}/publickey  ] ; then
+      if [ ! -f ./servers/${SV}/privatekey ] ; then
+        wg genkey > ./servers/${SV}/privatekey 2>/dev/null
+        echo "create ./servers/${SV}/privatekey"
+      fi
+      cat ./servers/${SV}/privatekey | wg pubkey > ./servers/${SV}/publickey 2>/dev/null
+      echo "create ./servers/${SV}/publickey"
+    fi
+    if [ ! -f ./servers/${SV}/client.templ ] ; then
+      _create_client_config_template  ./servers/${SV}/client.templ
+      echo "!"
+      echo "! prepare ./servers/${SV}/client.templ. Modify it and call: `basename $0` update"
+      echo "!"
+      exit 0
+    fi
+    peers="$(_parse_yaml config.yml | grep "^servers_${SV}_peers_.*_user" | cut -d "_" -f4- | uniq)"
+    for i in $peers ; do
+      peer=${i%_user=*}
+      var_name=servers_${SV}_peers_${peer}_user
+      CL=${!var_name}
+      if [ "$CL" = "" ] ; then
+        continue
+      fi
+      pdir=servers/$SV/peers/$peer  # peers directory
+      mkdir -p $pdir
+      if [ ! -f $pdir/privatekey ] ; then
+        wg genkey > $pdir/privatekey 2>/dev/null
+        echo "create $pdir/privatekey"
+      fi
+      if [ ! -f $pdir/publickey  ] ; then
+        cat $pdir/privatekey | wg pubkey > $pdir/publickey 2>/dev/null
+        echo "create $pdir/publickey"
+      fi
+      if [ ! -f $pdir/presharedkey ] ; then
+        wg genpsk > $pdir/presharedkey 2>/dev/null
+        echo "create $pdir/presharedkey"
+      fi
+      #
+      # create client config files
+      #
+      # add network-manager options into config
+      var_name=servers_${SV}_peers_${peer}_name
+      wg_name=${!var_name}
+      conf_file="./peers/${wg_name}@${SV}.conf"
+      echo "#"                                                                > ${conf_file}
+      var_name=servers_${SV}_nmcli_id           # id
+      echo "# NMCLI_ID=\"${!var_name}\""                                     >> ${conf_file}
+      var_name=servers_${SV}_nmcli_ipv4_metric  # route-metric
+      echo "# NMCLI_IPV4_METRIC=\"${!var_name}\""                            >> ${conf_file}
+      var_name=servers_${SV}_nmcli_mtu          # mtu
+      echo "# NMCLI_MTU=\"${!var_name}\""                                    >> ${conf_file}
+
+      echo "#"                                                               >> ${conf_file}
+      cat ./servers/${SV}/client.templ                                       >> ${conf_file}
+      sed -i -e "s|<client/privatekey>|$(  cat $pdir/privatekey)|g"             ${conf_file}
+      sed -i -e "s|<client/presharedkey>|$(cat $pdir/presharedkey)|g"           ${conf_file}
+      sed -i -e "s|<server/publickey>|$(   cat servers/${SV}/publickey)|g"      ${conf_file}
+      var_name=servers_${SV}_endpoint
+      sed -i -e "s|<config/endpoint>|${!var_name}|g"                            ${conf_file}
+      var_name=servers_${SV}_dns
+      sed -i -e "s|<config/dns>|${!var_name}|g"                                 ${conf_file}
+      var_name=servers_${SV}_peers_${peer}_address
+      sed -i -e "s|<config/address>|${!var_name}|g"                             ${conf_file}
+      var_name=servers_${SV}_peers_${peer}_allowedips
+      sed -i -e "s|<config/allowedips>|${!var_name}|g"                          ${conf_file}
+      echo "${conf_file} successfully created"
+    done
+  done
+fi
+#
+# create selfextractor and ssh encrypted package
+#
+if [ "$CMD" = "send" ] ; then
+  if [ "$1" = "" ] ; then
+    format="`basename $0`  $CMD  %-10s %-10s  # (%s)\n"
+    printf "\n"
+    servers="$(_parse_yaml config.yml | grep "^servers_" | cut -d "_" -f2 | uniq)"
+    for SV in $servers ; do
+      peers="$(_parse_yaml config.yml | grep "^servers_${SV}_peers_.*_user" | cut -d "_" -f4- | uniq)"
+      for i in $peers ; do
+        peer=${i%_user=*}
+        varname="servers_${SV}_peers_${peer}_user"
+        printf "$format" "$SV" "$peer" "${!varname}"
+      done
+    done
+    printf "\n"
+    exit 0
+  fi
+  varname="servers_${1}_peers_${2}_user"
+  user=${!varname}
+  var_name="servers_${1}_peers_${2}_name"
+  wg_config_file="./peers/${!var_name}@${1}.conf"
+  var_name="servers_${1}_peers_${2}_name"
+  
+  varname="users_${user}_encrypt"
+  encrypt="${!varname}"
+
+  if [ "$encrypt" = "gpg" ] ; then
+    #ls -la ${wg_config_file}
+    gpg -c ${wg_config_file}
+    echo "${wg_config_file}.gpg created!"
+    exit 0
+  fi
+
+  PKG="install-pkg.sh"
+  if [ ! -f "${wg_config_file}" ] ; then
+    echo "error: wg-config file <${wg_config_file}> does not exist"
+    exit 1
+  fi
+  TD=$(mktemp -d)
+  mkdir -p $TD
+  cp ./.wg_manage/installer  $TD
+  cp ./.wg_manage/import.sh  $TD
+  cp ${wg_config_file}                  $TD/wg.conf
+
+  ### end additional files
+  echo "create self extracting installation package ..."
+  mde-selfextractor              /$TD      ${wg_config_file}.sh
+  #
+  # encypt package with ssh-rsa keys
+  #
+  if [ "${user}" = "" ] || [ ! -f /mde/data/pubkeys/id_rsa.pub-${user} ] ; then
+    echo "error: no valid user <${user}> given or file </mde/data/pubkeys/id_rsa.pub-${user}> missing!"
+    exit 1
+  fi
+  echo "encrypt installation package ..."
+  /mde/scripts/sshenc.sh -p /mde/data/pubkeys/id_rsa.pub-${user} < ${wg_config_file}.sh > $TD/$PKG.enc 2>/dev/null
+  #
+  # create mail and send it out
+  #
+  MAIL_BODY=".wg_manage/mail_body.txt"
+  mkdir -p .wg_manage
+  varname="users_${user}_mail"
+  to="${!varname}"
+  if [ ! -f ${MAIL_BODY} ] ; then
+    echo " enter desired mail body in file: ${MAIL_BODY}" > ${MAIL_BODY}
+  fi
+  BODY="$(cat ${MAIL_BODY})"
+  SWAKS_PARAM="--from $smtp_from $smtp_opt -p $smtp_port --auth-user $smtp_user --auth-pass $smtp_pass --server $smtp_host"
+  echo "send encrypt installation package to <${to}> ..."
+  swaks $SWAKS_PARAM --to ${to} \
+        --header "Subject: $smtp_subj" \
+        --attach-type "text/plain"               --attach-body  "$(echo "${BODY}")" \
+        --attach-type "application/octet-stream" --attach       @$TD/$PKG.enc >/dev/null
+  rm -rf $TD
+fi
+#
+# show peer configurations
+#
+if [ "$CMD" = "show" ] ; then
+  if [ "$1" = "" ] ; then
+    format="`basename $0`  $CMD  %-10s %-10s  # (%s)\n"
+    printf "\n"
+    servers="$(_parse_yaml config.yml | grep "^servers_" | cut -d "_" -f2 | uniq)"
+    for SV in $servers ; do
+      peers="$(_parse_yaml config.yml | grep "^servers_${SV}_peers_.*_user" | cut -d "_" -f4- | uniq)"
+      for i in $peers ; do
+        peer=${i%_user=*}
+        varname="servers_${SV}_peers_${peer}_user"
+        printf "$format" "$SV" "$peer" "${!varname}"
+      done
+    done
+    printf "\n"
+    exit 0
+  fi
+  echo ""
+  echo "###############################################################################"
+  echo "# pfsense server configuration"
+  echo "###############################################################################"
+  echo ""
+  echo "VPN -> WireGuard -> Peers -> Add Peer"
+  varname="servers_${1}_peers_${2}_user"
+  user=${!varname}
+  echo ""
+  varname="servers_${1}_peers_${2}_name"
+  desc=${!varname}
+  echo " * Description:    ${desc}"
+  echo " * Public Key:     $(cat  servers/${1}/peers/${2}/publickey)"
+  echo " * Pre-shared Key: $(cat  servers/${1}/peers/${2}/presharedkey)"
+  varname="servers_${1}_peers_${2}_address"
+  allow_ips=${!varname}
+  server_allow_ips="${allow_ips%/*}/32"
+  echo " * Allowed IPs:    ${server_allow_ips}"
+  echo ""
+  echo "Firewall -> Aliases -> Aliases -> IP -> wg_to_atk # for normal and admin users"
+  echo "Firewall -> Aliases -> Aliases -> IP -> wg_to_atk # for admin users"
+  echo ""
+  echo "###############################################################################"
+  echo "# wireguard wg1.conf server configuration entry"
+  echo "###############################################################################"
+  echo ""
+  echo "# ${desc}"
+  echo "[Peer]"
+  echo "  PublicKey = $(cat  servers/${1}/peers/${2}/publickey)"
+  echo "  PresharedKey = $(cat  servers/${1}/peers/${2}/presharedkey)"
+  echo "  AllowedIPs = ${server_allow_ips%/*}/32 "
+  echo ""
+
+  echo "###############################################################################"
+  echo "# client configuration: ${desc}.conf"
+  echo "###############################################################################"
+  conf_file=./peers/${desc}@${1}.conf
+  cat $conf_file
+  echo ""
+  qrencode -t ansiutf8 < $conf_file
+fi
+exit 0
