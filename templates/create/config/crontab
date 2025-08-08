@@ -1,5 +1,5 @@
 SHELL=/bin/bash
-PATH=/bin:/usr/bin:/usr/local/bin:/opt/dc/bin:/root/scripts:/root/utils
+PATH=/usr/local/sbin:/usr/sbin:/sbin:/bin:/usr/bin:/usr/local/bin:/opt/dc/bin:/root/scripts:/root/utils
 
 
 # run the nightly dc-batch 

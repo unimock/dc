@@ -40,9 +40,11 @@ if [ "$CMD" = "create" ] ; then
 # cmd ... execute command and report output in mail body
 # mail .. set recipient mail address for send-report"
 #
+# If return codes of commands will be 254, this entries will be marked as updates
 # If return codes of commands will be 255, this entries will be marked as warnings
-#
-#mail:<recipient-mail-address>[,<second-address>]
+# If return codes of commands will be 0,   this entries will be marked as OK
+# 
+#mail:<recipient-mail-address>[,<second-address>] [: errors|updates|warnings]
 #
 #cmd: ls /tmp >/tmp/.log                                  # comment
 #
