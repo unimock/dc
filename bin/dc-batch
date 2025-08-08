@@ -136,6 +136,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
        fi
     elif [ "${A[0]}" = "mail" ] ; then
       mail_to="${A[1]}"
+      mail_condition="${A[2]}"
     elif [ "${A[0]}" = "mail_condition" ] ; then
       mail_condition="${A[1]}"
     fi
@@ -223,7 +224,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     #echo "errors: $errors"
     #echo "warnings: $warnings"
     #echo "updates: $updates"
-
     send=1
     if [ "${mail_condition}" != "" ] ; then
       send=0
