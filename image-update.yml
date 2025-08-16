@@ -11,9 +11,9 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.42.3
+  - filebrowser/filebrowser:v2.42.5
   - kanboard/kanboard:v1.2.47
-  - syncthing/syncthing:2.0.1 
+  - syncthing/syncthing:2.0.2 
   - unimock/dotproject-docker:2.8.0-4
   - unimock/share-sshd-docker:1.2.0
   - unimock/share-gist-docker:1.0.0
