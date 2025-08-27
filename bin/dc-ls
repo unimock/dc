@@ -157,6 +157,7 @@ for node in $list ; do
   hname=$( dc-yq '.nodes.'$node'.fqdn  '     ${MDE_DC_YAML} )
   typ=$(   dc-yq '.nodes.'$node'.type  '     ${MDE_DC_YAML} )
   connection=$( dc-yq '.nodes.'$node'.connection.type' ${MDE_DC_YAML} )
+  yml_state=$( dc-yq '.nodes.'$node'.state' ${MDE_DC_YAML} )
   if  [ "$hname" = "" ] ; then
     hname="$node"
   fi
@@ -271,8 +272,12 @@ for node in $list ; do
     dstate="❓"
     return_code=1
   elif [ "$state" != "$typ" ] ; then
-    dstate="❌"
-    return_code=1
+    if [ "$state" = "ping"  -a "$yml_state" = "standby" ] ; then
+      dstate="⏰"   # node standby in node.yml
+    else
+      dstate="❌"
+      return_code=1
+    fi
   elif [ "$state" = "ping" ] ; then
     dstate="✅"
   elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
