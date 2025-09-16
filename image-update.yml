@@ -1,6 +1,6 @@
 general:
-  - traefik:v3.5.1
-  - gitea/gitea:1.24.5
+  - traefik:v3.5.2
+  - gitea/gitea:1.24.6
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.80
   - registry:2.8.3
@@ -11,9 +11,9 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.42.5
+  - filebrowser/filebrowser:v2.43.0
   - kanboard/kanboard:v1.2.47
-  - syncthing/syncthing:2.0.8 
+  - syncthing/syncthing:2.0.9 
   - unimock/dotproject-docker:2.8.0-4
   - unimock/share-sshd-docker:1.2.0
   - unimock/share-gist-docker:1.0.0
@@ -36,7 +36,7 @@ g7:
   - unimock/prg-docker:1.0.3
   - unimock/aptrep-docker:1.1.0
   - gitea/act_runner:0.2.11
-  - coredns/coredns:1.12.3
+  - coredns/coredns:1.12.4
   - ghcr.io/wg-easy/wg-easy:15.1.0
   - ghcr.io/pocket-id/pocket-id:v1.10.0
   - jamesread/olivetin:2025.7.29
