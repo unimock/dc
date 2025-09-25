@@ -13,7 +13,7 @@ general:
   - memcached:1.6.36-alpine
   - filebrowser/filebrowser:v2.43.0
   - kanboard/kanboard:v1.2.47
-  - syncthing/syncthing:2.0.9 
+  - syncthing/syncthing:2.0.10 
   - unimock/dotproject-docker:2.8.0-4
   - unimock/share-sshd-docker:1.2.0
   - unimock/share-gist-docker:1.0.0
@@ -46,7 +46,7 @@ hc:
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.1.0
-  - grafana/grafana:12.1.1
+  - grafana/grafana:12.2.0
   - nodered/node-red:4.1.0
   - koenkk/zigbee2mqtt:2.6.1
   - influxdb:2.7.11-alpine
