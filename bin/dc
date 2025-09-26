@@ -146,7 +146,12 @@ if [ "$1" = "mounts" ] ; then
   exit 0 
 fi
 if [ "$1" = "ssh-control-reset" ] ; then
-  rm -fv  $HOME/.dc/var/ssh/control/*
+  list=$( find ${HOME}"/.dc/var/ssh/control/" -type s)
+  for i in ${list} ; do
+    pkill -TERM -f ${i}
+    rm -f $i
+  done
+  #rm -fv  $HOME/.dc/var/ssh/control/*
   exit 0
 fi
 wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm image"
