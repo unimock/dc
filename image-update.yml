@@ -38,7 +38,7 @@ g7:
   - gitea/act_runner:0.2.11
   - coredns/coredns:1.12.4
   - ghcr.io/wg-easy/wg-easy:15.1.0
-  - ghcr.io/pocket-id/pocket-id:v1.11.2
+  - ghcr.io/pocket-id/pocket-id:v1.12.0
   - jamesread/olivetin:2025.7.29
 atk:
   - jacobalberty/unifi:v8
@@ -48,7 +48,7 @@ hc:
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:12.2.0
   - nodered/node-red:4.1.0
-  - koenkk/zigbee2mqtt:2.6.1
+  - koenkk/zigbee2mqtt:2.6.2
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
