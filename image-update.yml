@@ -22,6 +22,8 @@ general:
   - headscale/headscale:0.26.1
   - ghcr.io/gethomepage/homepage:v1.5.0
 g7:
+  - ghcr.io/pocket-id/pocket-id:v1.13.0
+  - coredns/coredns:1.13.0
   - psitrax/psitransfer:v2.3.0
   - louislam/uptime-kuma:2.0.0-beta.4
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
@@ -36,9 +38,7 @@ g7:
   - unimock/prg-docker:1.0.3
   - unimock/aptrep-docker:1.1.0
   - gitea/act_runner:0.2.11
-  - coredns/coredns:1.12.4
   - ghcr.io/wg-easy/wg-easy:15.1.0
-  - ghcr.io/pocket-id/pocket-id:v1.12.0
   - jamesread/olivetin:2025.7.29
 atk:
   - jacobalberty/unifi:v8
