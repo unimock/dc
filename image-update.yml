@@ -22,7 +22,7 @@ general:
   - headscale/headscale:0.26.1
   - ghcr.io/gethomepage/homepage:v1.5.0
 g7:
-  - ghcr.io/pocket-id/pocket-id:v1.13.0
+  - ghcr.io/pocket-id/pocket-id:v1.13.1
   - coredns/coredns:1.13.0
   - psitrax/psitransfer:v2.3.0
   - louislam/uptime-kuma:2.0.0-beta.4
