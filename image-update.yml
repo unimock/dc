@@ -47,7 +47,7 @@ hc:
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:12.2.0
-  - nodered/node-red:4.1.0
+  - nodered/node-red:4.1.1
   - koenkk/zigbee2mqtt:2.6.2
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
