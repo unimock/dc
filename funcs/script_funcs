@@ -25,7 +25,7 @@ sf_set_warning()
 }
 sf_set_update()
 {
-  if [ ${_sf_error} = "0" -a  ] ; then # overrule only OK
+  if [ ${_sf_error} = "0" ] ; then # overrule only OK
     _sf_error=254
   fi
 }

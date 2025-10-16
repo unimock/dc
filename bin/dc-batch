@@ -116,20 +116,21 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
        if [ "$ret" != "0" ] ; then
          if [ "$ret" = "124" ] ; then
            echo "    error timeout !!!!!!!!!!!!!!!!!!!!!"  >$JOB_LOG  2>&1
-	       fi
-	       if [ "$CMD" = "debug" ] ; then
+	   sf_set_error $ret                          2>&1 | tee -a $JOB_LOG
+	 fi
+	 if [ "$CMD" = "debug" ] ; then
            if [ "$ret" = "255" ] ; then
              sf_set_warning                             2>&1 | tee -a $JOB_LOG
            else
              sf_set_error $ret                          2>&1 | tee -a $JOB_LOG
            fi 
-	       else
+	 else
            if [ "$ret" = "255" ] ; then
              sf_set_warning                                 >>$JOB_LOG  2>&1
            else
-	           sf_set_error $ret                              >>$JOB_LOG  2>&1
-          fi
-	       fi
+             sf_set_error $ret                              >>$JOB_LOG  2>&1
+           fi
+	 fi
        fi
        if [ "$CMD" = "debug" ] ; then
          sf_end                              2>&1 | tee -a $JOB_LOG
@@ -239,7 +240,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
         fi
       done
     fi
-    
     if [ "$errors" = "0" ] ; then
       if [ "$warnings" = "0" ] ; then
         if [ "$updates" = "0" ] ; then
@@ -279,7 +279,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       #echo "mail send"
     fi
   fi
-  #echo "rc=$rc"
   exit $rc
 fi
 exit 0
