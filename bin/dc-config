@@ -301,6 +301,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       rm -rv ${MDE_DC_HOST_DIR}/$name
       rm -f $HOME/.dc/var/ssh/control/$name
       rm -f $HOME/.dc/var/ssh/config/$name
+      _config_refresh
       exit 0
     fi
     if [ "$CMD" = "create" ] ; then

@@ -6,12 +6,17 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 # dc-hcloud ssh-key create --name dc --public-key-from-file dc/nodes/id_ed25519.pub
 ################################################################################
 # create vserver config for Hetzner cloud
-cat << 'EOF' > /tmp/.hcloud-amd64.yml
+
+#################################################################################
+# list available server types with:
+# > dc-hcloud server-type list 
+#VSERVER_TYPE="cx11"  # amd64
+VSERVER_TYPE="cax11" # arm64
+cat << EOF > /tmp/.hcloud-arm64.yml
 type: hcloud
 name: <vserver_name>
 hcloud:
-  # dc-hcloud server-type list
-  type: cx11
+  type: ${VSERVER_TYPE}
   # dc-hcloud image list
   image: ubuntu-24.04
   #dc-hcloud location list
@@ -29,7 +34,7 @@ EOF
 HOST="test"
 VSERVER="test"
 SLAVE="dc-slave"
-TEMPL="/tmp/.hcloud-amd64.yml"
+TEMPL="/tmp/.hcloud-arm64.yml"
 
 if [ "$1" = "" -o "$1" = "create" ] ; then
   dc node $HOST config create test.intra dock  # create new node definition with hostname test.intra and type "dc"
@@ -59,7 +64,7 @@ if [ "$1" = "" -o "$1" = "delete" ] ; then
   ssh $HOST dc node $SLAVE config delete       # delete node config definition
   dc node $HOST vserver delete                 # delete assigned Hetzner cloud server
   dc node $HOST config  delete                 # delete node definition
-  rm -f $TEMPL
+  rm -f $TEMP
   echo "error_detect=$error_detect"
 fi
 exit $error_detect
