@@ -274,6 +274,8 @@ for node in $list ; do
   elif [ "$state" != "$typ" ] ; then
     if [ "$state" = "ping"  -a "$yml_state" = "standby" ] ; then
       dstate="⏰"   # node standby in node.yml
+    elif [ "$state" = "ping" -a "$connection" = "intermittently" ] ; then
+      dstate="🔃"
     else
       dstate="❌"
       return_code=1
@@ -283,7 +285,7 @@ for node in $list ; do
   elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
     dstate="✅"
     if [ "$size" != "" ] ; then
-      if [ $size -ge 90 ] ; then
+      if [ $size -ge 92 ] ; then
         dstate="⚠️"
         return_code=255
       fi
