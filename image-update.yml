@@ -21,6 +21,7 @@ general:
   - ghcr.io/tale/headplane:0.6.1
   - headscale/headscale:0.26.1
   - ghcr.io/gethomepage/homepage:v1.5.0
+  - ncarlier/webhookd:1.20.2-distrib
 g7:
   - ghcr.io/pocket-id/pocket-id:v1.13.1
   - coredns/coredns:1.13.1
