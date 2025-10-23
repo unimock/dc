@@ -25,7 +25,7 @@ g7:
   - ghcr.io/pocket-id/pocket-id:v1.13.1
   - coredns/coredns:1.13.1
   - psitrax/psitransfer:v2.3.0
-  - louislam/uptime-kuma:2.0.1
+  - louislam/uptime-kuma:2.0.2
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:8.3
   - docker:27.5.1-dind-alpine3.21
