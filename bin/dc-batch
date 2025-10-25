@@ -154,6 +154,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   warnings=0
   updates=0
   checks=0
+  fine=0
   for i in $list ; do
     R_FILE[$checks]=$i
     R_RESULT[$checks]="NDEF"
@@ -233,7 +234,8 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
       for f in ${mail_condition} ; do
         if [[ ( "$f" == "errors"   && "$errors"   != "0" ) || \
               ( "$f" == "warnings" && "$warnings" != "0" ) || \
-              ( "$f" == "updates"  && "$updates"  != "0" )
+              ( "$f" == "updates"  && "$updates"  != "0" ) || \
+              ( "$f" == "fine"     && "$fine"     != "0" )
               ]] ; then
           send=1
           break
