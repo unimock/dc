@@ -1,5 +1,5 @@
 general:
-  - traefik:v3.5.3
+  - traefik:v3.5.4
   - gitea/gitea:1.25.0
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.81
