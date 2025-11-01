@@ -19,7 +19,7 @@ general:
   - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.1
-  - headscale/headscale:0.26.1
+  - headscale/headscale:0.27.0
   - ghcr.io/gethomepage/homepage:v1.5.0
   - ncarlier/webhookd:1.20.2-distrib
 g7:
