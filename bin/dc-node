@@ -30,7 +30,7 @@ eval set -- $CURROPT
 
 if [ "$1" = "" ] ; then
   echo ""
-  echo " usage: `basename $0` <node>|-t <type> <command>  # manage nodes and/or apps on nodes"
+  echo " usage: `basename $0` <node>|-t|. <type> <command>  # manage nodes and/or apps on nodes"
   echo "      type: all dc"
   echo " node commands:"
   echo "    state               # state of a node. returns: ||ping|sshd|dock|off|dc|"
@@ -66,7 +66,11 @@ if [ "$1" = "" ] ; then
 fi
 
 if [ "$opt_type" = "" ] ; then
-  hlist="$1"
+  if [ "$1" = "." ] ; then
+    hlist=$(hostname)
+  else
+    hlist="$1"
+  fi
   shift
 else
   hlist=$( dc-list nodes $opt_type )
