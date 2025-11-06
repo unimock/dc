@@ -81,7 +81,7 @@ _config_refresh()
       if [ "$type" = "sshd" -o "$type" = "dc" -o "$type" = "dock"  ] ; then
         dc-yq -i '.nodes.'$name'.ssh_config.ControlPath = "'$HOME'/.dc/var/ssh/control/'$name'"' ${nodes_dir}/nodes.yml
         # replace variables off IdentityFile
-        IdentityFile=$( dc-yq '.nodes.'$name'.ssh_config.IdentityFile'                              ${nodes_dir}/nodes.yml | envsubst)
+        IdentityFile=$( dc-yq '.nodes.'$name'.ssh_config.IdentityFile'                             ${nodes_dir}/nodes.yml | envsubst)
         dc-yq -i '.nodes.'$name'.ssh_config.IdentityFile = "'$IdentityFile'"'                      ${nodes_dir}/nodes.yml
         echo "Host $name"                                                                  > $HOME/.dc/var/ssh/config/$name
         echo "    HostName $(dc-yq '.node.fqdn'  $hyaml)"                                 >> $HOME/.dc/var/ssh/config/$name
@@ -150,8 +150,8 @@ _config_refresh()
       echo "    app_dir: ${MDE_DC_APP_DIR}/${relPath}"                             >> ${MDE_DC_YAML}
       echo "    dc_yml: ${MDE_DC_APP_DIR}/${relPath}/${MDE_DC_YAML_FILE}"          >> ${MDE_DC_YAML}
       echo "    compose_yml: ${MDE_DC_APP_DIR}/${relPath}/${compose_yml}"          >> ${MDE_DC_YAML}
-      #                                         remove comments  remove empty lines        remove version       rename service key to dc    indent
-      cat $app_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^app:/dc:/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
+      #                                         remove comments  remove empty lines        remove version       rename service key to dc     substitute "node: ." with hostname                                                 indent
+      cat $app_dir/${relPath}/${MDE_DC_YAML_FILE} | grep -o '^[^#]*' | sed '/^[[:space:]]*$/d' |sed -e "/^version:/d" -e "s/^app:/dc:/g" -e "s/[[:space:]]node: \./ node: $(hostname)/g" -e "s/^/    /g" >> ${MDE_DC_YAML}
       echo "    compose:"                                                         >> ${MDE_DC_YAML}
       cat $app_dir/${relPath}/compose.yml | sed -e "s/^/      /g"                 >> ${MDE_DC_YAML}
     done
