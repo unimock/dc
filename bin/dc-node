@@ -30,8 +30,13 @@ eval set -- $CURROPT
 
 if [ "$1" = "" ] ; then
   echo ""
-  echo " usage: `basename $0` <node>|-t|. <type> <command>  # manage nodes and/or apps on nodes"
-  echo "      type: all dc"
+  echo " usage: `basename $0` <node> <command>  # manage nodes and/or apps on nodes"
+  echo ""
+  echo " node:"
+  echo "         <node-name>   ... node name"
+  echo "         .             ... local hostname as node name"
+  echo "         -t <type>     ... available node types: all|dc|ping|sshd"
+  echo ""
   echo " node commands:"
   echo "    state               # state of a node. returns: ||ping|sshd|dock|off|dc|"
   echo "                        #   dc ....  dc memeber,  if state=dock and node.type==dc"

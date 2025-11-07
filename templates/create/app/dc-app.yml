@@ -23,5 +23,6 @@ app:
     - type: default
       # set state to "disabled" so that app service will not be included in "dc-inspect runtime"
       state: active
+      # node on which the application should run or "." for local hostname 
       node: <node>
 
