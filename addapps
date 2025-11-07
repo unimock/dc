@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.11.13"
+VERSION="0.12.0"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -200,9 +200,14 @@ while true ; do
   esac
   shift
 done
+
+CMD="$1"
+shift
+APP="$@"
+
 ls_ret=0
 update_done="0"
-if [[ "$short" == "0" && "$1" != "refresh" ]] ; then
+if [[ "$short" == "0" && "$CMD" != "refresh" ]] ; then
   MASK="|%-1s|%-15s|%-8s|%-8s|%-25s|\n"
   printf "$MASK" "  " "application" "version" "latest" "description"
   printf "$MASK" "--" "---------------" "--------" "--------" "-------------------------"
@@ -232,12 +237,12 @@ while read -r i ; do
         state="☑ "
         installed=1
         updatable=1
-        if [[ "$1" == "ls" ]] ; then
+        if [[ "$CMD" == "ls" ]] ; then
           if [[ "${ls_ret}" == "0" ]] ; then
             ls_ret=254 # update
           fi
-        elif [[ "$1" == "update" ]] ; then
-          if [[ "$2" == "" ||  "$2" == "$name" ]] ; then
+        elif [[ "$CMD" == "update" ]] ; then
+          if [[ "$APP" == "" ||  "$APP" == "$name" ]] ; then
             _install "$list_type" "$name" "$url"
             update_done="1"
           fi
@@ -245,7 +250,7 @@ while read -r i ; do
       fi
     fi
   fi
-  if [[ "$1" == "ls" ]] ; then
+  if [[ "$CMD" == "ls" ]] ; then
     if [[ ( "$only_installed" == "0" && "$only_updatable" == "0" ) || \
           ( "$only_installed" == "1" && "$installed" == "1" )      || \
           ( "$only_updatable" == "1" && "$updatable" == "1" )   ]] ; then
@@ -256,22 +261,28 @@ while read -r i ; do
       fi
     fi
   fi
-  if [[ "$1" == "refresh" && "$name" == "addapps"  ]] ; then
+  if [[ "$CMD" == "refresh" && "$name" == "addapps"  ]] ; then
     _install "$list_type" "$name" "$url"
     #echo ""
     #$0 ls
     exit $?
   fi
-  if [[ "$1" == "install" && "$2" == "$name" ]] ; then
-    _install "$list_type" "$name" "$url"
-    exit 0
+  if [[ "$CMD" == "install" ]] ; then
+    for i in $APP ; do
+      if [[ "$i" == "$name" ]] ; then
+        _install "$list_type" "$i" "$url"
+      fi
+    done
+    #exit 0
   fi
- 
-  if [[ "$1" == "remove" && "$2" == "$name" ]] ; then
-    _remove "$list_type" "$name"
-    exit 0
+  if [[ "$CMD" == "remove" ]] ; then
+    for i in $APP ; do
+      if [[ "$i" == "$name" ]] ; then
+        _remove "$list_type" "$i"
+      fi
+    done
   fi
-  if [[ "$1" == ".getver" && "$name" != "addapps" ]] ; then
+  if [[ "$CMD" == ".getver" && "$name" != "addapps" ]] ; then
     if [ -f ./$name ] ; then
       if [ "$name" = "dc-env" ] ; then
         VERSION=$(cat /opt/dc/VERSION)
@@ -283,9 +294,9 @@ while read -r i ; do
     fi
   fi
 done <<< "$(echo "$list")"
-if [[ "$1" == "ls" ]] ; then
+if [[ "$CMD" == "ls" ]] ; then
   exit ${ls_ret}
-elif [[ "$1" == "update" && "$update_done" == "1" ]] ; then
+elif [[ "$CMD" == "update" && "$update_done" == "1" ]] ; then
   echo ""
   $0 list
 fi
