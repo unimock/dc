@@ -58,7 +58,7 @@ _config_refresh()
   #
   last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "node.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
-  if [ "$stamp" != "" -a  ! -f ${nodes_dir}/modified.${stamp} ] ; then
+  if [[ ( "$stamp" != "" && ! -f ${nodes_dir}/modified.${stamp} ) || "$1" == "force" ]] ; then
     rm -rf ${nodes_dir}
     mkdir ${nodes_dir}
     echo "$last" | awk '{ print $2 }' > ${nodes_dir}/modified.${stamp}
@@ -301,11 +301,11 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         dc-list apps -n $name | sed "s|^| - |g" 
         exit 1
       fi
-      echo "TBD in $0 : do not allow, if hcloud server is assigned an running!"
+      echo "TBD: in $0 : do not allow, if hcloud server is assigned an running!"
       rm -rv ${MDE_DC_HOST_DIR}/$name
       rm -f $HOME/.dc/var/ssh/control/$name
       rm -f $HOME/.dc/var/ssh/config/$name
-      _config_refresh
+      _config_refresh force
       exit 0
     fi
     if [ "$CMD" = "create" ] ; then
