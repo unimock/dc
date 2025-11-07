@@ -35,17 +35,10 @@ _help() {
   echo ""
 }
 
-#if [ "$1" = "" ] ; then
-#  _help
-#  exit 0
-#fi
-
-  if [ ! -d /opt/dc ] ; then
-    sudo git clone https://github.com/unimock/dc.git /opt/dc
-  #else
-  #  (cd /opt/dc && git pull)
-  fi
-  if [ !  -f $HOME/.dc/etc/config ] ; then
+if [ ! -d /opt/dc ] ; then
+  sudo git clone https://github.com/unimock/dc.git /opt/dc
+fi
+if [ !  -f $HOME/.dc/etc/config ] ; then
     if [ "$opt_force" = "0" ] ; then
       echo ""
       echo "# Main configuration file <$HOME/.dc/etc/config> does not exists."
@@ -100,7 +93,6 @@ _help() {
       sudo apt-get -qq install -y $p
     fi
   done
-
   # install external utilities
   mkdir -p /opt/dc/external
   while read -r i ; do
@@ -125,29 +117,41 @@ _help() {
       fi
       chmod a+x /opt/dc/external/$name
       rm -f $FI
-    fi  
-  done <<< "$(echo "$EXTERNALS")"
+  fi  
+done <<< "$(echo "$EXTERNALS")"
 
 
-  mkdir -p ${MDE_DC_CONFIG_DIR}
-  # establish dc-crontab
-  if [ ! -f ${MDE_DC_CONFIG_DIR}/crontab ] ; then
-    cp /opt/dc/templates/create/config/crontab ${MDE_DC_CONFIG_DIR}
+mkdir -p ${MDE_DC_CONFIG_DIR}
+# establish dc-crontab
+if [ ! -f ${MDE_DC_CONFIG_DIR}/crontab ] ; then
+  cp /opt/dc/templates/create/config/crontab ${MDE_DC_CONFIG_DIR}
+fi
+if [ ! -f /etc/cron.d/dc-crontab ] ; then
+  sudo ln -s ${MDE_DC_CONFIG_DIR}/crontab /etc/cron.d/dc-crontab
+  echo "$IAM: create <${MDE_DC_CONFIG_DIR}/crontab>"
+fi
+# other yml configs
+list=$( find /opt/dc/templates/create/config -name "*.yml" )
+for i in $list ; do
+  if [ ! -f ${MDE_DC_CONFIG_DIR}/`basename $i` ] ; then
+    cp $i ${MDE_DC_CONFIG_DIR}
+    echo "$IAM: create <${MDE_DC_CONFIG_DIR}/`basename $i`>"
   fi
-  if [ ! -f /etc/cron.d/dc-crontab ] ; then
-    sudo ln -s ${MDE_DC_CONFIG_DIR}/crontab /etc/cron.d/dc-crontab
-    echo "$IAM: create <${MDE_DC_CONFIG_DIR}/crontab>"
+done
+dirlist="${MDE_DC_VOL} ${MDE_DC_VOL_Apps} ${MDE_DC_VOL_Backup} ${MDE_DC_VOL_Cache} ${MDE_DC_VOL_Data} ${MDE_DC_VOL_Logs}"
+for i in $dirlist ; do
+  if [ ! -d ${i} ] ; then
+    echo "$IAM: createdir <${i}>"
+    sudo mkdir       ${i}
+    sudo chmod a+rwx ${i}
   fi
-
-  # other yml configs
-  list=$( find /opt/dc/templates/create/config -name "*.yml" )
-  for i in $list ; do
-    if [ ! -f ${MDE_DC_CONFIG_DIR}/`basename $i` ] ; then
-      cp $i ${MDE_DC_CONFIG_DIR}
-      echo "$IAM: create <${MDE_DC_CONFIG_DIR}/`basename $i`>"
-    fi
-  done      
-  source ${HOME}/.bashrc
-  dc-config rebuild
+done
+# create batch-dir
+if [ ! -d ${MDE_DC_BATCH_DIR} ] ; then
+  echo "$IAM: createdir <${MDE_DC_BATCH_DIR}>"
+  mkdir -p ${MDE_DC_BATCH_DIR}
+fi
+source ${HOME}/.bashrc
+dc-config rebuild
 
 exit 0
