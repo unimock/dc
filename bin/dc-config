@@ -278,7 +278,11 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
   # node
   #######################
   if [ "$TYP" = "node" ] ; then
-    name="$1"
+    if [ "$1" = "." ] ; then
+      name=$(hostname)
+    else
+      name="$1"
+    fi
     if [ "$name" = "" ] ; then
       echo "error: invalid node name <$name> given!"
       exit 1
@@ -332,8 +336,18 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
           sed -i "s|<name>|${name}|g"                 $i
           sed -i "s|<hostname_or_ip>|${hostname}|g"   $i
           sed -i "s|<type>|${typ}|g"                  $i
+
+          if [ "${hostname}" = "127.0.0.1" ] ; then
+            sed -i "s|<machine_id>|$(cat /etc/machine-id)|g" $i
+          fi
           echo "created '$i'"
-      done   
+      done
+      if [ "${hostname}" = "127.0.0.1" ] ; then
+        pubkey=$( cat ${MDE_DC_HOST_DIR}/id_ed25519.pub )
+        AKF=/root/.ssh/authorized_keys
+        sudo grep -qxF "$pubkey" $AKF || echo "$pubkey" | sudo tee -a $AKF
+        echo "add public key from <${MDE_DC_HOST_DIR}/id_ed25519.pub> into <$AKF>"
+      fi
     fi
     _config_refresh
     exit 0

@@ -20,7 +20,7 @@ node:
   desc: ""
   info: ""
   os: ubuntu
-  machine_id:
+  machine_id: <machine_id>
   ssh_config:
     User: root
     IdentityFile: ${MDE_DC_HOST_DIR}/id_ed25519
