@@ -6,7 +6,6 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 # dc-hcloud ssh-key create --name dc --public-key-from-file dc/nodes/id_ed25519.pub
 ################################################################################
 # create vserver config for Hetzner cloud
-
 #################################################################################
 # list available server types with:
 # > dc-hcloud server-type list 
@@ -31,40 +30,50 @@ dc-install:
     #- tree
 EOF
 ################################################################################
-HOST="test"
-VSERVER="test"
-SLAVE="dc-slave"
+NODE="htest"       # local dc node name
+VSERVER="htest"    # hetzner vserver name
+#REM_NODE="iam"    # remote node name on NODE
+REM_NODE="."       # use remote hostname as remote node name on NODE
+REM_TYPE="dock"
 TEMPL="/tmp/.hcloud-arm64.yml"
 
+ADDAPPS_URL="$( cat /xxx/addapps_url 2>/dev/null)"
+
 if [ "$1" = "" -o "$1" = "create" ] ; then
-  dc node $HOST config create test.intra dock  # create new node definition with hostname test.intra and type "dc"
-  dc node $HOST vserver assign $VSERVER $TEMPL # assign virtual server to node
-  dc node $HOST vserver create                 # create assigned hetzner cloud server
-  dc node $HOST state                          # check if node returns dc
-  ssh $HOST git clone https://github.com/unimock/dc.git /opt/dc
-  ssh $HOST /opt/dc/bin/dc-install --force
-  ssh $HOST 'cat /root/dc/nodes/id_ed25519.pub >> /root/.ssh/authorized_keys'
+  dc node $NODE config create test.intra ${REM_TYPE}  # create new node definition
+  dc node $NODE vserver assign $VSERVER $TEMPL        # assign virtual server to node
+  dc node $NODE vserver create                        # create assigned hetzner cloud server
+  hcloud server list
+  echo "node-state: $(dc node $NODE state)"           # check current node state ($REM_TYPE)
+  if [ "$ADDAPPS_URL" = "" ] ; then 
+    ssh $NODE git clone https://github.com/unimock/dc.git /opt/dc
+    ssh $NODE /opt/dc/bin/dc-install --force
+  else
+    ssh $NODE "wget -O /tmp/addapps ${ADDAPPS_URL} ; install -m 755 /tmp/addapps /usr/local/bin"
+    ssh $NODE "addapps install dc-env md-exec difft yq ; addapps ls"
+  fi
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
-  IP=$(dc node $HOST ip)
+  IP=$(dc node $NODE ip)
   echo "IP=$IP"
   # lets play around on the new dc cluster manager
-  ssh $HOST dc node $SLAVE config create $IP dc
-  ssh $HOST dc ls nodes --inspect
-  ssh $HOST dc app hello-world config create $SLAVE hello-world /root/dc/apps/hello-world
-  ssh $HOST dc app hello-world up
-  ssh $HOST dc ls apps --inspect
-  PORT=$(ssh $HOST dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
+  ssh $NODE dc node $REM_NODE config create 127.0.0.1 dc # create dc node for himself
+  ssh $NODE dc ls nodes --inspect                        # disply dc nodes
+  ssh $NODE dc app hello-world config create $REM_NODE hello-world /root/dc/apps/hello-world
+  ssh $NODE dc app hello-world up                        # establish hello-world app
+  ssh $NODE dc ls apps --inspect                         # display apps
+  PORT=$(ssh $NODE dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
   sleep 1
-  netcat -vz $IP $PORT
+  netcat -vz $IP $PORT                                   # test access to hello-world
+  ssh $NODE dc app hello-world rm                        # stop and remove hello-world app services
+  ssh $NODE dc app hello-world config delete             # remove hello-world app definition
+  ssh $NODE dc node $REM_NODE config delete              # delete node config definition
 fi
 if [ "$1" = "" -o "$1" = "delete" ] ; then 
-  ssh $HOST dc app hello-world rm              # stop and remove hello-world app services
-  ssh $HOST dc app hello-world config delete   # remove hello-world app definition
-  ssh $HOST dc node $SLAVE config delete       # delete node config definition
-  dc node $HOST vserver delete                 # delete assigned Hetzner cloud server
-  dc node $HOST config  delete                 # delete node definition
+  dc node $NODE vserver delete                           # delete assigned Hetzner cloud server
+  dc node $NODE config  delete                           # delete node definition
   rm -f $TEMP
+  hcloud server list
   echo "error_detect=$error_detect"
 fi
 exit $error_detect
