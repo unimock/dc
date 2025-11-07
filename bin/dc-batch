@@ -44,7 +44,8 @@ if [ "$CMD" = "create" ] ; then
 # If return codes of commands will be 255, this entries will be marked as warnings
 # If return codes of commands will be 0,   this entries will be marked as OK
 # 
-#mail:<recipient-mail-address>[,<second-address>] [: errors|updates|warnings]
+#mail:<mail-address-1>[,<second-address>] [: ok|errors|updates|warnings]
+#mail:<mail-address-2>[,<second-address>] [: ok|errors|updates|warnings]
 #
 #cmd: ls /tmp >/tmp/.log                                  # comment
 #
@@ -60,36 +61,32 @@ EOF
   exit 0
 fi
 
+send_emails=0
 ############################################################
 # run / debug
 ############################################################
 if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
   cluster_name=$(   dc-yq '.config.cluster.name'   )
-  #
-  # cleanup log files
-  #
   rm -rf    ${MDE_DC_LOG_DIR}/$JOB_NAME
   mkdir -p  ${MDE_DC_LOG_DIR}/$JOB_NAME
-  mail_condition=""
-  mail_to=""
-  mail_subject=""
   echo '```'
   while read line ; do
     ifs=$IFS ; IFS=":" ; A=($line) ; IFS=$ifs
     echo "execute: <${A[0]}> <${A[1]}> <${A[2]}> <${A[3]}>"
-    if [ "${A[0]}" = "cmd" ] ; then
+    if [ "${A[0]}" = "mail" ] ; then
+      send_emails=1
+    elif [ "${A[0]}" = "cmd" ] ; then
        echo ""               >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
        echo "### ${A[1]} :"  >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
        echo ""               >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
        bash -c "${A[1]}"     >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1 </dev/null
        rc=$?
-       echo "return-code of cmd =$rc"         >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
+       echo "return-code of cmd =$rc" >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
     elif [ "${A[0]}" = "job" -o "${A[0]}" = "JOB" ] ; then
        if [ "${A[0]}" = "JOB" ] ; then
          echo ""               >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
          echo "### ${A[1]} :"  >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
          echo ""               >> ${MDE_DC_LOG_DIR}/$JOB_NAME/body 2>&1
-
        fi
        A[1]=$( echo ${A[1]} | xargs)  # remove blanks
        if [ "${A[1]}" != "" ] ; then
@@ -115,36 +112,31 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
        fi   
        if [ "$ret" != "0" ] ; then
          if [ "$ret" = "124" ] ; then
-           echo "    error timeout !!!!!!!!!!!!!!!!!!!!!"  >$JOB_LOG  2>&1
-	   sf_set_error $ret                          2>&1 | tee -a $JOB_LOG
-	 fi
-	 if [ "$CMD" = "debug" ] ; then
+            echo "    error timeout !!!!!!!!!!!!!!!!!!!!!"  >$JOB_LOG  2>&1
+	          sf_set_error $ret                          2>&1 | tee -a $JOB_LOG
+	       fi
+	       if [ "$CMD" = "debug" ] ; then
            if [ "$ret" = "255" ] ; then
              sf_set_warning                             2>&1 | tee -a $JOB_LOG
            else
              sf_set_error $ret                          2>&1 | tee -a $JOB_LOG
            fi 
-	 else
-           if [ "$ret" = "255" ] ; then
-             sf_set_warning                                 >>$JOB_LOG  2>&1
-           else
-             sf_set_error $ret                              >>$JOB_LOG  2>&1
-           fi
-	 fi
-       fi
-       if [ "$CMD" = "debug" ] ; then
-         sf_end                              2>&1 | tee -a $JOB_LOG
-       else
-         sf_end                              >>$JOB_LOG  2>&1
-       fi
-    elif [ "${A[0]}" = "mail" ] ; then
-      mail_to="${A[1]}"
-      mail_condition="${A[2]}"
-    elif [ "${A[0]}" = "mail_condition" ] ; then
-      mail_condition="${A[1]}"
-    fi
-  done < <(grep -v '^\s*$\|^\s*\#' ${MDE_DC_BATCH_DIR}/$JOB_NAME.list)
-  echo '```'
+	        else
+            if [ "$ret" = "255" ] ; then
+              sf_set_warning                                 >>$JOB_LOG  2>&1
+            else
+              sf_set_error $ret                              >>$JOB_LOG  2>&1
+            fi
+	        fi
+        fi
+        if [ "$CMD" = "debug" ] ; then
+          sf_end                              2>&1 | tee -a $JOB_LOG
+        else
+          sf_end                              >>$JOB_LOG  2>&1
+        fi
+      fi
+    done < <(grep -v '^\s*$\|^\s*\#' ${MDE_DC_BATCH_DIR}/$JOB_NAME.list)
+    echo '```'
   #
   # create report
   #
@@ -163,7 +155,6 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     if [ "$ret" = "0" ] ; then
       res=${res#\#}
       eval $res
-      #echo "$result $start $end $duration"
       R_RESULT[$checks]=${result}
       R_START[$checks]=${start}
       R_END[$checks]=${end}
@@ -179,9 +170,8 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
         updates=$(( updates + 1 ))
       fi
     fi
-    checks=$(( checks +  1 ))
+    checks=$(( checks + 1 ))
   done
-  #echo "checks=$checks errors=$errors warnings=$warnings updates=$updates"
   rm -f $FI
   printf "\n"                                 >> $FI
   printf "# batch %s report on cluster %s @ %s\n" "$JOB_NAME" "$cluster_name"  "$(hostname)" >> $FI
@@ -222,67 +212,67 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
     rc=1
   fi
 
-  if [ "$mail_to" != "" ] ; then
-    mail_condition=$( echo ${mail_condition} | sed "s/,/ /g" )
-    #echo "mail_condition: $mail_condition"
-    #echo "errors: $errors"
-    #echo "warnings: $warnings"
-    #echo "updates: $updates"
-    send=1
-    if [ "${mail_condition}" != "" ] ; then
-      send=0
-      for f in ${mail_condition} ; do
-        if [[ ( "$f" == "errors"   && "$errors"   != "0" ) || \
-              ( "$f" == "warnings" && "$warnings" != "0" ) || \
-              ( "$f" == "updates"  && "$updates"  != "0" ) || \
-              ( "$f" == "fine"     && "$fine"     != "0" )
-              ]] ; then
-          send=1
-          break
+  if [ "$send_emails" = "1" ] ; then
+    mail_sender=$(    dc-yq '.config.mail.sender'    )
+    mail_smtp_user=$( dc-yq '.config.mail.smtp.user' )
+    mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
+    mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
+    mail_condition=""
+    mail_to=""
+    mail_subject=""
+    while read line ; do
+      ifs=$IFS ; IFS=":" ; A=($line) ; IFS=$ifs
+      if [ "${A[0]}" = "mail" ] ; then
+        mail_to="${A[1]}"
+        mail_condition="${A[2]}"
+        mail_condition=$( echo ${mail_condition} | sed "s/,/ /g" )
+        send=1
+        if [ "${mail_condition}" != "" ] ; then
+          send=0
+          for f in ${mail_condition} ; do
+            if [[ ( "$f" == "errors"   && "$errors"   != "0" ) || \
+                  ( "$f" == "warnings" && "$warnings" != "0" ) || \
+                  ( "$f" == "updates"  && "$updates"  != "0" ) || \
+                  ( "$f" == "ok"       && "$fine"     != "0" )
+                  ]] ; then
+              send=1
+              break
+            fi
+          done
         fi
-      done
-    fi
-    if [ "$errors" = "0" ] ; then
-      if [ "$warnings" = "0" ] ; then
-        if [ "$updates" = "0" ] ; then
-          subject="✅ report: ${JOB_NAME}@${cluster_name}"
+        if [ "$errors" = "0" ] ; then
+          if [ "$warnings" = "0" ] ; then
+            if [ "$updates" = "0" ] ; then
+              subject="✅ report: ${JOB_NAME}@${cluster_name}"
+            else
+              subject="☑ report: ${JOB_NAME}@${cluster_name}"
+            fi
+          else  
+              subject="⚠️ report: ${JOB_NAME}@${cluster_name}"
+          fi
         else
-          subject="☑ report: ${JOB_NAME}@${cluster_name}"
+          subject="❌ report: ${JOB_NAME}@${cluster_name}"
         fi
-      else  
-          subject="⚠️ report: ${JOB_NAME}@${cluster_name}"
+        if [ "$send" = "1" ] ; then
+          attachments=""
+          for t in ${E_FI} ; do
+              attachments="${attachments} --attach-type "text/plain" --attach @${t}" # will build list of files to attach
+          done
+          auth=""
+          if [ "$mail_smtp_user" != "" ] ; then
+            auth="  -au $mail_smtp_user -ap $mail_smtp_pass "
+          fi
+          swaks --to $mail_to --from $mail_sender \
+                -s   $mail_smtp_host \
+                -tlso $auth \
+                --header "Subject: $subject" \
+                --attach-type "text/markdown" --attach-body @$FI \
+                ${attachments} -S 2
+        fi
       fi
-    else
-      subject="❌ report: ${JOB_NAME}@${cluster_name}"
-    fi
-    if [ "$send" = "1" ] ; then
-      #
-      # send report mail
-      #
-      mail_sender=$(    dc-yq '.config.mail.sender'    )
-      mail_smtp_user=$( dc-yq '.config.mail.smtp.user' )
-      mail_smtp_pass=$( dc-yq '.config.mail.smtp.pass' )
-      mail_smtp_host=$( dc-yq '.config.mail.smtp.host' )
-  
-      attachments=""
-      for t in ${E_FI} ; do
-          attachments="${attachments} --attach-type "text/plain" --attach @${t}" # will build list of files to attach
-      done
-      auth=""
-      if [ "$mail_smtp_user" != "" ] ; then
-        auth="  -au $mail_smtp_user -ap $mail_smtp_pass "
-      fi
-      swaks --to $mail_to --from $mail_sender \
-            -s   $mail_smtp_host \
-            -tlso $auth \
-            --header "Subject: $subject" \
-            --attach-type "text/markdown" --attach-body @$FI \
-            ${attachments} -S 2
-      #echo "mail send"
-    fi
+    done < <(grep -v '^\s*$\|^\s*\#' ${MDE_DC_BATCH_DIR}/$JOB_NAME.list)
   fi
-  exit $rc
 fi
-exit 0
+exit $rc
 
 
