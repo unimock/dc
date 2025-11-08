@@ -34,7 +34,7 @@ NODE="htest"       # local dc node name
 VSERVER="htest"    # hetzner vserver name
 #REM_NODE="iam"    # remote node name on NODE
 REM_NODE="."       # use remote hostname as remote node name on NODE
-REM_TYPE="dock"
+REM_TYPE="dc"
 TEMPL="/tmp/.hcloud-arm64.yml"
 
 ADDAPPS_URL="$( cat /xxx/addapps_url 2>/dev/null)"
