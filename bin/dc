@@ -3,13 +3,24 @@ MULTI_NODES=""
 
 printf "%-60s # %s %s\n" "dc $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> /tmp/.dc-history
 
-
-
 if [ "$1" = "install" ] ; then
   shift
   /opt/dc/bin/dc-install $@
   exit $?
 fi
+
+if [ "$1" = "store" ] ; then
+  shift
+  SCRIPT=$(mktemp)
+  url=$( dc-yq '.config.cluster.store.url' )
+  wget -q -O $SCRIPT "${url}/install.sh"
+  sudo chmod a+x $SCRIPT
+  $SCRIPT "$@"
+  rc=$?
+  rm $SCRIPT
+  exit $rc
+fi
+
 
 . /opt/dc/funcs/global
 
