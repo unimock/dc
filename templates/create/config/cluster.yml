@@ -1,8 +1,10 @@
 cluster:
-  name: xyz
+  name: <cluster.name>
   backup:
-    image_url: registry.domain.de
+    image_url: <cluster.backup.image_url>
   image_list:
-    url:
+    url: <cluster.image_list.url>
     groups:
       - general
+  store:
+    script_url: <config.store.script_url>
