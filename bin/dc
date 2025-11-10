@@ -12,7 +12,7 @@ fi
 if [ "$1" = "store" ] ; then
   shift
   SCRIPT=$(mktemp)
-  url=$( dc-yq '.config.cluster.store.url' )
+  url=$( dc-yq '.config.cluster.store.script_url' )
   wget -q -O $SCRIPT "${url}/install.sh"
   sudo chmod a+x $SCRIPT
   $SCRIPT "$@"
