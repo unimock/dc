@@ -9,7 +9,7 @@ err_report() { echo "Error on line $1" ; error_detect=1 ; } ; trap 'err_report $
 #################################################################################
 # list available server types with:
 # > dc-hcloud server-type list 
-#VSERVER_TYPE="cx11"  # amd64
+#VSERVER_TYPE="cx23"  # amd64
 VSERVER_TYPE="cax11" # arm64
 cat << EOF > /tmp/.hcloud-arm64.yml
 type: hcloud
