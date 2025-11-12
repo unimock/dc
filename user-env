@@ -81,7 +81,7 @@ EOF
      echo "alias ipa='ip -br -c a'  #user-env-install"        >> $HOME/.bash_aliases
      echo "alias ipl='ip -br -c l'  #user-env-install"        >> $HOME/.bash_aliases
      echo "alias ipr='ip -br -c r'  #user-env-install"        >> $HOME/.bash_aliases
-     echo "alias lsk='eval \`ssh-agent\` && ssh-add /root/dc/nodes/id_ed25519 #user-env-install' " >> $HOME/.bash_aliases
+     echo "alias lsk='eval \`ssh-agent\` && ssh-add /root/dc/nodes/id_ed25519'  #user-env-install" >> $HOME/.bash_aliases
 # loadsshkey (alias lsk)
 
   fi
