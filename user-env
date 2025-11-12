@@ -76,10 +76,10 @@ if [ "$1" = "install" ] ; then
 
      touch $HOME/.gitconfig
 
-     sed -i '1i export PATH=./scripts:\$PATH' $HOME/.bashrc
-     echo "alias ipa='ip -br -c a'"        >> $HOME/.bash_aliases
-     echo "alias ipl='ip -br -c l'"        >> $HOME/.bash_aliases
-     echo "alias ipr='ip -br -c r'"        >> $HOME/.bash_aliases
+     sed -i '1i export PATH=./scripts:\$PATH  #user-env-install' $HOME/.bashrc
+     echo "alias ipa='ip -br -c a'  #user-env-install"        >> $HOME/.bash_aliases
+     echo "alias ipl='ip -br -c l'  #user-env-install"        >> $HOME/.bash_aliases
+     echo "alias ipr='ip -br -c r'  #user-env-install"        >> $HOME/.bash_aliases
 
   fi
   
