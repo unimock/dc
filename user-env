@@ -1,0 +1,87 @@
+#!/bin/bash
+
+VERSION="0.0.0"
+
+show_help()
+{
+  echo ""
+  echo "usage: `basename $0` nstall<content-directory> [selfextractor-file]"
+  echo ""
+  echo "example:"
+  echo ""
+  echo "`basename $0` ./hugo  # create directory and a template installer script."
+  echo ""
+  echo "# copy desired content to the ./hugo directory and modify installer script:"
+  echo "vi ./hugo/installer"
+  echo ""
+  echo "`basename $0` ./hugo # re-create installable selfextractor file: ./hugo.sh"
+  echo "#or:"
+  echo "`basename $0` ./hugo /tmp/my-selfextractor.sh"
+  echo ""
+}
+
+if [ "$1" = "" ] ; then
+  show_help
+  exit 0
+fi
+
+options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+eval set -- "$options"
+while true ; do
+  case "$1" in
+  -h|--help) 
+    show_help
+    exit 0
+    ;;
+  -v|--version)
+      echo "$VERSION"
+    exit 0
+    ;;
+  
+  -p)
+    shift
+    xxxxx="$1"
+    ;;
+  --)
+    shift
+    break;;
+  esac
+  shift
+done
+if [ "$1" = "remove" ] ; then
+  echo "calling $1"
+fi
+
+if [ "$1" = "install" ] ; then
+  echo "TBD installation"
+  sudo mkdir -p /xxx /cust
+  sudo chmod a+rwx /xxx /cust
+  mkdir -p $HOME/{config,scripts}
+  if [ ! -f $HOME/.gitconfig ] ; then
+# .gitconfig
+#[diff]
+#        tool = difftastic
+#[difftool]
+#        prompt = false
+#[difftool "difftastic"]
+#        cmd = difft --display side-by-side-show-both "$LOCAL" "$REMOTE"
+#[pager]
+#        difftool = true
+#[merge]
+#        tool = difftastic
+#[mergetool "difftastic"]
+#        cmd = difft "$LOCAL" "$REMOTE"
+#[mergetool]
+#        prompt = false
+
+     touch $HOME/.gitconfig
+
+     sed -i '1i export PATH=./scripts:\$PATH' $HOME/.bashrc
+     echo "alias ipa='ip -br -c a'"        >> $HOME/.bash_aliases
+     echo "alias ipl='ip -br -c l'"        >> $HOME/.bash_aliases
+     echo "alias ipr='ip -br -c r'"        >> $HOME/.bash_aliases
+
+  fi
+  
+fi
+exit 0
