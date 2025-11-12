@@ -53,7 +53,9 @@ if [ "$1" = "remove" ] ; then
 fi
 
 if [ "$1" = "install" ] ; then
-  echo "TBD installation"
+  echo ""
+  echo "TBD: establish rc.local"
+  echo ""
   sudo mkdir -p /xxx /cust
   sudo chmod a+rwx /xxx /cust
   mkdir -p $HOME/{config,scripts}
@@ -74,7 +76,6 @@ cat > $HOME/.gitconfig <<'EOF'
 [mergetool]
         prompt = false
 EOF
-# remove and apply
      sed -i '/#user-env-install/d'                               $HOME/.bashrc
      sed -i '1i export PATH=./scripts:\$PATH  #user-env-install' $HOME/.bashrc
      sed -i '/#user-env-install/d'                               $HOME/.bash_aliases
@@ -82,7 +83,6 @@ EOF
      echo "alias ipl='ip -br -c l'  #user-env-install"        >> $HOME/.bash_aliases
      echo "alias ipr='ip -br -c r'  #user-env-install"        >> $HOME/.bash_aliases
      echo "alias lsk='eval \`ssh-agent\` && ssh-add /root/dc/nodes/id_ed25519'  #user-env-install" >> $HOME/.bash_aliases
-# loadsshkey (alias lsk)
 
   fi
   
