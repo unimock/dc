@@ -50,7 +50,7 @@ if [ "$1" = "" -o "$1" = "create" ] ; then
     ssh $NODE /opt/dc/bin/dc-install --force
   else
     ssh $NODE "wget -O /tmp/addapps ${ADDAPPS_URL} ; install -m 755 /tmp/addapps /usr/local/bin"
-    ssh $NODE "addapps install dc-env md-exec difft yq ; addapps ls"
+    ssh $NODE "addapps install user-env dc-env md-exec difft yq ; addapps ls"
   fi
 fi
 if [ "$1" = "" -o "$1" = "test" ] ; then
