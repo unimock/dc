@@ -58,28 +58,31 @@ if [ "$1" = "install" ] ; then
   sudo chmod a+rwx /xxx /cust
   mkdir -p $HOME/{config,scripts}
   if [ ! -f $HOME/.gitconfig ] ; then
-# .gitconfig
-#[diff]
-#        tool = difftastic
-#[difftool]
-#        prompt = false
-#[difftool "difftastic"]
-#        cmd = difft --display side-by-side-show-both "$LOCAL" "$REMOTE"
-#[pager]
-#        difftool = true
-#[merge]
-#        tool = difftastic
-#[mergetool "difftastic"]
-#        cmd = difft "$LOCAL" "$REMOTE"
-#[mergetool]
-#        prompt = false
-
-     touch $HOME/.gitconfig
-
+cat > $HOME/.gitconfig <<'EOF'
+[diff]
+        tool = difftastic
+[difftool]
+        prompt = false
+[difftool "difftastic"]
+        cmd = difft --display side-by-side-show-both "$LOCAL" "$REMOTE"
+[pager]
+        difftool = true
+[merge]
+        tool = difftastic
+[mergetool "difftastic"]
+        cmd = difft "$LOCAL" "$REMOTE"
+[mergetool]
+        prompt = false
+EOF
+# remove and apply
+     sed -i '/#user-env-install/d'                               $HOME/.bashrc
      sed -i '1i export PATH=./scripts:\$PATH  #user-env-install' $HOME/.bashrc
+     sed -i '/#user-env-install/d'                               $HOME/.bash_aliases
      echo "alias ipa='ip -br -c a'  #user-env-install"        >> $HOME/.bash_aliases
      echo "alias ipl='ip -br -c l'  #user-env-install"        >> $HOME/.bash_aliases
      echo "alias ipr='ip -br -c r'  #user-env-install"        >> $HOME/.bash_aliases
+     echo "alias lsk='eval \`ssh-agent\` && ssh-add /root/dc/nodes/id_ed25519 #user-env-install' " >> $HOME/.bash_aliases
+# loadsshkey (alias lsk)
 
   fi
   
