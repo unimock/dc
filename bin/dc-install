@@ -88,8 +88,13 @@ if [ !  -f $HOME/.dc/etc/config ] ; then
   fi
   # install additional apt packages
   for p in ${APT_PACKAGES} ; do
+    first=0
     dpkg -s $p >/dev/null 2>&1
     if [ "$?" != "0" ] ; then
+      if [ "$first"  = "0" ] ; then
+        apt-get update
+        first=1
+      fi
       sudo apt-get -qq install -y $p
     fi
   done
