@@ -11,7 +11,7 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.45.1
+  - filebrowser/filebrowser:v2.46.0
   - kanboard/kanboard:v1.2.48
   - syncthing/syncthing:2.0.11 
   - unimock/dotproject-docker:2.8.0-4
@@ -19,8 +19,8 @@ general:
   - unimock/share-gist-docker:1.0.0
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.1
-  - headscale/headscale:0.27.0
-  - ghcr.io/gethomepage/homepage:v1.6.1
+  - headscale/headscale:0.27.1
+  - ghcr.io/gethomepage/homepage:v1.7.0
   - ncarlier/webhookd:1.20.2-distrib
   - louislam/uptime-kuma:2.0.2
   - jamesread/olivetin:2025.11.11
