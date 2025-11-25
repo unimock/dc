@@ -1,6 +1,6 @@
 general:
-  - traefik:v3.6.1
-  - gitea/gitea:1.25.1
+  - traefik:v3.6.2
+  - gitea/gitea:1.25.2
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.81
   - registry:2.8.3
@@ -11,7 +11,7 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.46.0
+  - filebrowser/filebrowser:v2.49.0
   - kanboard/kanboard:v1.2.48
   - syncthing/syncthing:2.0.11 
   - unimock/dotproject-docker:2.8.0-4
@@ -23,7 +23,7 @@ general:
   - ghcr.io/gethomepage/homepage:v1.7.0
   - ncarlier/webhookd:1.20.2-distrib
   - louislam/uptime-kuma:2.0.2
-  - jamesread/olivetin:2025.11.11
+  - jamesread/olivetin:2025.11.25
 g7:
   - ghcr.io/pocket-id/pocket-id:v1.15.0
   - coredns/coredns:1.13.1
@@ -47,7 +47,7 @@ hc:
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.1.0
-  - grafana/grafana:12.2.1
+  - grafana/grafana:12.3.1
   - nodered/node-red:4.1.1
   - koenkk/zigbee2mqtt:2.6.3
   - influxdb:2.7.11-alpine
