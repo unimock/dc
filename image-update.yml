@@ -20,7 +20,7 @@ general:
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.1
   - headscale/headscale:0.27.1
-  - ghcr.io/gethomepage/homepage:v1.7.0
+  - ghcr.io/gethomepage/homepage:v1.8.0
   - ncarlier/webhookd:1.20.2-distrib
   - louislam/uptime-kuma:2.0.2
   - jamesread/olivetin:2025.11.25
