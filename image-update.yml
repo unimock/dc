@@ -1,5 +1,5 @@
 general:
-  - traefik:v3.6.5
+  - traefik:v3.6.6
   - gitea/gitea:1.25.3
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.82
@@ -11,7 +11,7 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.52.0
+  - filebrowser/filebrowser:v2.53.0
   - kanboard/kanboard:v1.2.48
   - syncthing/syncthing:2.0.12 
   - unimock/dotproject-docker:2.8.0-4
@@ -27,14 +27,14 @@ general:
 g7:
   - ghcr.io/pocket-id/pocket-id:v1.16.0
   - coredns/coredns:1.13.2
-  - psitrax/psitransfer:v2.3.0
+  - psitrax/psitransfer:v2.3.2
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:8.3
   - docker:27.5.1-dind-alpine3.21
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
   - ghcr.io/hoellen/nextcloud:32.0.0
-  - freshrss/freshrss:1.27.1-alpine
-  - vaultwarden/server:1.34.3-alpine
+  - freshrss/freshrss:1.28.0-alpine
+  - vaultwarden/server:1.35.1-alpine
   - drone/drone:2.25.0
   - unimock/mailmonit-docker:1.0.0
   - unimock/prg-docker:1.0.3
