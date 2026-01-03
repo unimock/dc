@@ -27,7 +27,7 @@ general:
 g7:
   - ghcr.io/pocket-id/pocket-id:v1.16.0
   - coredns/coredns:1.13.2
-  - psitrax/psitransfer:v2.3.2
+  - psitrax/psitransfer:v2.3.1
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:8.3
   - docker:27.5.1-dind-alpine3.21
