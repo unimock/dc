@@ -77,6 +77,7 @@ if [ !  -f $HOME/.dc/etc/config ] ; then
   touch $FI
   sed -i '/#dc-install/d' $FI
   echo 'source <(/opt/dc/bin/dc completion) #dc-install' >> $FI
+  echo "alias cdapp='f(){ cd \$( dc-yq '.apps.'\${1}'.app_dir' \${MDE_DC_YAML} ); }; f' #dc-install" >> $FI
   FI=${HOME}/.ssh/config
   echo "$IAM: modify <$FI>..."
   touch $FI
