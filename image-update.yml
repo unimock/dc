@@ -25,7 +25,7 @@ general:
   - louislam/uptime-kuma:2.0.2
   - jamesread/olivetin:2025.11.25
 g7:
-  - ghcr.io/pocket-id/pocket-id:v1.16.0
+  - ghcr.io/pocket-id/pocket-id:v2.0.1
   - coredns/coredns:1.13.2
   - psitrax/psitransfer:v2.3.1
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
