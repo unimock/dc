@@ -11,9 +11,9 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.53.0
-  - kanboard/kanboard:v1.2.48
-  - syncthing/syncthing:2.0.12 
+  - filebrowser/filebrowser:v2.53.1
+  - kanboard/kanboard:v1.2.49
+  - syncthing/syncthing:2.0.13 
   - unimock/dotproject-docker:2.8.0-4
   - unimock/share-sshd-docker:1.2.1
   - unimock/share-gist-docker:1.0.0
@@ -25,7 +25,7 @@ general:
   - louislam/uptime-kuma:2.0.2
   - jamesread/olivetin:2025.11.25
 g7:
-  - ghcr.io/pocket-id/pocket-id:v2.0.1
+  - ghcr.io/pocket-id/pocket-id:v2.1.0
   - coredns/coredns:1.13.2
   - psitrax/psitransfer:v2.3.1
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
@@ -48,7 +48,7 @@ hc:
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.1.0
   - grafana/grafana:12.3.1
-  - nodered/node-red:4.1.2
+  - nodered/node-red:4.1.3
   - koenkk/zigbee2mqtt:2.7.2
   - influxdb:2.7.11-alpine
   - mneundorfer/owserver:1.1
