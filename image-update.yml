@@ -46,7 +46,7 @@ atk:
 hc:
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
-  - unimock/ow-mqtt:0.1.0
+  - unimock/ow-mqtt:0.2.0
   - grafana/grafana:12.3.1
   - nodered/node-red:4.1.3
   - koenkk/zigbee2mqtt:2.7.2
@@ -55,6 +55,7 @@ hc:
   - legobas/mqtt-timer:1.24.0
   - eclipse-mosquitto:2.0.22
   - unimock/rfid-mqtt-docker:0.0.1
+  - evcc/evcc:0.300.3
 ibb:
   - mysql:5.7
 mok:
