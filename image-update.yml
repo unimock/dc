@@ -24,6 +24,7 @@ general:
   - ncarlier/webhookd:1.20.2-distrib
   - louislam/uptime-kuma:2.0.2
   - jamesread/olivetin:2025.11.25
+  - ghcr.io/wg-easy/wg-easy:15.2.1
 g7:
   - ghcr.io/pocket-id/pocket-id:v2.1.0
   - coredns/coredns:1.14.0
@@ -40,7 +41,6 @@ g7:
   - unimock/prg-docker:1.0.3
   - unimock/aptrep-docker:1.1.0
   - gitea/act_runner:0.2.11
-  - ghcr.io/wg-easy/wg-easy:15.2.1
 atk:
   - jacobalberty/unifi:v8
 hc:
