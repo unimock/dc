@@ -23,7 +23,7 @@ general:
   - ghcr.io/gethomepage/homepage:v1.9.0
   - ncarlier/webhookd:1.20.2-distrib
   - louislam/uptime-kuma:2.0.2
-  - jamesread/olivetin:2025.11.25
+  - jamesread/olivetin:3000.9.4
   - ghcr.io/wg-easy/wg-easy:15.2.1
 g7:
   - ghcr.io/pocket-id/pocket-id:v2.2.0
