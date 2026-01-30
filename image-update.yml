@@ -25,6 +25,7 @@ general:
   - louislam/uptime-kuma:2.0.2
   - jamesread/olivetin:3000.9.4
   - ghcr.io/wg-easy/wg-easy:15.2.1
+  - crazymax/samba:4.21.4
 g7:
   - ghcr.io/pocket-id/pocket-id:v2.2.0
   - coredns/coredns:1.14.1
