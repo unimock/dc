@@ -54,7 +54,7 @@ hc:
   - influxdb:2.8.0-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
-  - eclipse-mosquitto:2.1.0-alpine
+  - eclipse-mosquitto:2.0.22
   - unimock/rfid-mqtt-docker:0.0.1
   - evcc/evcc:0.300.8
 ibb:
