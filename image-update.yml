@@ -26,7 +26,7 @@ general:
   - jamesread/olivetin:3000.10.0
   - ghcr.io/wg-easy/wg-easy:15.2.2
   - crazymax/samba:4.21.4
-  - netdata/netdata:v2.8.5
+  - netdata/netdata:v2.9.0
 g7:
   - ghcr.io/pocket-id/pocket-id:v2.2.0
   - coredns/coredns:1.14.1
