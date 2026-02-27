@@ -23,7 +23,7 @@ general:
   - ghcr.io/gethomepage/homepage:v1.10.1
   - ncarlier/webhookd:1.21.0-distrib
   - louislam/uptime-kuma:2.1.3
-  - jamesread/olivetin:3000.10.1
+  - jamesread/olivetin:3000.10.2
   - ghcr.io/wg-easy/wg-easy:15.2.2
   - crazymax/samba:4.21.4
   - netdata/netdata:v2.9.0
