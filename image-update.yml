@@ -35,7 +35,7 @@ g7:
   - onlyoffice/documentserver:8.3
   - docker:27.5.1-dind-alpine3.21
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
-  - ghcr.io/hoellen/nextcloud:32.0.0
+  - ghcr.io/hoellen/nextcloud:32.0.6
   - freshrss/freshrss:1.28.1-alpine
   - vaultwarden/server:1.35.4-alpine
   - drone/drone:2.25.0
