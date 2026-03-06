@@ -29,7 +29,7 @@ general:
   - netdata/netdata:v2.9.0
 g7:
   - ghcr.io/pocket-id/pocket-id:v2.3.0
-  - coredns/coredns:1.14.1
+  - coredns/coredns:1.14.2
   - psitrax/psitransfer:v2.4.1
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:8.3
