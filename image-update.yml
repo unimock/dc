@@ -32,7 +32,7 @@ g7:
   - coredns/coredns:1.14.2
   - psitrax/psitransfer:v2.4.1
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
-  - onlyoffice/documentserver:8.3
+  - onlyoffice/documentserver:9.3
   - docker:27.5.1-dind-alpine3.21
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
   - ghcr.io/hoellen/nextcloud:32.0.6
