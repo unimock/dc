@@ -1,6 +1,6 @@
 general:
   - traefik:v3.6.10
-  - gitea/gitea:1.25.4
+  - gitea/gitea:1.25.5
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.83
   - registry:2.8.3
@@ -11,7 +11,7 @@ general:
   - nginx:1-alpine
   - mediawiki:1.39
   - memcached:1.6.36-alpine
-  - filebrowser/filebrowser:v2.61.2
+  - filebrowser/filebrowser:v2.62.1
   - kanboard/kanboard:v1.2.51
   - syncthing/syncthing:2.0.15 
   - unimock/dotproject-docker:2.8.0-4
@@ -20,7 +20,7 @@ general:
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.1
   - headscale/headscale:0.27.1
-  - ghcr.io/gethomepage/homepage:v1.10.1
+  - ghcr.io/gethomepage/homepage:v1.11.0
   - ncarlier/webhookd:1.21.0-distrib
   - louislam/uptime-kuma:2.2.1
   - jamesread/olivetin:3000.11.3
@@ -57,7 +57,7 @@ hc:
   - legobas/mqtt-timer:1.24.0
   - eclipse-mosquitto:2.0.22
   - unimock/rfid-mqtt-docker:0.0.1
-  - evcc/evcc:0.302.1
+  - evcc/evcc:0.303.0
 ibb:
   - mysql:5.7
 mok:
