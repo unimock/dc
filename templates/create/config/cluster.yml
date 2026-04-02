@@ -6,5 +6,6 @@ cluster:
     url: <cluster.image_list.url>
     groups:
       - general
+      - hc
   store:
     script_url: <config.store.script_url>
