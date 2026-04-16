@@ -1,5 +1,4 @@
 #!/bin/bash
-lsk
 ./addapps .getver
 ./addapps refresh
 git add .
