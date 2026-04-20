@@ -1,6 +1,6 @@
 general:
   - traefik:v3.6.13
-  - gitea/gitea:1.25.5
+  - gitea/gitea:1.26.0
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.83
   - registry:2.8.3
@@ -29,7 +29,7 @@ general:
   - netdata/netdata:v2.9.0
   - node:23-alpine
 g7:
-  - ghcr.io/pocket-id/pocket-id:v2.5.0
+  - ghcr.io/pocket-id/pocket-id:v2.6.0
   - coredns/coredns:1.14.2
   - psitrax/psitransfer:v2.4.3
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
@@ -51,14 +51,14 @@ hc:
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.3.2
-  - grafana/grafana:12.4.3
+  - grafana/grafana:13.0.1
   - koenkk/zigbee2mqtt:2.9.2
   - influxdb:2.8.0-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
   - eclipse-mosquitto:2.0.22
   - unimock/rfid-mqtt-docker:0.0.1
-  - evcc/evcc:0.305.0
+  - evcc/evcc:0.305.1
 ibb:
   - mysql:5.7
 mok:
