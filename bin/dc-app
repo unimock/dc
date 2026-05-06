@@ -6,12 +6,13 @@ _show_help() {
   echo ""
   echo " usage: `basename $0` <app>"
   echo ""
-  echo "tbd    list                # list apps on $H"
-  echo "tbd    check               # check apps on $H"
-  echo "tbd    check details       # check apps on $H and show details"
-  echo "tbd    stop|start          # start or stop all apps on $H"
-  echo "tbd    rm|up|rmup          # start or stop all apps on $H"
-  echo "tbd    ps                  # show app containers on $H"
+  echo "tbd    list                  # list apps"
+  echo "tbd    check                 # check apps"
+  echo "tbd    check details         # check apps and show details"
+  echo "tbd    stop|start            # start or stop all apps"
+  echo "tbd    state active|disabled # disable/enable app"
+  echo "tbd    rm|up|rmup            # start or stop all apps"
+  echo "tbd    ps                    # show app containers"
   echo ""
 }
 
@@ -36,8 +37,18 @@ app=$1
 shift
 CMD="$1"
 shift
-
-if [ "$CMD" = "config"  ] ; then
+if [ "$CMD" = "state"  ] ; then
+  YML=$(dc-yq .apps.${app}.dc_yml)
+  if [ "$1" = "disabled"  ] ; then
+    dc -a ${app} rm
+    dc-yq -i '.app.home.[].state = "disbaled"' $YML
+    exit 0
+  elif [ "$1" = "active"  ] ; then
+    dc-yq -i '.app.home.[].state = "active"'   $YML
+    dc -a ${app} up
+    exit 0
+  fi
+elif [ "$CMD" = "config"  ] ; then
   cmd=$1
   shift
   dc-config $cmd app ${app} $@

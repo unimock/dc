@@ -70,6 +70,8 @@ show_help() {
   echo "   app-commands"
   echo ""
   echo "     rmup|up|rm|down|ps|start|stop # control apps"
+  echo "     state disabled                # stop app and disable in dc-app.yml"
+  echo "     state active                  # enable app in dc-app.yml and start"
   echo "     logs [-f]|stop|start          # print logs from service console"
   echo "     data pull|push ${MDE_DC_VOL_N_CFG}|c|${MDE_DC_VOL_N_VAR}|v|cv [real|r] # sync ${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data"
   echo "     data mount|umount             # mount p${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data to ./data"
