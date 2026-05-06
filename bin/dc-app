@@ -53,7 +53,7 @@ elif [ "$CMD" = "config"  ] ; then
   shift
   dc-config $cmd app ${app} $@
   exit $?
-elif [[ "$CMD" == "rm" || "$CMD" == "up" || "$CMD" == "rmup" || "$CMD" == "ps" || "$CMD" == "data" || "$CMD" == "log" || "$CMD" == "login" ]]; then
+elif [[ "$CMD" == "rm" || "$CMD" == "up" || "$CMD" == "rmup" || "$CMD" == "ps" || "$CMD" == "data" || "$CMD" == "logs" || "$CMD" == "login" ]]; then
   dc -a ${app} $CMD $@
   exit $?
 fi
