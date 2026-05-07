@@ -2,7 +2,7 @@ general:
   - traefik:v3.6.13
   - gitea/gitea:1.26.0
   - phpmyadmin:5.2.2
-  - zavy86/wikidocs:1.0.83
+  - zavy86/wikidocs:1.0.85
   - registry:2.8.3
   - boky/postfix:v3.5.1
   - biarms/mysql:5.7
