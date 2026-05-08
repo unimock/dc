@@ -24,13 +24,13 @@ general:
   - ncarlier/webhookd:1.21.0-distrib
   - louislam/uptime-kuma:2.3.2
   - jamesread/olivetin:3000.11.3
-  - ghcr.io/wg-easy/wg-easy:15.3.0-beta.2
+  - ghcr.io/wg-easy/wg-easy:15.3.0-beta.3
   - crazymax/samba:4.21.4
   - netdata/netdata:v2.9.0
   - node:23-alpine
 g7:
-  - ghcr.io/pocket-id/pocket-id:v2.6.0
-  - coredns/coredns:1.14.2
+  - ghcr.io/pocket-id/pocket-id:v2.6.2
+  - coredns/coredns:1.14.3
   - psitrax/psitransfer:v2.4.3
   - minio/minio:RELEASE.2024-03-21T23-13-43Z
   - onlyoffice/documentserver:9.3
@@ -47,18 +47,18 @@ g7:
 atk:
   - jacobalberty/unifi:v8
 hc:
-  - nodered/node-red:4.1.8
+  - nodered/node-red:4.1.9
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.3.2
   - grafana/grafana:13.0.1
-  - koenkk/zigbee2mqtt:2.9.2
-  - influxdb:2.8.0-alpine
+  - koenkk/zigbee2mqtt:2.10.1
+  - influxdb:2.9.0-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
   - eclipse-mosquitto:2.0.22
   - unimock/rfid-mqtt-docker:0.0.1
-  - evcc/evcc:0.306.2
+  - evcc/evcc:0.306.3
 ibb:
   - mysql:5.7
 mok:
