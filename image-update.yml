@@ -37,7 +37,7 @@ g7:
   - docker:27.5.1-dind-alpine3.21
   - wph_5-php7.4-fpm-alpine:2024.03.29-181233
   - ghcr.io/hoellen/nextcloud:32.0.6
-  - freshrss/freshrss:1.28.1-alpine
+  - freshrss/freshrss:1.29.0-alpine
   - vaultwarden/server:1.36.0-alpine
   - drone/drone:2.25.0
   - unimock/mailmonit-docker:1.0.0
