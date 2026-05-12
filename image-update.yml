@@ -50,7 +50,7 @@ hc:
   - nodered/node-red:4.1.10
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
-  - unimock/ow-mqtt:0.3.2
+  - unimock/ow-mqtt:0.3.3
   - grafana/grafana:13.0.1
   - koenkk/zigbee2mqtt:2.10.1
   - influxdb:2.9.1-alpine
