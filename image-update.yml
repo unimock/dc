@@ -28,6 +28,7 @@ general:
   - crazymax/samba:4.21.4
   - netdata/netdata:v2.9.0
   - node:23-alpine
+  - pihole/pihole:2026.05.0
 g7:
   - ghcr.io/pocket-id/pocket-id:v2.7.0
   - coredns/coredns:1.14.3
