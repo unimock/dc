@@ -56,13 +56,13 @@ _config_refresh()
   #
   # check for changed nodes configurations
   #
-  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name "node.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name '.?*' -prune -o -name "node.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
   if [[ ( "$stamp" != "" && ! -f ${nodes_dir}/modified.${stamp} ) || "$1" == "force" ]] ; then
     rm -rf ${nodes_dir}
     mkdir ${nodes_dir}
     echo "$last" | awk '{ print $2 }' > ${nodes_dir}/modified.${stamp}
-    list=$( find ${MDE_DC_HOST_DIR}  -name "node.yml" )
+    list=$( find ${MDE_DC_HOST_DIR} -name '.?*' -prune -o -name "node.yml" -print )
     # append nodes definition to cached node file
     echo "nodes:"                                                                               > ${nodes_dir}/nodes.yml
     rm -rf   $HOME/.dc/var/ssh/config
@@ -95,7 +95,7 @@ _config_refresh()
   #
   # check for changed app configurations
   #
-  list=$( find ${MDE_DC_APP_DIR} -name ${MDE_DC_YAML_FILE} )
+  list=$( find ${MDE_DC_APP_DIR} -name '.?*' -prune -o -name ${MDE_DC_YAML_FILE} -print )
   for i in $list ; do
     relPath=${i%/${MDE_DC_YAML_FILE}}
     relPath=${relPath#${MDE_DC_APP_DIR}/}
