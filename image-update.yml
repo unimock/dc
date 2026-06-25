@@ -1,6 +1,6 @@
 general:
   - traefik:v3.7.1
-  - gitea/gitea:1.26.1
+  - gitea/gitea:1.26.4
   - phpmyadmin:5.2.2
   - zavy86/wikidocs:1.0.86
   - registry:2.8.3
