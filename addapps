@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.13.7"
+VERSION="0.13.8"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -20,11 +20,11 @@ a;wg-cert-mgr;my wg cert manager;0.9.0;--version;https://mde.gate-7.de/addapps/w
 a;crypter;gocryprt CLI;1.0.5;--version;https://mde.gate-7.de/addapps/crypter
 a;print-emojis;emojis on console example;0.0.2;--version;https://mde.gate-7.de/addapps/print-emojis
 a;stsync;syncting stc CLI;0.0.6;--version;https://mde.gate-7.de/addapps/stsync
-a;difft;difftastic;0.69.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
-a;yq;yaml processor;4.53.2;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
+a;difft;difftastic;0.70.0;--version;https://github.com/Wilfred/difftastic/releases/download/<VERSION>/difft-${ALT_ARCH0}-unknown-linux-gnu.tar.gz
+a;yq;yaml processor;4.53.3;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${ARCH}
 a;stc;syncthing CLI;;;https://github.com/tenox7/stc/releases/download/1.5.5/stc-${ARCH}-linux
 a;mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
-a;hcloud;Hetzner-Cloud CLI;1.64.1;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
+a;hcloud;Hetzner-Cloud CLI;1.67.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 a;http-here;http-here;;;https://github.com/western/http-here/releases/download/v2.3.0/http-here.gz
 i;mde-env;mde-base installer;0.1.0;--version;https://mde.gate-7.de/addapps/mde-env
 i;dc-env;dc installer;1.23.0;--version;https://mde.gate-7.de/addapps/dc-env
