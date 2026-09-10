@@ -20,7 +20,7 @@ general:
   - unimock/phpservermonitor:3.5.2-1
   - ghcr.io/tale/headplane:0.6.2
   - headscale/headscale:0.27.1
-  - ghcr.io/gethomepage/homepage:v1.13.2
+  - ghcr.io/gethomepage/homepage:v2.3.0
   - ncarlier/webhookd:1.22.0-distrib
   - louislam/uptime-kuma:2.5.3
   - jamesread/olivetin:3000.18.1
@@ -48,12 +48,12 @@ g7:
 atk:
   - jacobalberty/unifi:v8
 hc:
-  - nodered/node-red:4.1.11
+  - nodered/node-red:4.1.15
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.3.3
-  - grafana/grafana:13.1.2
-  - koenkk/zigbee2mqtt:2.12.0
+  - grafana/grafana:13.2.1
+  - koenkk/zigbee2mqtt:2.14.1
   - influxdb:2.9.1-alpine
   - mneundorfer/owserver:1.1
   - legobas/mqtt-timer:1.24.0
