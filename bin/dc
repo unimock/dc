@@ -122,6 +122,7 @@ if [ "${1}" = "readme" ] ; then
   else
     vi /opt/dc/README.md
   fi
+  exit 0
 fi
 if [ "${MDE_DC_VOL}" = "" ] ; then
   echo " ❌ MDE_DC_VOL not set in </opt/dc/bin/dc-config> "
@@ -189,9 +190,9 @@ while [ "$#" -gt 0 ]; do
     -n)  HOST="$2"          ; shift 2 ;;
     -n*) HOST="${1#-n}"     ; shift 1 ;;
     -a)  SERVICE="$2"       ; shift 2 ;; 
-    -a*) SERVICE="${1#-s}"  ; shift 1 ;;
+    -a*) SERVICE="${1#-a}"  ; shift 1 ;;
     -i)  HIDX="$2"          ; shift 2 ;; 
-    -i[a,0-9]) HIDX="${1#-i}" ; shift 1 ;; 
+    -ia|-i[0-9]*) HIDX="${1#-i}" ; shift 1 ;;
     -c)  CONF="$2"          ; shift 2 ;;
     -d)  PROJECT_DIR="$2"   ; shift 2 ;;
     *)  CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ;;
@@ -214,7 +215,7 @@ if [[ "$CMD" == "docker" && "$HOST" != "" ]] ; then
   shift
   export DOCKER_HOST="ssh://${HOST}"
   docker $*
-  exit $ret
+  exit $?
 fi  
 
 ######################################################################################################################################
@@ -334,7 +335,6 @@ case "$CMD" in
     ;;
   pull)
     docker compose pull
-    exit 0
     ;;
   data)
     scmd=$2
@@ -360,8 +360,8 @@ case "$CMD" in
     type=${3%/}
     DRY=" --dry-run " ; if [ "$4" = "real" -o "$4" = "r" ] ; then DRY="" ; fi
     if   [ "$type" = "cv" ] ; then list="${MDE_DC_VOL_N_CFG} ${MDE_DC_VOL_N_VAR}"
-    elif [ "$type" = "s"  ] ; then list="${MDE_DC_VOL_N_CFG}"
-    elif [ "$type" = "p"  ] ; then list="${MDE_DC_VOL_N_VAR}"
+    elif [ "$type" = "c"  ] ; then list="${MDE_DC_VOL_N_CFG}"
+    elif [ "$type" = "v"  ] ; then list="${MDE_DC_VOL_N_VAR}"
     else   list="$type" ; fi
     for TYPE in $list ; do
       LDIR=./$TYPE
@@ -429,10 +429,10 @@ case "$CMD" in
       fi
       echo "rsync -avR ${3} /service/ovw/"
     main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
-      docker compose  exec ${main_servicei} ync -avR ${3} /service/ovw/
+      docker compose  exec ${main_service} rsync -avR ${3} /service/ovw/
       exit 0
     fi
-    if [ "$2" = "fetch" ] ; then
+    if [ "$2" = "diff" ] ; then
     main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
        docker compose exec ${main_service} diff /service/ovw/${3} ${3}
        exit 0

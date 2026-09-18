@@ -186,7 +186,7 @@ dc mounts umount
 
 for HOST in $hlist ; do
   if [ "$CMD" = "cmd" ] ; then
-    if [ "$H" = "--all" ] ; then
+    if [ "$opt_type" != "" ] ; then
       echo "#"    
       echo "# ssh ${HOST} $*"
       echo "#"
@@ -374,6 +374,13 @@ if [ "$CMD" = "image"   ] ; then
         target="${url}/${cluster}_${node}_${rep}_${nam}"
         target=${target%:}
         if [ "$2" = "config" ] ; then
+          DIR=""
+          for a in $(dc-list apps -n $node) ; do
+            if dc-yq '.apps.'$a'.compose.services.*.image' ${MDE_DC_YAML} | grep -qx "$image" ; then
+              DIR=$(dc-yq '.apps.'$a'.app_dir' ${MDE_DC_YAML})
+              break
+            fi
+          done
           echo "$image;$DIR;${node}"
         else
           echo "############################################################"
@@ -397,7 +404,7 @@ if [ "$CMD" = "image"   ] ; then
           fi
           printf "${COL_GREEN}%s${COL_DEFAULT}\n" "dc -n ${node} docker image rm -f ${target}"
           dc -n  ${node} docker image rm -f     ${target}
-          if [ "$?" != "0" ] ; then echo "docker push error!!!" ; exit 1 ; fi
+          if [ "$?" != "0" ] ; then echo "docker image rm error!!!" ; exit 1 ; fi
         fi
         if [ "$cmd" = "restore" ] ; then
           dc -n  ${node} docker pull     ${target}

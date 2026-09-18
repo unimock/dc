@@ -13,7 +13,7 @@ if [ "$1" = "server" -a "$2" = "provide" ] ; then
   hname="$3"
   yaml="$4"
   if [ "$yaml" = "" -o ! -f $yaml ] ; then
-    echo "error: yaml config file <$ymal> does not exist!"
+    echo "error: yaml config file <$yaml> does not exist!"
     exit 1
   fi
   cloud_type=$(dc-yq '.type'          ${yaml} )

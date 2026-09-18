@@ -41,7 +41,7 @@ if [ "$CMD" = "state"  ] ; then
   YML=$(dc-yq .apps.${app}.dc_yml)
   if [ "$1" = "disabled"  ] ; then
     dc -a ${app} rm
-    dc-yq -i '.app.home.[].state = "disbaled"' $YML
+    dc-yq -i '.app.home.[].state = "disabled"' $YML
     exit 0
   elif [ "$1" = "active"  ] ; then
     dc-yq -i '.app.home.[].state = "active"'   $YML

@@ -29,7 +29,7 @@ if [ "$CMD" = "" ] ; then
   echo "    commands:"
   echo ""
   echo "       nodes all ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' as state=active|standby"
-  echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND group=dc"
+  echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND type=dc"
   echo "       nodes used ........... list all nodes, which are used in services"
   echo "       apps [-n|-g|--sort run_level|--state active|disabled] ..... list services"
   echo ""
@@ -41,7 +41,6 @@ if [ "$CMD" = "nodes" ] ; then
     dc-ls --short | sort
   elif [ "$2" = "dc" ] ; then
     dc-yq '((.nodes.* | select (.type == "dc" )) | path) [-1]' | sort
-    #dc-ls --group=dc --short | sort
   elif [ "$2" = "used" ] ; then
     dc-yq '.apps.*.dc.home.[].node'   ${MDE_DC_YAML} | sort | uniq
   fi
@@ -50,16 +49,18 @@ fi
 
 if [ "$CMD" = "apps" ] ; then
   shift
-  if [ "$on_node" != "" ] ; then
-    if [ "$opt_sort" = "run_level" ] ; then
-      run_levels=$( dc-yq  '.apps.*.dc.run_level' | sort | uniq  )   # 5 4     -> stop
-      app_list=""
-      for rl in $run_levels ; do
+  if [ "$opt_sort" = "run_level" ] ; then
+    run_levels=$( dc-yq  '.apps.*.dc.run_level' | sort | uniq  )   # 5 4     -> stop
+    app_list=""
+    for rl in $run_levels ; do
+      if [ "$on_node" != "" ] ; then
         app_list="$app_list $(dc-yq '(( .apps.* | select(.dc.run_level == "'$rl'") | select(.dc.home.[].node == "'$on_node'") | path ) [-1] )')"
-      done
-    else
-      app_list=$( dc-yq  '(( .apps.* | select(.dc.home.[].node == "'$on_node'" ) | path ) [-1] )' ${MDE_DC_YAML} )
-    fi
+      else
+        app_list="$app_list $(dc-yq '(( .apps.* | select(.dc.run_level == "'$rl'") | path ) [-1] )' ${MDE_DC_YAML})"
+      fi
+    done
+  elif [ "$on_node" != "" ] ; then
+    app_list=$( dc-yq  '(( .apps.* | select(.dc.home.[].node == "'$on_node'" ) | path ) [-1] )' ${MDE_DC_YAML} )
   else
     app_list=$(dc-yq '(.apps.[] | path ) [-1]'   ${MDE_DC_YAML})
   fi

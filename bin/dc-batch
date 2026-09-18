@@ -20,7 +20,7 @@ CMD="$1" ; shift
 # delete
 ############################################################
 if [ "$CMD" = "delete" ] ; then
-  rm -Rf ${MDE_DC_BATCH_DIR}/$JOB_NAME-log
+  rm -Rf ${MDE_DC_LOG_DIR}/$JOB_NAME
   echo "remove ${MDE_DC_LOG_DIR}/$JOB_NAME"
   rm -fv ${MDE_DC_BATCH_DIR}/$JOB_NAME.list
   exit 0
@@ -233,7 +233,7 @@ if [ "$CMD" = "run" -o "$CMD" = "debug" ] ; then
             if [[ ( "$f" == "errors"   && "$errors"   != "0" ) || \
                   ( "$f" == "warnings" && "$warnings" != "0" ) || \
                   ( "$f" == "updates"  && "$updates"  != "0" ) || \
-                  ( "$f" == "ok"       && "$fine"     != "0" )
+                  ( "$f" == "ok"       && "$rc"       == "0" )
                   ]] ; then
               send=1
               break

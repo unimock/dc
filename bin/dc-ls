@@ -118,7 +118,7 @@ return_code=0
 HOST_DATA_DIR=$HOME/.dc/var/nodes
 mkdir -p $HOST_DATA_DIR
 
-if [ "$1" = "" ] ; then # "dc ls" list nodes with inspection
+if [ "$1" = "" -o "$1" = "nodes" -o "$1" = "n" ] ; then # "dc ls [nodes]" list nodes with inspection
   opt_inspect="1"
 fi
 

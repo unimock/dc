@@ -78,7 +78,7 @@ for node in $nodes ; do
       proc=$( dc -n  $node ssh df ${MDE_DC_VOL} | grep "^/" | awk -F" " '{ print $5 }' )
       size=${proc%\%}
       size_text=""
-      if [ ${size} -ge ${DISK_USAGE_LIMIT} ] ; then
+      if [[ "$size" =~ ^[0-9]+$ ]] && [ "${size}" -ge "${DISK_USAGE_LIMIT}" ] ; then
         size_text=" # disk_usage>${DISK_USAGE_LIMIT} warning!!!"
         error_list="$error_list $node:disk_size=$proc"
         node_error_marker=1

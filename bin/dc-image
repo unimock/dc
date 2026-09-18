@@ -51,7 +51,11 @@ if [ "$1" = "ls" ] ; then
   fi
   groups=$(dc-yq '.config.cluster.image_list.groups.[]')
   FI=$(mktemp)
-  wget -q -O $FI $url
+  if ! wget -q -O "$FI" "$url" || [ ! -s "$FI" ] ; then
+    echo "error: could not fetch image list from <$url>"
+    rm -f "$FI"
+    exit 1
+  fi
   update_list=""
   for g in $groups ; do
     update_list="$update_list "$(dc-yq '.'$g'.[]' $FI)
@@ -136,8 +140,12 @@ if [ "${1}" = "update" ] ; then
 
   yaml_file=$(dc-yq '.apps.'$app'.compose_yml')
   app_dir=$(dc-yq '.apps.'$app'.app_dir')
+  if [ "$app_dir" = "null" -o -z "$app_dir" -o "$yaml_file" = "null" -o -z "$yaml_file" ] ; then
+    echo "error: unknown app <$app>"
+    exit 1
+  fi
 
-  ( cd ${app_dir} ; dc docker pull ${image} )
+  ( cd "${app_dir}" || exit 1 ; dc docker pull ${image} )
   if [ "$?" != "0" ] ; then
     echo "error: downloading image <${image}>!!!"
     exit 1
@@ -151,7 +159,12 @@ if [ "${1}" = "update" ] ; then
        dc-yq -i '.services.'$s'.image = "'${image}'"' $yaml_file 
     fi
   done
-  ( cd ${app_dir} ; dc rmup )
+  ( cd "${app_dir}" || exit 1 ; dc rmup )
+  rc=$?
+  if [ "$rc" != "0" ] ; then
+    echo "error: redeploy (dc rmup) failed for app <${app}>!!!"
+  fi
+  exit $rc
 fi
 
 exit 0

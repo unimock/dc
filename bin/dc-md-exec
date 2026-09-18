@@ -33,7 +33,7 @@ declare -A opt_args
 ####################################################################################
 # magic main
 ####################################################################################
-options=$(getopt -l "help,version,overwrite" -o "hvo:" -a -- "$@")
+options=$(getopt -l "help,version,overwrite:" -o "hvo:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -128,10 +128,10 @@ else
   fi
 fi
 for arg in "${!opt_args[@]}" ; do
-  var=${arg%=*}
+  var=${arg%%=*}
   val=${arg#*=}
   #echo "overwrite: <$var> <$val>"
-  sed -i "/^[[:blank:]]*${var}=*/c\\${var}=\"${val}\"" $script
+  sed -i "/^[[:blank:]]*${var}=/c\\${var}=\"${val}\"" $script
 done
 
 if [ "$CMD" = "list" -o "$CMD" = "show" ] ; then

@@ -10,7 +10,7 @@ for i in "$@" ; do
     break
   fi 
 done
-if [ "$cmd" = "''" ] ; then
+if [ -z "$cmd" ] ; then
   cmd=""
 fi
 if [ $# = 0 ] ; then

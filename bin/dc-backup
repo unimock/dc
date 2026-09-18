@@ -18,7 +18,9 @@ fi
 
 get_age()
 {
-   echo `expr  \( ${today} - $(date -d $1 +%s) \) / 86400`
+   d=${1:0:10}
+   secs=$(date -d "$d" +%s 2>/dev/null) || { echo "" ; return 1 ; }
+   echo $(( (today - secs) / 86400 ))
 }
 
 get_date() 
@@ -53,10 +55,10 @@ for i in "${age_array[@]}" ; do
   arr_a[${i}]=">"
 done
 
-comp=$( df -h $TDIR | grep "^/" | awk '{ print $2 }'  )
-used=$( df -h $TDIR | grep "^/" | awk '{ print $3 }'  ) 
-free=$( df -h $TDIR | grep "^/" | awk '{ print $4 }'  ) 
-pers=$( df -h $TDIR | grep "^/" | awk '{ print $5 }'  )
+comp=$( df -hP "$TDIR" | awk 'END{print $2}'  )
+used=$( df -hP "$TDIR" | awk 'END{print $3}'  ) 
+free=$( df -hP "$TDIR" | awk 'END{print $4}'  ) 
+pers=$( df -hP "$TDIR" | awk 'END{print $5}'  )
 
 echo "Backup-Source   : ${SDIR}"
 echo "Backup-Host     : `hostname`"
@@ -84,12 +86,13 @@ backup_list=`(cd $TDIR && ls  -d ????-??-??*/ 2>/dev/null)`
 for backup in $backup_list ; do
   backup=${backup%/}
   age=`get_age $backup`
+  [ -z "$age" ] && continue
   if (( $age > ${age_array[-1]} )) ; then
     rm -rf $TDIR/$backup
-    comp=$( df -h $TDIR | grep "^/" | awk '{ print $2 }'  )
-    used=$( df -h $TDIR | grep "^/" | awk '{ print $3 }'  )
-    free=$( df -h $TDIR | grep "^/" | awk '{ print $4 }'  ) 
-    pers=$( df -h $TDIR | grep "^/" | awk '{ print $5 }'  )
+    comp=$( df -hP "$TDIR" | awk 'END{print $2}'  )
+    used=$( df -hP "$TDIR" | awk 'END{print $3}'  )
+    free=$( df -hP "$TDIR" | awk 'END{print $4}'  ) 
+    pers=$( df -hP "$TDIR" | awk 'END{print $5}'  )
     cmd="removed"
     printf "%03d|%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" $age "R" "$backup" "$cmd" "$comp" "$used" "$free" "$pers"
   else
@@ -137,10 +140,10 @@ for i in `seq 0 ${age_array[-1]}` ; do
     comp=""
     used=""
   else 
-    comp=$( df -h $TDIR | grep "^/" | awk '{ print $2 }'  )
-    used=$( df -h $TDIR | grep "^/" | awk '{ print $3 }'  )
-    free=$( df -h $TDIR | grep "^/" | awk '{ print $4 }'  ) 
-    pers=$( df -h $TDIR | grep "^/" | awk '{ print $5 }'  ) 
+    comp=$( df -hP "$TDIR" | awk 'END{print $2}'  )
+    used=$( df -hP "$TDIR" | awk 'END{print $3}'  )
+    free=$( df -hP "$TDIR" | awk 'END{print $4}'  ) 
+    pers=$( df -hP "$TDIR" | awk 'END{print $5}'  ) 
   fi
   if [[ "${arr_a[$i]}" != "" || "${dat}" != "" ]] ; then
     printf "%03d|%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" $i "${arr_a[$i]}" "${dat}" "$cmd" "$comp" "$used" "$free" "$pers"

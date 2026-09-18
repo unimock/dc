@@ -6,11 +6,14 @@ fi
 
 if [ "$1" = "pull" ] ; then
   HNAME=$(hostname)
-  dc data mount
+  if ! dc data mount ; then
+    echo "error: 'dc data mount' failed; aborting pull to avoid data loss" >&2
+    exit 1
+  fi
   rm -rvf ./dcd.${HNAME}
   list=$(cat dcd.list)
   for i in $list ; do
-    ( cd data ; rsync -Rav $i ../dcd.${HNAME})
+    ( cd data || exit 1 ; rsync -Rav "$i" "../dcd.${HNAME}" )
   done
   dc data umount
 fi

@@ -221,9 +221,9 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
         exit 1
       fi
       app_nodes=$( dc-yq '.apps.'$app_name'.dc.home.[].node' ${MDE_DC_YAML} )
+      found=0
       for i in $app_nodes ; do
         nrc=$(dc-node $i -a $app_name nrc)
-        found=0
         if [ "$nrc" != "0" ] ; then
           echo " $nrc containers still running on <$i> for this app"
           found=1

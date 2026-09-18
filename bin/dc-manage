@@ -91,7 +91,7 @@ fi
 app_list=""
 if [ "$CMD" = "sync" -o "$CMD" = "copy" ] ; then
   YML="`pwd`/${MDE_DC_YAML_FILE}"
-  if [ -f $YAML ] ; then
+  if [ -f "$YML" ] ; then
     app_list=$( dc-yq '(( .apps.* | select(.dc_yml == "'$YML'" ) | path ) [-1] )' ${MDE_DC_YAML}  )
   fi
 elif [ "$CMD" = "sync_group" ] ; then
@@ -181,7 +181,7 @@ for SERVICE in $app_list ; do
           if [ "$T_ID" != "" ] ; then
             dc -a $SERVICE -n $T_HOST docker image rm $N
           fi
-          if [ `which pv` != "" ] ; then # show progress if pv exists
+          if command -v pv >/dev/null 2>&1 ; then # show progress if pv exists
             dc -a $SERVICE -n $S_HOST docker save $N | pv | dc -a $SERVICE -n $T_HOST docker load
           else
             dc -a $SERVICE -n $S_HOST docker save $N | dc -a $SERVICE -n $T_HOST docker load

@@ -27,6 +27,6 @@ if [[ "$name" == *\@* ]] ; then
     ssh $remhost /opt/kc/bin/kc-dc $CMD $name $@
   fi
 else
-  /opt/kc/bin/kc-dc $CMD $name $@
+  /opt/kc/bin/kc-dc $CMD $name "${@:4}"
 fi
 exit $?

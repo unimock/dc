@@ -71,5 +71,5 @@ if [ "$CMD" = "ls" ] ; then
   exit 0
 fi
 if [ "$CMD" = "logs" ] ; then
-  docker service ${SERVICE} logs
+  docker service logs ${SERVICE}
 fi

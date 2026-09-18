@@ -20,7 +20,7 @@ shift
 ###################################################################
 if [ "$CMD" = "" -a "$DC_HOST" = "list" ] ; then
   for i in $VSERVER ; do
-    dc-${VSERVER} $i server list
+    dc-${i} server list
   done
   echo "TBD: show assignment node <-> vnode"
   exit 0
@@ -91,7 +91,7 @@ if [ "$CMD" = "create" ] ; then
     ssh ${DC_HOST} /tmp/dc-install >/dev/null
   fi
   if [ "$reboot_required" = "1" ] ; then
-    dc-node ${DC_HOST} reboot wait $node_typ
+    dc-node ${DC_HOST} reboot wait $node_type
   fi
   exit 0
 fi
