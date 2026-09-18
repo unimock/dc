@@ -48,7 +48,7 @@ g7:
 atk:
   - jacobalberty/unifi:v8
 hc:
-  - nodered/node-red:4.1.15-22
+  - nodered/node-red:5.0.7
   - smeagolworms4/mqtt-explorer:browser-1.0.3
   - homeassistant/home-assistant:2025.4.4
   - unimock/ow-mqtt:0.3.3
