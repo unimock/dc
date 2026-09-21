@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION="0.14.0"
+VERSION="0.14.1"
 
 ARCH=$(dpkg --print-architecture)
 ALT_ARCH0="x86_64"
@@ -27,7 +27,7 @@ a;mc;minio CLI;;;https://dl.min.io/client/mc/release/linux-${ARCH}/mc
 a;hcloud;Hetzner-Cloud CLI;1.68.0;version;https://github.com/hetznercloud/cli/releases/download/v<VERSION>/hcloud-linux-${ARCH}.tar.gz
 a;http-here;http-here;;;https://github.com/western/http-here/releases/download/v2.3.0/http-here.gz
 i;mde-env;mde-base installer;0.1.0;--version;https://mde.gate-7.de/addapps/mde-env
-i;dc-env;dc installer;1.24.0;--version;https://mde.gate-7.de/addapps/dc-env
+i;dc-env;dc installer;1.24.1;--version;https://mde.gate-7.de/addapps/dc-env
 i;user-env;user-env installer;0.0.0;--version;https://mde.gate-7.de/addapps/user-env
 a;mclaude;claude code docker;0.2.1;--mclaude-version;https://raw.githubusercontent.com/unimock/mclaude-docker/main/mclaude
 "
