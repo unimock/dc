@@ -56,7 +56,10 @@ _config_refresh()
   #
   # check for changed nodes configurations
   #
-  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name '.?*' -prune -o -name "node.yml" -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
+  # include directory mtimes (-type d): removing/adding a node dir bumps the
+  # parent dir mtime, so node deletions are detected too (node.yml-only mtime
+  # would stay unchanged when a non-newest node is removed).
+  last=$( find ${MDE_DC_HOST_DIR} -maxdepth 2 -name '.?*' -prune -o \( -name "node.yml" -o -type d \) -printf "%TF_%TT %p\n" | awk '{if ($0>max) max = $0} END{print max}'   )
   stamp=${last% *}
   if [[ ( "$stamp" != "" && ! -f ${nodes_dir}/modified.${stamp} ) || "$1" == "force" ]] ; then
     rm -rf ${nodes_dir}
