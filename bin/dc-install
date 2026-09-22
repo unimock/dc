@@ -5,7 +5,7 @@ hcloud;Hetzner-Cloud CLI;1.40.0;version;https://github.com/hetznercloud/cli/rele
 yq;yaml processor;4.40.3;--version;https://github.com/mikefarah/yq/releases/download/v<VERSION>/yq_linux_${architecture}
 "
 
-APT_PACKAGES="sshfs libnet-ssleay-perl swaks"
+APT_PACKAGES="sshfs libnet-ssleay-perl swaks jq"
 
 IAM="dc install"
 if [ "$(ps -o comm= $PPID)" = "dc" ] ; then

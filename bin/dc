@@ -1,8 +1,6 @@
 #!/bin/bash
 MULTI_NODES=""
 
-printf "%-60s # %s %s\n" "dc $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> /tmp/.dc-history
-
 if [ "$1" = "install" ] ; then
   shift
   /opt/dc/bin/dc-install $@
@@ -23,6 +21,11 @@ fi
 
 
 . /opt/dc/funcs/global
+
+if [ -n "$MDE_DC_LOG_DIR" ] ; then
+  mkdir -p "$MDE_DC_LOG_DIR" 2>/dev/null
+  printf "%-60s # %s %s\n" "dc $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> "$MDE_DC_LOG_DIR/dc-history.log"
+fi
 
 ####################################################################################################################################
 show_help() {

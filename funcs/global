@@ -1,5 +1,10 @@
 if [ "${dc_recursive_call}" != "1" ] ; then
   export dc_recursive_call="1"
   . ${HOME}/.dc/etc/config
+  # log direct (non-wrapper) calls of dc-xxx utilities; the `dc` wrapper logs itself (bin/dc)
+  if [ "$(basename "$0")" != "dc" -a -n "$MDE_DC_LOG_DIR" ] ; then
+    mkdir -p "$MDE_DC_LOG_DIR" 2>/dev/null
+    printf "%-60s # %s %s\n" "$(basename "$0") $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)" >> "$MDE_DC_LOG_DIR/dc-history.log"
+  fi
   dc-config refresh >/dev/null
-fi  
+fi

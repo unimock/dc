@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ${HOME}/.dc/etc/config
+. /opt/dc/funcs/global
 
 . /opt/dc/funcs/script_funcs
 
