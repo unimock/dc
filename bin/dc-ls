@@ -48,65 +48,115 @@ eval set -- $COPT
 ####################################################################################################################################
 if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   return_code=0
-  app_list=$( dc-list apps)
   if [ "$opt_short" = "1" ] ; then
-    echo "$app_list"
+    echo "$( dc-list apps)"
     exit 0
   fi
   MASK="|%2s|%-12s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|\n"
   printf "$MASK" "" "app" "#c" "node" "groups" "!"  "description" "app_directory"
   printf "$MASK" "${LINE:0:2}" "${LINE:0:12}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}"
-  for p in $app_list ; do
-    p_nodes=$(   dc-yq '.apps.'$p'.dc.home.[].node' ${MDE_DC_YAML} )
-    p_desc=$(    dc-yq '.apps.'$p'.dc.desc'         ${MDE_DC_YAML} )
-    p_rnl=$(     dc-yq '.apps.'$p'.dc.run_level'    ${MDE_DC_YAML} )
-    p_dir=$(     dc-yq '.apps.'$p'.app_dir'         ${MDE_DC_YAML} )
-    p_groups=$(  dc-yq '.apps.'$p'.dc.group.[]'     ${MDE_DC_YAML} | tr '\n' ',' )
-    p_groups=${p_groups%,}
-    #main_service=$( dc-yq '.apps.'$p'.dc.main_service'    ${MDE_DC_YAML} )
-    #p_image=$( dc-yq '.apps.'$p'.compose.services.'$main_service'.image' ${MDE_DC_YAML}  )
-    ndc=$(dc-yq '(.apps.'$p'.compose.services.* | path ) [-1]' ${MDE_DC_YAML} | wc -l )
-    idx=0
-    for h in $p_nodes ; do
-      app_node_state=$( dc-yq '.apps.'$p'.dc.home.['$idx'].state' ${MDE_DC_YAML} )
-      idx=$((idx+1))
-      if [ "$opt_inspect" = "1" ]  ; then
-        if [ "$app_node_state" != "active" ] ; then
-          # app is disabled in dc-app.yml -> home[].state
-          state="⏰"
-        else
-          # call with inspect
-          node_state=$( dc-node $h state )
-	        if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
-            nrc=$(dc-node $h -a $p nrc)
-            if [ "$ndc" = "$nrc" ] ; then
-              state="✅"
-            else
-              state="❌"
-              return_code=1
-            fi
-          elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
-            nrc=0
-            connection=$( dc-yq '.nodes.'$h'.connection.type' ${MDE_DC_YAML} )
-            if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-              state="🔃"
-            else
-              state="⏰"
-            fi
-          else
-            #            node derzeit nicht
-            #
-              state="❓"
-              return_code=1
-            #fi
-          fi
-        fi  
-      else
-        # call without inspect
-        state="☐ "
+  #
+  # fetch all app fields for every (app, home-node) pair in ONE yq pass, instead
+  # of ~6 dc-yq calls per app plus one per home node. fields are joined with an
+  # ASCII unit separator (0x1f) so empty fields survive the read. apps stay in
+  # document order (same as "dc-list apps").
+  #
+  FS=$'\x1f'
+  app_data=$( dc-yq -r '
+    . as $root | .apps | to_entries | .[] as $app
+    | ($app.value.dc.home // [])[] as $home
+    | [ $app.key,
+        ($home.node // ""),
+        ($home.state // ""),
+        ($app.value.compose.services | length),
+        ($app.value.dc.desc // ""),
+        ($app.value.dc.run_level // ""),
+        (($app.value.dc.group // []) | join(",")),
+        ($app.value.app_dir // ""),
+        ($root.nodes[$home.node].connection.type // "") ]
+    | join("'"$FS"'")' ${MDE_DC_YAML} )
+  mapfile -t app_lines <<< "$app_data"
+
+  #
+  # --inspect: the live probes (node state + running-container count) are the
+  # slow part. do them up front and in parallel instead of once per printed row:
+  #   phase 1 - each UNIQUE node's state, once (a node is shared by many apps)
+  #   phase 2 - the per-(app,node) running-container count, where relevant
+  # results are stashed in $INSPDIR and just read back in the display loop.
+  #
+  INSPDIR=""
+  if [ "$opt_inspect" = "1" ] ; then
+    INSPDIR=$( mktemp -d "${TMPDIR:-/tmp}/dc-ls.XXXXXX" )
+    trap 'rm -rf "$INSPDIR"' EXIT
+    declare -A _seen_node
+    _par=0
+    for line in "${app_lines[@]}" ; do
+      [ -z "$line" ] && continue
+      IFS=$FS read -r p h app_node_state _rest <<< "$line"
+      [ "$app_node_state" != "active" ] && continue
+      if [ -z "${_seen_node[$h]}" ] ; then
+        _seen_node[$h]=1
+        dc-node "$h" state > "$INSPDIR/state.$h" &
+        _par=$((_par+1))
+        if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
       fi
-      printf "$MASK" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "$p_dir" 
     done
+    wait
+    _par=0
+    idx=0
+    for line in "${app_lines[@]}" ; do
+      [ -z "$line" ] && continue
+      IFS=$FS read -r p h app_node_state _rest <<< "$line"
+      idx=$((idx+1))
+      [ "$app_node_state" != "active" ] && continue
+      node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
+      if [ "$node_state" = "dock" -o "$node_state" = "dc" ] ; then
+        dc-node "$h" -a "$p" nrc > "$INSPDIR/nrc.$idx" &
+        _par=$((_par+1))
+        if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
+      fi
+    done
+    wait
+  fi
+
+  idx=0
+  for line in "${app_lines[@]}" ; do
+    [ -z "$line" ] && continue
+    IFS=$FS read -r p h app_node_state ndc p_desc p_rnl p_groups p_dir connection <<< "$line"
+    idx=$((idx+1))
+    if [ "$opt_inspect" = "1" ]  ; then
+      if [ "$app_node_state" != "active" ] ; then
+        # app is disabled in dc-app.yml -> home[].state
+        state="⏰"
+      else
+        node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
+        if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
+          nrc=$( cat "$INSPDIR/nrc.$idx" 2>/dev/null )
+          if [ "$ndc" = "$nrc" ] ; then
+            state="✅"
+          else
+            state="❌"
+            return_code=1
+          fi
+        elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
+          if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+            state="🔃"
+          else
+            state="⏰"
+          fi
+        else
+          #            node derzeit nicht
+          #
+            state="❓"
+            return_code=1
+          #fi
+        fi
+      fi
+    else
+      # call without inspect
+      state="☐ "
+    fi
+    printf "$MASK" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "$p_dir"
   done
   exit $return_code
 fi
@@ -118,18 +168,17 @@ return_code=0
 HOST_DATA_DIR=$HOME/.dc/var/nodes
 mkdir -p $HOST_DATA_DIR
 
-if [ "$1" = "" -o "$1" = "nodes" -o "$1" = "n" ] ; then # "dc ls [nodes]" list nodes with inspection
+if [ "$1" = "" ] ; then # bare "dc ls" -> inspect; "dc ls nodes" only shows cached info
   opt_inspect="1"
 fi
 
-if [ "$opt_group" != "" ] ; then
-  list=$(dc-yq '(.nodes.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
-else
-  list=$(dc-yq '(.nodes.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} | sort )
-fi
-
 if [ "$opt_short" = "1" ] ; then
-  for i in $list ; do     
+  if [ "$opt_group" != "" ] ; then
+    list=$(dc-yq '(.nodes.* | (select(.state=="active"),select(.state=="standby")) |  select(.groups[]=="'$opt_group'")  | path ) [-1]' ${MDE_DC_YAML} | sort )
+  else
+    list=$(dc-yq '(.nodes.* | (select(.state=="active"),select(.state=="standby")) | path ) [-1]' ${MDE_DC_YAML} | sort )
+  fi
+  for i in $list ; do
     if [ "$opt_active" = "1" ] ; then
       ssh -o BatchMode=yes -o ConnectTimeout=1 $i true >/dev/null 2>&1
       ret=$?
@@ -139,25 +188,144 @@ if [ "$opt_short" = "1" ] ; then
     else
         echo "$i"
     fi
-  done 
+  done
   exit 0
 fi
+#
+# fetch all node fields for every node in ONE yq pass, instead of 8 separate
+# dc-yq calls per node (each re-parsing the whole yaml). fields are joined with
+# an ASCII unit separator (0x1f) so that empty fields are preserved on read
+# (a whitespace IFS like tab would collapse them).
+#
+FS=$'\x1f'
+group_filter=""
+if [ "$opt_group" != "" ] ; then
+  group_filter=' and ((.value.groups // []) | any_c(. == "'$opt_group'"))'
+fi
+node_data=$( dc-yq -r '
+  .nodes | to_entries
+  | map(select((.value.state == "active" or .value.state == "standby")'"$group_filter"'))
+  | sort_by(.key) | .[]
+  | [ .key, (.value.state // ""), (.value.type // ""), (.value.desc // ""),
+      ((.value.groups // []) | join(" ")), (.value.os // ""),
+      (.value.machine_id // ""), (.value.fqdn // ""), (.value.connection.type // "") ]
+  | join("'"$FS"'")' ${MDE_DC_YAML} )
+mapfile -t node_lines <<< "$node_data"
+
+#
+# _inspect_node <node> <os> <type> <machine_id>
+#
+# inspect a single node and print its result as sourceable shell assignments
+# (state/os_ver/arch/dock_ver/size/serial/mde_ver/mde_monitor). all remote data
+# is gathered in ONE ssh round-trip instead of ~7 separate ssh calls.
+#
+_inspect_node() {
+  local node="$1" os="$2" typ="$3" mid="$4"
+  local state os_ver="" arch="" dock_ver="" size="" serial="" mde_ver="" mde_monitor=""
+  state=$( dc-node "$node" state )
+  if [ "$state" = "$typ" ] && { [ "$state" = "sshd" ] || [ "$state" = "dock" ] || [ "$state" = "dc" ]; } && [ "$os" != "android" ] ; then
+    local raw k v
+    local ARCH="" LSB="" VERSION_ID="" FREEBSD="" DFMAX="" MID="" MDEVER="" MDEMON="" DOCKERVER=""
+    raw=$( ssh "$node" sh -s 2>/dev/null <<'REMOTE'
+uname -m 2>/dev/null | sed 's/^/ARCH=/'
+lsb_release -d -s 2>/dev/null | sed 's/^/LSB=/'
+[ -r /etc/os-release ] && ( . /etc/os-release; echo "VERSION_ID=$VERSION_ID" )
+command -v freebsd-version >/dev/null 2>&1 && freebsd-version 2>/dev/null | sed 's/^/FREEBSD=/'
+df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk '{print $5}' | tr -d '%' | sort -n | tail -1 | sed 's/^/DFMAX=/'
+cat /etc/machine-id 2>/dev/null | sed 's/^/MID=/'
+dpkg -l 2>/dev/null | awk '$2=="mde-base"{print "MDEVER="$3}'
+pgrep mde-monitor >/dev/null 2>&1 && echo "MDEMON=M"
+docker version --format '{{.Server.Version}}' 2>/dev/null | sed 's/^/DOCKERVER=/'
+REMOTE
+)
+    while IFS='=' read -r k v ; do
+      case "$k" in
+        ARCH)       ARCH="$v" ;;
+        LSB)        LSB="$v" ;;
+        VERSION_ID) VERSION_ID="$v" ;;
+        FREEBSD)    FREEBSD="$v" ;;
+        DFMAX)      DFMAX="$v" ;;
+        MID)        MID="$v" ;;
+        MDEVER)     MDEVER="$v" ;;
+        MDEMON)     MDEMON="$v" ;;
+        DOCKERVER)  DOCKERVER="$v" ;;
+      esac
+    done <<< "$raw"
+
+    if [ "$os" = "ubuntu" ] ; then
+      os_ver=$( echo "$LSB" | cut -d " " -f2 ) ; os_ver=${os_ver:0:8}
+    elif [ "$os" = "freebsd" ] ; then
+      os_ver=$( echo "$FREEBSD" | cut -d "-" -f1 )
+    else
+      os_ver="${VERSION_ID%_*}"
+    fi
+
+    arch="$ARCH"
+    if [ "$arch" = "aarch64" ] ; then arch="arm64" ; fi
+    if [ "$arch" = "x86_64" ]  ; then arch="amd64" ; fi
+    if [ "$arch" = "armv7l" ]  ; then arch="arm32" ; fi
+
+    if [ "$state" = "dock" -o "$state" = "dc" ] ; then
+      dock_ver="$DOCKERVER"
+    fi
+
+    size="$DFMAX" ; [ -z "$size" ] && size=0
+
+    if [ "$MID" = "" ] ; then
+      serial="!!"
+    elif [ "$MID" = "$mid" ] ; then
+      serial="OK"
+    else
+      serial="$MID"
+    fi
+
+    mde_ver="$MDEVER"
+    if [ "$mde_ver" != "" ] ; then
+      mde_monitor="$MDEMON"
+    fi
+  fi
+  printf 'state=%q\n'       "$state"
+  printf 'os_ver=%q\n'      "$os_ver"
+  printf 'arch=%q\n'        "$arch"
+  printf 'dock_ver=%q\n'    "$dock_ver"
+  printf 'size=%q\n'        "$size"
+  printf 'serial=%q\n'      "$serial"
+  printf 'mde_ver=%q\n'     "$mde_ver"
+  printf 'mde_monitor=%q\n' "$mde_monitor"
+}
+
+#
+# --inspect: inspect all nodes in parallel (up to 16 at a time) and stash each
+# result in $INSPDIR/<node>. the display loop below just sources these files, so
+# the slow ssh work no longer happens sequentially node-by-node.
+#
+INSPDIR=""
+if [ "$opt_inspect" = "1" ] ; then
+  INSPDIR=$( mktemp -d "${TMPDIR:-/tmp}/dc-ls.XXXXXX" )
+  trap 'rm -rf "$INSPDIR"' EXIT
+  _par=0
+  for line in "${node_lines[@]}" ; do
+    [ -z "$line" ] && continue
+    IFS=$FS read -r node yml_state typ desc group os mid hname connection <<< "$line"
+    if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
+      continue
+    fi
+    _inspect_node "$node" "$os" "$typ" "$mid" > "$INSPDIR/$node" &
+    _par=$((_par+1))
+    if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
+  done
+  wait
+fi
+
 MASK="|%2s|%-8s|%-4s|%-4s|%-6s|%-6s|%-7s|%-8s|%-7s|%-7s|%1s|%-2s|%-2s|%-16s|%-25s|\n"
 printf "$MASK" "  " "node"     "stat" "type" "groups" "arch"   "os"      "os_ver"   "docker " "mde_ver"  "M" "HD"  "id"  "last_inspection"  "description"
 printf "$MASK" "--" "--------" "----" "----" "------" "------" "-------" "--------" "-------" "-------" "-" "--"  "--" "----------------" "-------------------------"
-for node in $list ; do
+for line in "${node_lines[@]}" ; do
+  [ -z "$line" ] && continue
+  IFS=$FS read -r node yml_state typ desc group os mid hname connection <<< "$line"
   if [ "$opt_node" != "" -a "$opt_node" != "$node" ] ; then
     continue
   fi
-  desc=$(  dc-yq '.nodes.'$node'.desc'       ${MDE_DC_YAML} )
-  group=$( dc-yq '.nodes.'$node'.groups.[]'  ${MDE_DC_YAML} | tr '\r\n' ' ' )
-  group=${group% }
-  os=$(    dc-yq '.nodes.'$node'.os'         ${MDE_DC_YAML} )
-  mid=$(   dc-yq '.nodes.'$node'.machine_id' ${MDE_DC_YAML} )
-  hname=$( dc-yq '.nodes.'$node'.fqdn  '     ${MDE_DC_YAML} )
-  typ=$(   dc-yq '.nodes.'$node'.type  '     ${MDE_DC_YAML} )
-  connection=$( dc-yq '.nodes.'$node'.connection.type' ${MDE_DC_YAML} )
-  yml_state=$( dc-yq '.nodes.'$node'.state' ${MDE_DC_YAML} )
   if  [ "$hname" = "" ] ; then
     hname="$node"
   fi
@@ -168,62 +336,13 @@ for node in $list ; do
   mde_monitor=""
   serial=""
   arch=""
+  state=""
 
-  if [ "$opt_inspect" = "1" ] ; then
-    state=$( dc-node ${node} state )
-    if [ "$state" = "$typ" ] ; then
-      if [ "$state" = "sshd" -o "$state" = "dock"  -o "$state" = "dc" ] ; then
-        if [ "$os" != "android" ] ; then 
-          if [ "$os" = "ubuntu" ] ; then
-            os_ver=$( ssh $node lsb_release -d -s 2>/dev/null | cut -d " " -f2)
-            os_ver=${os_ver:0:8}
-          elif [ "$os" = "freebsd"  ] ; then
-            os_ver=$( ssh $node freebsd-version | cut -d "-" -f1)
-          else
-            VERSION_ID=""
-            eval $( ssh $node "cat  /etc/os-release" 2>/dev/null  | grep "^VERSION_ID=" )
-            os_ver="$VERSION_ID"
-            os_ver=${os_ver%_*}
-          fi
-          arch=$( ssh $node uname -m 2>/dev/null)
-          if [ "$arch" = "aarch64" ] ; then arch="arm64" ; fi
-          if [ "$arch" = "x86_64" ]  ; then arch="amd64" ; fi
-          if [ "$arch" = "armv7l" ]  ; then arch="arm32" ; fi
-          dock_ver=""
-          if [ "$state" = "dock" -o "$state" = "dc" ] ; then
-            dock_ver=$( DOCKER_HOST="ssh://$node" docker version --format '{{.Server.Version}}' 2>/dev/null )
-          fi
-          size=0
-          size_list=$(ssh $node df -h 2>/dev/null | grep '^/dev' | grep -v '^/dev/loop' | awk -F " " '{ print $5 }' | cut -f1 -d "%")
-          for x in $size_list ; do
-            if (( $x >= $size )) ; then
-              let size=$x
-            fi
-          done
-          x=$( ssh $node cat /etc/machine-id 2>/dev/null )
-          if [ "$x" = "" ] ; then
-            serial="!!"
-          elif [ "$x" = "$mid" ] ; then
-            serial="OK"
-          else
-            serial="$x"
-          fi
-          mde_ver=$( ssh $node dpkg -l 2>/dev/null | awk '$2=="mde-base" { print $3 }' ) 
-          if [ "$mde_ver" = "" ] ; then
-            mde_ver=""
-            mde_monitor=""
-          else
-            x=$( ssh $node pgrep mde-monitor 2>/dev/null)
-            if [ "$x" != "" ] ; then
-              mde_monitor="M"
-            fi
-          fi
-        fi
-      fi
-    fi
-    #
-    # store latest inspection data
-    #
+  #
+  # load the result gathered in parallel above (see _inspect_node)
+  #
+  if [ "$opt_inspect" = "1" -a -f "$INSPDIR/$node" ] ; then
+    . "$INSPDIR/$node"
   fi
   node_data_file=$HOST_DATA_DIR/$node
   if [[ ( "$opt_inspect" == "1" && "$state" == "$typ" ) || ! -f $node_data_file  ]] ; then
@@ -234,6 +353,7 @@ for node in $list ; do
     echo "insp_hd_size=\"${size}\""            >> $node_data_file
     echo "insp_machine_id=\"${serial}\""       >> $node_data_file
     echo "insp_arch=\"${arch}\""               >> $node_data_file
+    echo "insp_state=\"${state}\""             >> $node_data_file
     echo "insp_last_inspect=$(date +%s)"       >> $node_data_file
   fi
   insp_os_ver=""
@@ -243,8 +363,15 @@ for node in $list ; do
   insp_hd_size=""
   insp_machine_id=""
   insp_arch=""
+  insp_state=""
   insp_last_inspect=""
   eval `cat $node_data_file`
+  #
+  # without --inspect: use last known state from cache
+  #
+  if [ "$opt_inspect" != "1" ] ; then
+    state="$insp_state"
+  fi
   #dstate="✅"
   #dstate="☑"
   #dstate="💡"
@@ -261,7 +388,10 @@ for node in $list ; do
 
   dstate="??"
 
-  if [ "$state" = "off" ] ; then
+  if [ "$opt_inspect" != "1" ] ; then
+    # no inspection -> just show cached info, mark state as unchecked
+    dstate="☐ "
+  elif [ "$state" = "off" ] ; then
     if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
       dstate="🔃"
     else
