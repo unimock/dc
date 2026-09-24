@@ -81,7 +81,7 @@ _config_refresh()
       # create ssh config file for this node
       #
       type=$( dc-yq '.node.type'  $hyaml)
-      if [ "$type" = "sshd" -o "$type" = "dc" -o "$type" = "dock"  ] ; then
+      if [ "$type" = "sshd" -o "$type" = "dc" -o "$type" = "dcc" -o "$type" = "dock"  ] ; then
         dc-yq -i '.nodes.'$name'.ssh_config.ControlPath = "'$HOME'/.dc/var/ssh/control/'$name'"' ${nodes_dir}/nodes.yml
         # replace variables off IdentityFile
         IdentityFile=$( dc-yq '.nodes.'$name'.ssh_config.IdentityFile'                             ${nodes_dir}/nodes.yml | envsubst)

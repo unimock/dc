@@ -112,7 +112,7 @@ _dc() {
         if [[ "$COMP_CWORD" == "5" ]] ; then
           COMPREPLY=( $(compgen -W "[<hostname_or_ip>]" -- "$2") )
         elif [[ "$COMP_CWORD" == "6" ]] ; then
-          COMPREPLY=( $(compgen -W "ping sshd dock dc" -- "$2") )
+          COMPREPLY=( $(compgen -W "ping sshd dock dc dcc" -- "$2") )
         fi
       fi
     fi
@@ -132,7 +132,7 @@ _dc() {
         elif [[ "$COMP_CWORD" == "5" ]] ; then
           COMPREPLY=( $(compgen -W "[<hostname_or_ip>]" -- "$2") )
         elif [[ "$COMP_CWORD" == "6" ]] ; then
-          COMPREPLY=( $(compgen -W "ping sshd dock dc" -- "$2") )
+          COMPREPLY=( $(compgen -W "ping sshd dock dc dcc" -- "$2") )
         fi
       else
         list=$( dc-list nodes all  )

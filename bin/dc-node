@@ -35,10 +35,11 @@ if [ "$1" = "" ] ; then
   echo " node:"
   echo "         <node-name>   ... node name"
   echo "         .             ... local hostname as node name"
-  echo "         -t <type>     ... available node types: all|dc|ping|sshd"
+  echo "         -t <type>     ... available node types: all|dcc|dc|dock|ping|sshd"
   echo ""
   echo " node commands:"
-  echo "    state               # state of a node. returns: ||ping|sshd|dock|off|dc|"
+  echo "    state               # state of a node. returns: ||ping|sshd|dock|off|dc|dcc|"
+  echo "                        #   dcc ...  like dc, node has its own dc environment"
   echo "                        #   dc ....  dc memeber,  if state=dock and node.type==dc"
   echo "                        #   dock ... docker running"
   echo "                        #   sshd ... reachable via sshd"
@@ -122,6 +123,10 @@ if [ "$CMD" = "state" -a "$1" = "wait" ] ; then
       fi
     elif [ "$state" = "dc" ]   ; then
       printf "D"
+      # dc does not satisfy a "wait dcc" (dcc is the higher rung)
+      if [ "$wait_state" != "dcc" ] ; then reached=1 ; fi
+    elif [ "$state" = "dcc" ]  ; then
+      printf "C"
       reached=1 ;
     fi
     if [ "$reached" = "1" ] ; then
@@ -160,9 +165,10 @@ if [ "$CMD" = "state" ] ; then
         ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST pidof dockerd >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           state="dock"
-          if [ `dc-yq '.nodes.'$HOST'.type' ${MDE_DC_YAML}` = "dc" ] ; then
-            state="dc"
-          fi
+          # read declared type once; dc and dcc are the two top ladder rungs
+          _typ=`dc-yq '.nodes.'$HOST'.type' ${MDE_DC_YAML}`
+          if [ "$_typ" = "dc" ]  ; then state="dc"  ; fi
+          if [ "$_typ" = "dcc" ] ; then state="dcc" ; fi
         fi
       fi
     fi

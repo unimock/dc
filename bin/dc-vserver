@@ -84,7 +84,7 @@ if [ "$CMD" = "create" ] ; then
     ssh ${DC_HOST} /tmp/dc-install >/dev/null
   done
   node_type=$( dc-yq '.nodes.'${DC_HOST}'.type' ${MDE_DC_YAML} )
-  if [[ "$docker_install" == "1" || "$node_type" == "dock" || "$node_type" = "dc" ]] ; then
+  if [[ "$docker_install" == "1" || "$node_type" == "dock" || "$node_type" == "dcc" || "$node_type" = "dc" ]] ; then
     # install docker if a dock or dc node is requested
     echo "# dc-install: <docker> ..." 
     scp /opt/dc/helper/install/docker ${DC_HOST}:/tmp/dc-install

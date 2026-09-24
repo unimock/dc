@@ -113,7 +113,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       idx=$((idx+1))
       [ "$app_node_state" != "active" ] && continue
       node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
-      if [ "$node_state" = "dock" -o "$node_state" = "dc" ] ; then
+      if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
         dc-node "$h" -a "$p" nrc > "$INSPDIR/nrc.$idx" &
         _par=$((_par+1))
         if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
@@ -133,7 +133,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
         state="⏰"
       else
         node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
-        if [ "$node_state" = "dock" -o "$node_state" = "dc"  ] ; then
+        if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
           nrc=$( cat "$INSPDIR/nrc.$idx" 2>/dev/null )
           if [ "$ndc" = "$nrc" ] ; then
             state="✅"
@@ -226,7 +226,7 @@ _inspect_node() {
   local node="$1" os="$2" typ="$3" mid="$4"
   local state os_ver="" arch="" dock_ver="" size="" serial="" mde_ver="" mde_monitor=""
   state=$( dc-node "$node" state )
-  if [ "$state" = "$typ" ] && { [ "$state" = "sshd" ] || [ "$state" = "dock" ] || [ "$state" = "dc" ]; } && [ "$os" != "android" ] ; then
+  if [ "$state" = "$typ" ] && { [ "$state" = "sshd" ] || [ "$state" = "dock" ] || [ "$state" = "dc" ] || [ "$state" = "dcc" ]; } && [ "$os" != "android" ] ; then
     local raw k v
     local ARCH="" LSB="" VERSION_ID="" FREEBSD="" DFMAX="" MID="" MDEVER="" MDEMON="" DOCKERVER=""
     raw=$( ssh "$node" sh -s 2>/dev/null <<'REMOTE'
@@ -268,7 +268,7 @@ REMOTE
     if [ "$arch" = "x86_64" ]  ; then arch="amd64" ; fi
     if [ "$arch" = "armv7l" ]  ; then arch="arm32" ; fi
 
-    if [ "$state" = "dock" -o "$state" = "dc" ] ; then
+    if [ "$state" = "dock" -o "$state" = "dc" -o "$state" = "dcc" ] ; then
       dock_ver="$DOCKERVER"
     fi
 
@@ -415,7 +415,7 @@ for line in "${node_lines[@]}" ; do
     fi
   elif [ "$state" = "ping" ] ; then
     dstate="✅"
-  elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" ] ; then
+  elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" -o "$state" = "dcc" ] ; then
     dstate="✅"
     if [ "$size" != "" ] ; then
       if [ $size -ge 92 ] ; then

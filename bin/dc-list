@@ -29,7 +29,8 @@ if [ "$CMD" = "" ] ; then
   echo "    commands:"
   echo ""
   echo "       nodes all ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' as state=active|standby"
-  echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND type=dc"
+  echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND type=dc or type=dcc"
+  echo "       nodes dcc ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND type=dcc"
   echo "       nodes used ........... list all nodes, which are used in services"
   echo "       apps [-n|-g|--sort run_level|--state active|disabled] ..... list services"
   echo ""
@@ -40,7 +41,9 @@ if [ "$CMD" = "nodes" ] ; then
   if [ "$2" = "" -o  "$2" = "all" ] ; then
     dc-ls --short | sort
   elif [ "$2" = "dc" ] ; then
-    dc-yq '((.nodes.* | select (.type == "dc" )) | path) [-1]' | sort
+    dc-yq '((.nodes.* | select (.type == "dc" or .type == "dcc")) | path) [-1]' | sort
+  elif [ "$2" = "dcc" ] ; then
+    dc-yq '((.nodes.* | select (.type == "dcc")) | path) [-1]' | sort
   elif [ "$2" = "used" ] ; then
     dc-yq '.apps.*.dc.home.[].node'   ${MDE_DC_YAML} | sort | uniq
   fi

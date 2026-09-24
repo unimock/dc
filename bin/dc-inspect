@@ -53,7 +53,7 @@ for node in $nodes ; do
     H_STATE=$( dc-yq '.nodes.'$node'.state' ${MDE_DC_YAML} )
     if [ "$H_STATE" = "active"  ] ; then
       state=$( dc-node $node state )
-      if [ "$state" = "dock" -o "$state" = "dc"  ] ; then
+      if [ "$state" = "dock" -o "$state" = "dc" -o "$state" = "dcc" ] ; then
          node_up=1
          state="Running"
       else
