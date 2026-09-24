@@ -2,8 +2,6 @@
 
 . /opt/dc/funcs/global
 
-VERSION="0.2.1"
-
 IAM=`basename $0`
 
 show_help() {
@@ -12,6 +10,7 @@ show_help() {
   echo "# examples:"
   echo ""
   echo "$IAM ls              # list used images and their states"
+  echo "$IAM ls --skip       # list without inspecting (no remote update-check, show current versions only)"
   echo ""
   echo "$IAM update <app>  koenkk/zigbee2mqtt:2.1.1"
   echo ""
@@ -22,7 +21,10 @@ if [ "$1" = "" ] ; then
   exit 0
 fi
 
-options=$(getopt -l "help,version" -o "hvp:" -a -- "$@")
+# inspection is the default; --skip turns off the remote update-check.
+# --inspect is kept as a hidden no-op for symmetry with dc-ls.
+opt_inspect="1"
+options=$(getopt -l "help,skip,inspect" -o "hp:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -30,9 +32,11 @@ while true ; do
     show_help
     exit 0
     ;;
-  -v|--version)
-    echo "$VERSION"
-    exit 0
+  --skip)
+    opt_inspect="0"
+    ;;
+  --inspect)
+    opt_inspect="1"
     ;;
   -p)
     shift
@@ -47,24 +51,30 @@ done
 
 if [ "$1" = "ls" ] ; then
   return_code=0
-  url=$(   dc-yq '.config.cluster.image_list.url'   )
-  if [ "$url" = "null" -o "$url" = "" ] ; then
-    echo "error: image_list.url undefined in cluster.yml"
-    exit 1
-  fi
-  groups=$(dc-yq '.config.cluster.image_list.groups.[]')
-  FI=$(mktemp)
-  if ! wget -q -O "$FI" "$url" || [ ! -s "$FI" ] ; then
-    echo "error: could not fetch image list from <$url>"
-    rm -f "$FI"
-    exit 1
-  fi
+  #
+  # inspection: fetch the remote image list and build the update comparison
+  # list. skipped with --skip, where only the local current versions are shown.
+  #
   update_list=""
-  for g in $groups ; do
-    update_list="$update_list "$(dc-yq '.'$g'.[]' $FI)
-  done
-  #update_list=$(dc-yq '.'$g'.[]' $FI)
-  rm $FI
+  if [ "$opt_inspect" = "1" ] ; then
+    url=$(   dc-yq '.config.cluster.image_list.url'   )
+    if [ "$url" = "null" -o "$url" = "" ] ; then
+      echo "error: image_list.url undefined in cluster.yml"
+      exit 1
+    fi
+    groups=$(dc-yq '.config.cluster.image_list.groups.[]')
+    FI=$(mktemp)
+    if ! wget -q -O "$FI" "$url" || [ ! -s "$FI" ] ; then
+      echo "error: could not fetch image list from <$url>"
+      rm -f "$FI"
+      exit 1
+    fi
+    for g in $groups ; do
+      update_list="$update_list "$(dc-yq '.'$g'.[]' $FI)
+    done
+    #update_list=$(dc-yq '.'$g'.[]' $FI)
+    rm $FI
+  fi
   #
   # create information arrays
   #
@@ -78,39 +88,52 @@ if [ "$1" = "ls" ] ; then
     yaml_file=$(dc-yq '.apps.'$app'.compose_yml')
     #echo "$yaml_file"
     image_list=$(dc-yq '.services.*.image' $yaml_file  | sort | uniq)
-    for image in $image_list ; do
-      #echo "  $image"
-      apps[$idx]="$app"
-      img_name[$idx]=${image%:*}
-      img_ver[$idx]=${image#*:}
-      state[$idx]=" "
-      for u in $update_list ; do
-        u_name=${u%:*}
-        u_ver[$idx]=${u#*:}
-        if [ "${u_name}" = "${img_name[$idx]}" ] ; then
-          if [ "${u_ver[$idx]}" = "${img_ver[$idx]}" ] ; then
-            state[$idx]="o"
-          else
-            state[$idx]="!"
+    #
+    # home-nodes der app laden (alle einträge, ungefiltert). eine zeile pro
+    # (app, node, image) ausgeben. apps ohne home-node trotzdem mit leerer
+    # node-spalte anzeigen.
+    #
+    mapfile -t node_arr < <( dc-yq -r '(.apps.'$app'.dc.home // [])[].node' )
+    if [ ${#node_arr[@]} -eq 0 ] ; then node_arr=("") ; fi
+    for hnode in "${node_arr[@]}" ; do
+      for image in $image_list ; do
+        #echo "  $image"
+        apps[$idx]="$app"
+        nodes[$idx]="$hnode"
+        img_name[$idx]=${image%:*}
+        img_ver[$idx]=${image#*:}
+        state[$idx]=" "
+        for u in $update_list ; do
+          u_name=${u%:*}
+          u_ver[$idx]=${u#*:}
+          if [ "${u_name}" = "${img_name[$idx]}" ] ; then
+            if [ "${u_ver[$idx]}" = "${img_ver[$idx]}" ] ; then
+              state[$idx]="o"
+            else
+              state[$idx]="!"
+            fi
+            break
           fi
-          break
-        fi
+        done
+        dname[$idx]=$(dirname $yaml_file )
+        let idx=$idx+1
       done
-      dname[$idx]=$(dirname $yaml_file )
-      let idx=$idx+1
     done
   done
   #
   # print informations
   #
-  MASK="|%-1s|%-16s|%-30s|%-20s|%-20s|\n"
-  printf "$MASK" "  " "app             " "image                         " "current version     " "new version         "
-  printf "$MASK" "--" "----------------" "------------------------------" "--------------------" "--------------------"
+  MASK="|%-1s|%-16s|%-16s|%-30s|%-20s|%-20s|\n"
+  printf "$MASK" "  " "app             " "node            " "image                         " "current version     " "new version         "
+  printf "$MASK" "--" "----------------" "----------------" "------------------------------" "--------------------" "--------------------"
   found="0"
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
     dstate="⬜"
-    new_version="                    " 
-    if [ "${state[$idx]}" = "o" ] ; then
+    new_version="                    "
+    if [ "$opt_inspect" != "1" ] ; then
+      # no inspection -> show current versions only, mark as unchecked
+      dstate="☐ "
+    elif [ "${state[$idx]}" = "o" ] ; then
       dstate="✅"
     elif  [ "${state[$idx]}" = "!" ] ; then
       dstate="☑ "
@@ -120,16 +143,24 @@ if [ "$1" = "ls" ] ; then
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
     fi
-    printf "$MASK" "${dstate}" "${apps[$idx]}" "${img_name[$idx]}" "${img_ver[$idx]}" "${new_version}"
+    printf "$MASK" "${dstate}" "${apps[$idx]}" "${nodes[$idx]}" "${img_name[$idx]:0:30}" "${img_ver[$idx]}" "${new_version}"
   done
   if [ "${found}" = "1" ] ; then
     #
     # print update commands
     #
     printf "\n\n"
+    # das update-kommando ist pro app (bearbeitet die compose_yml), nicht pro
+    # node. durch die node-expansion kommt dieselbe (app,image,version)-kombi
+    # mehrfach vor -> hier deduplizieren.
+    declare -A _seen_upd
     for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
       if [ "${state[$idx]}" = "!" ] ; then
-        printf "%s update %-16s %s:%s\n" "$IAM" "${apps[$idx]}" "${img_name[$idx]}" "${u_ver[$idx]}"
+        key="${apps[$idx]}|${img_name[$idx]}|${u_ver[$idx]}"
+        if [ -z "${_seen_upd[$key]}" ] ; then
+          _seen_upd[$key]=1
+          printf "%s update %-16s %s:%s\n" "$IAM" "${apps[$idx]}" "${img_name[$idx]}" "${u_ver[$idx]}"
+        fi
       fi
     done
     printf "\n\n"

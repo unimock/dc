@@ -95,9 +95,9 @@ show_help() {
   echo "  dc versions                                # show versions"
   echo "  dc ssh-control-reset                       # remove ssh control sockets"
   echo ""
-  echo "  dc ls nodes [--inspect]                    # show defined nodes (check state with --inspect)"
-  echo "  dc ls apps  [--inspect]                    # show defined app services (check state with --inspect)"
-  echo "  dc ls images"
+  echo "  dc ls nodes [--skip]                       # show defined nodes (state is inspected; --skip = cached only)"
+  echo "  dc ls apps  [--skip]                        # show defined app services (state is inspected; --skip = cached only)"
+  echo "  dc ls images [--skip]                      # show used images (versions are checked; --skip = no remote update-check)"
   echo "  dc ls addapps"
   echo ""
   echo "  dc node <name> config create <hname_or_ip> # define new node from template"
@@ -176,7 +176,8 @@ for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift
     if [ "$i" = "ls" -a "$1" = "images" ] ; then
-      /opt/dc/bin/dc-image ls
+      shift
+      /opt/dc/bin/dc-image ls "$@"
     elif [ "$i" = "ls" -a "$1" = "addapps" ] ; then
       addapps ls
     else

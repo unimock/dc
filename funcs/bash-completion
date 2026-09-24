@@ -160,7 +160,7 @@ _dc() {
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
     COMPREPLY=( $(compgen -W "apps nodes images addapps" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" == "3" ]] ; then
-      COMPREPLY=( $(compgen -W "--inspect" -- "$2") )
+      COMPREPLY=( $(compgen -W "--skip" -- "$2") )
   # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
     COMPREPLY=( $(compgen -W "nodes apps" -- "$2") )

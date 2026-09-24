@@ -15,7 +15,7 @@ _help() {
   echo "  dc-ls --node=<node_name> # show only this node"
   echo "  dc-ls --short            # list only node/app names"
   echo "  dc-ls --group=<group>    # show only nodes of group=<group> in '${MDE_DC_HOST_DIR}/*/node.yml'."
-  echo "  dc-ls --inspect          # inspect and list"
+  echo "  dc-ls --skip             # list without inspecting (show cached info only)"
   echo ""
 }
 
@@ -28,7 +28,9 @@ _help() {
 
 opt_active="0"
 opt_short="0"
-opt_inspect="0"
+# inspection is the default now; --skip turns it off. --inspect is kept as a
+# hidden no-op for backward compatibility (it was the old opt-in switch).
+opt_inspect="1"
 opt_group=""
 opt_node=""
 COPT=""
@@ -39,7 +41,8 @@ while [ "$#" -gt 0 ]; do
     --short)    opt_short="1"               ; shift ;;
     --group=*)  opt_group=${1#"--group="}   ; shift ;;
     --node=*)   opt_node=${1#"--node="}     ; shift ;;
-    --inspect)  opt_inspect="1"             ; shift ;; 
+    --skip)     opt_inspect="0"             ; shift ;;
+    --inspect)  opt_inspect="1"             ; shift ;; # deprecated, kept for compat
     *)  COPT="$COPT \"$1\""                 ; shift ;;
   esac
 done
@@ -78,7 +81,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   mapfile -t app_lines <<< "$app_data"
 
   #
-  # --inspect: the live probes (node state + running-container count) are the
+  # inspection: the live probes (node state + running-container count) are the
   # slow part. do them up front and in parallel instead of once per printed row:
   #   phase 1 - each UNIQUE node's state, once (a node is shared by many apps)
   #   phase 2 - the per-(app,node) running-container count, where relevant
@@ -295,7 +298,7 @@ REMOTE
 }
 
 #
-# --inspect: inspect all nodes in parallel (up to 16 at a time) and stash each
+# inspection: inspect all nodes in parallel (up to 16 at a time) and stash each
 # result in $INSPDIR/<node>. the display loop below just sources these files, so
 # the slow ssh work no longer happens sequentially node-by-node.
 #
@@ -367,7 +370,7 @@ for line in "${node_lines[@]}" ; do
   insp_last_inspect=""
   eval `cat $node_data_file`
   #
-  # without --inspect: use last known state from cache
+  # without inspection (--skip): use last known state from cache
   #
   if [ "$opt_inspect" != "1" ] ; then
     state="$insp_state"

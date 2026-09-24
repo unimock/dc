@@ -59,7 +59,6 @@ hostname="<hostname_or_ip>"
 TYPE="dc"
 dc node ${node} config create ${hostname} ${TYPE}   # 'dc config' shows param desc.
 dc ls nodes
-dc ls nodes --inspect
 ```
 
 
@@ -68,7 +67,6 @@ dc ls nodes --inspect
 ```
 TBD
 dc ls nodes
-dc ls nodes --inspect
 ```
 
 ### TBD dc command overview:
@@ -91,9 +89,9 @@ dc list nodes dc
 dc list nodes used
 dc list apps
 dc ls nodes
-dc ls nodes --inspect
+dc ls nodes --skip
 dc ls apps
-dc ls apps --inspect
+dc ls apps --skip
 dc config
 dc config refresh
 dc config rebuild

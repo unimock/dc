@@ -42,7 +42,7 @@ if [ "$state" != "dc" ] ; then
 fi
 ssh $HOST dc app hello-world config create $SLAVE hello-world /root/dc/apps/hello-world
 ssh $HOST dc app hello-world up
-#ssh $HOST dc ls apps --inspect
+#ssh $HOST dc ls apps
 PORT=$(ssh $HOST dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
 sleep 1
 netcat -vz $IP $PORT

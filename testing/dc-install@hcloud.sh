@@ -58,10 +58,10 @@ if [ "$1" = "" -o "$1" = "test" ] ; then
   echo "IP=$IP"
   # lets play around on the new dc cluster manager
   ssh $NODE dc node $REM_NODE config create 127.0.0.1 dc # create dc node for himself
-  ssh $NODE dc ls nodes --inspect                        # disply dc nodes
+  ssh $NODE dc ls nodes                                  # disply dc nodes
   ssh $NODE dc app hello-world config create $REM_NODE hello-world /root/dc/apps/hello-world
   ssh $NODE dc app hello-world up                        # establish hello-world app
-  ssh $NODE dc ls apps --inspect                         # display apps
+  ssh $NODE dc ls apps                                   # display apps
   PORT=$(ssh $NODE dc-yq '.apps.hello-world.compose.services.hello-world.ports.[0].published')
   sleep 1
   netcat -vz $IP $PORT                                   # test access to hello-world
