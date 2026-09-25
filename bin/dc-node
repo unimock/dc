@@ -181,7 +181,7 @@ if [ "$CMD" = "state" ] ; then
       # check if node is off state==standby
       if [ "$_nstate" = "standby" ] ; then
         state="off"
-      elif [ "$_conn" = "wireguard" -o "$_conn" = "intermittently" ] ; then
+      elif [ "$_conn" = "intermittently" ] ; then
         state="off"
       fi
     fi
@@ -234,7 +234,8 @@ EOF
       # count running containers via the compose project label instead of
       # "docker compose ps" -- avoids the compose-plugin start + compose-file
       # parse per app; single (multiplexed) ssh, count done on the node.
-      proj=$( dc-yq '.apps.'$opt_app'.compose.name' ${MDE_DC_YAML} )
+      proj=$( dc-yq '.apps.'$opt_app'.compose.orig_compose_name' ${MDE_DC_YAML} )
+      #proj=$( dc-yq '.apps.'$opt_app'.compose.name' ${MDE_DC_YAML} )
       ssh $HOST "docker ps -q -f label=com.docker.compose.project=$proj -f status=running | wc -l"
     else
       ssh $HOST docker ps -q | wc -l

@@ -1,0 +1,50 @@
+#
+# status_funcs - single source of truth for the status column of the
+# "dc ls"-style dashboards (dc-ls apps/nodes, dc-image ls).
+#
+# sourced by bin/dc-ls and bin/dc-image (after funcs/global). deliberately NOT
+# put into funcs/global, which is sourced by ~14 scripts - keep that hot path
+# lean (cf. dc-yq, which does not source global at all).
+#
+
+#
+# status -> emoji map, keyed by "<type>:<status>". within one object type the
+# status maps 1:1 to an emoji (the status_reason never changes the emoji), so
+# the key is just type+status. the display loops look this up WITHOUT a subshell
+# (plain associative-array access, no fork per row):
+#
+#   dstate="${DC_STATUS_EMOJI[apps:$jstatus]:-??}"
+#
+# authoritative source for the emoji<->status pairing (see status.md for the
+# meaning of each status_reason). keep the literals byte-exact: "☐ " / "☑ "
+# carry a trailing space and ⚠️ carries a variation selector - the table column
+# alignment depends on it.
+#
+declare -gA DC_STATUS_EMOJI=(
+  [apps:ok]="✅"            [apps:error]="❌"           [apps:disabled]="⏰"
+  [apps:intermittent]="🔃"  [apps:unreachable]="❓"      [apps:unchecked]="☐ "
+
+  [nodes:ok]="✅"           [nodes:warning]="⚠️"         [nodes:error]="❌"
+  [nodes:unreachable]="❓"   [nodes:standby]="⏰"         [nodes:intermittent]="🔃"
+  [nodes:unchecked]="☐ "
+
+  [images:ok]="✅"          [images:outdated]="☑ "      [images:unmanaged]="⬜"
+  [images:unchecked]="☐ "
+)
+
+#
+# dc_json_envelope <kind> <inspected_bool>
+#
+# wrap a ready-made items JSON array (read from stdin) in the common envelope
+# used by every "dc ls" json output. the per-type item construction (apps groups
+# by app, nodes/images are flat) stays with each caller and is piped in here.
+# this runs one jq ONCE per command (not per row), so it does not reintroduce
+# the per-row fork storm that the single-pass builders removed.
+#
+dc_json_envelope() {
+  jq -n --arg kind "$1" --argjson inspected "$2" \
+     --arg generated_at "$(date +%Y-%m-%dT%H:%M:%S%:z)" \
+     --argjson items "$(cat)" \
+     '{kind:$kind, inspected:$inspected, generated_at:$generated_at,
+       count:($items|length), items:$items}'
+}

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 . /opt/dc/funcs/global
+. /opt/dc/funcs/status_funcs
 
 LINE="--------------------------------------------------------------------------------------------------------------"
 
@@ -134,23 +135,11 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   # grouped by app (they arrive app-consecutive), flushing an app object on the
   # app change and after the loop.
   #
-  json_apps=() ; home_rows=()
-  cur_app="" ; cur_services="" ; cur_groups="" ; cur_rnl="" ; cur_desc="" ; cur_dir=""
-  _flush_app() {
-    [ -z "$cur_app" ] && return
-    local home_json="[]"
-    if [ ${#home_rows[@]} -gt 0 ] ; then
-      home_json=$( printf '%s\n' "${home_rows[@]}" | jq -s . )
-    fi
-    local services_json="null"
-    [[ "$cur_services" =~ ^[0-9]+$ ]] && services_json="$cur_services"
-    json_apps+=( "$( jq -cn \
-      --arg app "$cur_app" --arg run_level "$cur_rnl" --arg desc "$cur_desc" \
-      --arg app_dir "$cur_dir" --arg groups "$cur_groups" \
-      --argjson services "$services_json" --argjson home "$home_json" \
-      '{app:$app, services:$services, groups:($groups|split(",")|map(select(length>0))), run_level:$run_level, desc:$desc, app_dir:$app_dir, home:$home}' )" )
-    home_rows=()
-  }
+  # --json rows are buffered as one FS-separated record per (app,home) and turned
+  # into the nested json in a SINGLE jq pass after the loop. the previous code
+  # forked jq 2-3x per app inside the loop (jq -cn per home + jq -s + jq -cn per
+  # app), which on slow SBC nodes was a fork storm that roughly doubled runtime.
+  json_rows=()
 
   idx=0
   for line in "${app_lines[@]}" ; do
@@ -161,61 +150,65 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     if [ "$opt_inspect" = "1" ]  ; then
       if [ "$app_node_state" != "active" ] ; then
         # app is disabled in dc-app.yml -> home[].state
-        state="⏰" ; jstatus="disabled" ; jreason="app_disabled"
+        jstatus="disabled" ; jreason="app_disabled"
       else
         node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
         if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
           nrc=$( cat "$INSPDIR/nrc.$idx" 2>/dev/null )
           running="$nrc"
           if [ "$ndc" = "$nrc" ] ; then
-            state="✅" ; jstatus="ok" ; jreason="running"
+            jstatus="ok" ; jreason="running"
           else
-            state="❌" ; jstatus="error" ; jreason="container_count"
+            jstatus="error" ; jreason="container_count"
             return_code=1
           fi
         elif [ "$node_state" = "off" ] ; then # node is defined as state=standby in node definition
-          if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-            state="🔃" ; jstatus="intermittent" ; jreason="intermittent_link"
+          if [ "$connection" = "intermittently" ] ; then
+            jstatus="intermittent" ; jreason="intermittent_link"
           else
-            state="⏰" ; jstatus="disabled" ; jreason="node_down"
+            jstatus="disabled" ; jreason="node_down"
           fi
         else
           #            node derzeit nicht
           #
-            state="❓" ; jstatus="unreachable" ; jreason="node_unreachable"
+            jstatus="unreachable" ; jreason="node_unreachable"
             return_code=1
           #fi
         fi
       fi
     else
       # call without inspect
-      state="☐ " ; jstatus="unchecked" ; jreason="not_inspected"
+      jstatus="unchecked" ; jreason="not_inspected"
     fi
     if [ "$opt_json" = "1" ] ; then
-      if [ "$p" != "$cur_app" ] ; then
-        _flush_app
-        cur_app="$p" ; cur_services="$ndc" ; cur_groups="$p_groups"
-        cur_rnl="$p_rnl" ; cur_desc="$p_desc" ; cur_dir="$p_dir"
-      fi
-      running_json="null"
-      [[ "$running" =~ ^[0-9]+$ ]] && running_json="$running"
-      home_rows+=( "$( jq -cn \
-        --arg node "$h" --arg state "$app_node_state" \
-        --arg status "$jstatus" --arg status_reason "$jreason" \
-        --argjson running "$running_json" \
-        '{node:$node, state:$state, status:$status, status_reason:$status_reason, running:$running}' )" )
+      json_rows+=( "${p}${FS}${ndc}${FS}${p_groups}${FS}${p_rnl}${FS}${p_desc}${FS}${p_dir}${FS}${h}${FS}${app_node_state}${FS}${jstatus}${FS}${jreason}${FS}${running}" )
     else
-      printf "$MASK" "$state" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "$p_dir"
+      # emoji from the single source of truth (funcs/status_funcs), no per-row fork
+      dstate="${DC_STATUS_EMOJI[apps:$jstatus]:-??}"
+      printf "$MASK" "$dstate" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "$p_dir"
     fi
   done
   if [ "$opt_json" = "1" ] ; then
-    _flush_app
-    items="[]"
-    [ ${#json_apps[@]} -gt 0 ] && items=$( printf '%s\n' "${json_apps[@]}" | jq -s . )
     insp_bool=false ; [ "$opt_inspect" = "1" ] && insp_bool=true
-    jq -n --arg kind "apps" --argjson inspected "$insp_bool" \
-          --arg generated_at "$(date +%Y-%m-%dT%H:%M:%S%:z)" --argjson items "$items" \
-          '{kind:$kind, inspected:$inspected, generated_at:$generated_at, count:($items|length), items:$items}'
+    #
+    # one jq pass builds the items array: read the FS-separated rows (US=0x1f),
+    # regroup into one object per app (document order preserved via a first-seen
+    # list); numeric fields become json numbers or null. dc_json_envelope
+    # (funcs/status_funcs) then adds the common wrapper.
+    #
+    printf '%s\n' "${json_rows[@]}" | jq -R -s '
+      def numornull: if test("^[0-9]+$") then tonumber else null end;
+      [ split("\n")[] | select(length>0) | split("\u001f") ]
+      | reduce .[] as $r ( {order:[], m:{}};
+          (if .m[$r[0]] == null then .order += [$r[0]] else . end)
+          | .m[$r[0]] = ( (.m[$r[0]] // {
+                app:$r[0], services:($r[1]|numornull),
+                groups:($r[2]|split(",")|map(select(length>0))),
+                run_level:$r[3], desc:$r[4], app_dir:$r[5], home:[] })
+              | .home += [ {node:$r[6], state:$r[7], status:$r[8],
+                            status_reason:$r[9], running:($r[10]|numornull)} ] ) )
+      | [ .order[] as $a | .m[$a] ]' \
+    | dc_json_envelope apps "$insp_bool"
   fi
   exit $return_code
 fi
@@ -448,42 +441,41 @@ for line in "${node_lines[@]}" ; do
   #dstate="🔁"
   #dstate="🔃"
 
-  dstate="??"
   jstatus="" ; jreason=""
 
   if [ "$opt_inspect" != "1" ] ; then
     # no inspection -> just show cached info, mark state as unchecked
-    dstate="☐ " ; jstatus="unchecked" ; jreason="not_inspected"
+    jstatus="unchecked" ; jreason="not_inspected"
   elif [ "$state" = "off" ] ; then
-    if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-      dstate="🔃" ; jstatus="intermittent" ; jreason="intermittent_link"
+    if [ "$connection" = "intermittently" ] ; then
+      jstatus="intermittent" ; jreason="intermittent_link"
     else
-      dstate="⏰" ; jstatus="standby" ; jreason="node_standby"   # node disabled in node.yml
+      jstatus="standby" ; jreason="node_standby"   # node disabled in node.yml
     fi
   elif [ "$state" = "" ] ; then
     # state="", d.h. node nicht erreichbar
-    dstate="❓" ; jstatus="unreachable" ; jreason="no_ping"
+    jstatus="unreachable" ; jreason="no_ping"
     return_code=1
   elif [ "$state" != "$typ" ] ; then
     if [ "$state" = "ping"  -a "$yml_state" = "standby" ] ; then
-      dstate="⏰" ; jstatus="standby" ; jreason="node_standby"   # node standby in node.yml
+      jstatus="standby" ; jreason="node_standby"   # node standby in node.yml
     elif [ "$state" = "ping" -a "$connection" = "intermittently" ] ; then
-      dstate="🔃" ; jstatus="intermittent" ; jreason="intermittent_link"
+      jstatus="intermittent" ; jreason="intermittent_link"
     else
-      dstate="❌" ; jstatus="error" ; jreason="state_mismatch"
+      jstatus="error" ; jreason="state_mismatch"
       return_code=1
     fi
   elif [ "$state" = "ping" ] ; then
-    dstate="✅" ; jstatus="ok" ; jreason="healthy"
+    jstatus="ok" ; jreason="healthy"
   elif [ "$state" = "sshd" -o "$state" = "dock" -o "$state" = "dc" -o "$state" = "dcc" ] ; then
-    dstate="✅" ; jstatus="ok" ; jreason="healthy"
+    jstatus="ok" ; jreason="healthy"
     if [ "$size" != "" ] ; then
       if [ $size -ge 92 ] ; then
-        dstate="⚠️" ; jstatus="warning" ; jreason="disk_high"
+        jstatus="warning" ; jreason="disk_high"
         return_code=255
       fi
       if [ $size -ge 98 ] ; then
-        dstate="❌" ; jstatus="error" ; jreason="disk_critical"
+        jstatus="error" ; jreason="disk_critical"
         return_code=1
       fi
     fi
@@ -496,34 +488,32 @@ for line in "${node_lines[@]}" ; do
     last_inspect=$(date -d @${insp_last_inspect} +"%Y-%m-%d_%H:%M" )
   fi
   if [ "$opt_json" = "1" ] ; then
-    hd_size_json="null"
-    [[ "$insp_hd_size" =~ ^[0-9]+$ ]] && hd_size_json="$insp_hd_size"
-    json_nodes+=( "$( jq -cn \
-      --arg node "$node" --arg status "$jstatus" --arg status_reason "$jreason" \
-      --arg state "$yml_state" --arg live_state "$state" --arg type "$typ" \
-      --arg groups "$group" --arg os "$os" --arg os_ver "$insp_os_ver" \
-      --arg arch "$insp_arch" --arg docker_ver "$insp_dock_ver" \
-      --arg mde_ver "$insp_mde_ver" --arg mde_monitor "$insp_mde_monitor" \
-      --argjson hd_size "$hd_size_json" --arg machine_id "$insp_machine_id" \
-      --arg fqdn "$hname" --arg connection "$connection" \
-      --arg last_inspection "$last_inspect" --arg desc "$desc" \
-      '{node:$node, status:$status, status_reason:$status_reason,
-        state:$state, live_state:$live_state, type:$type,
-        groups:($groups|split(" ")|map(select(length>0))),
-        os:$os, os_ver:$os_ver, arch:$arch, docker_ver:$docker_ver,
-        mde_ver:$mde_ver, mde_monitor:$mde_monitor, hd_size:$hd_size,
-        machine_id:$machine_id, fqdn:$fqdn, connection:$connection,
-        last_inspection:$last_inspection, desc:$desc}' )" )
+    # buffer one FS-separated record; the json is built in a single jq pass
+    # after the loop (was: one jq -cn fork per node -> a fork storm).
+    json_nodes+=( "${node}${FS}${jstatus}${FS}${jreason}${FS}${yml_state}${FS}${state}${FS}${typ}${FS}${group}${FS}${os}${FS}${insp_os_ver}${FS}${insp_arch}${FS}${insp_dock_ver}${FS}${insp_mde_ver}${FS}${insp_mde_monitor}${FS}${insp_hd_size}${FS}${insp_machine_id}${FS}${hname}${FS}${connection}${FS}${last_inspect}${FS}${desc}" )
   else
+    # emoji from the single source of truth (funcs/status_funcs), no per-row fork
+    dstate="${DC_STATUS_EMOJI[nodes:$jstatus]:-??}"
     printf "$MASK" "${dstate}" "${node}" "${state}" "${typ}" "${group}" "${insp_arch}" "${os}" "${insp_os_ver}" "${insp_dock_ver}" "${insp_mde_ver}" "${insp_mde_monitor}" "${insp_hd_size}" "${insp_machine_id}" "${last_inspect}" "${desc}"
   fi
 done
 if [ "$opt_json" = "1" ] ; then
-  items="[]"
-  [ ${#json_nodes[@]} -gt 0 ] && items=$( printf '%s\n' "${json_nodes[@]}" | jq -s . )
   insp_bool=false ; [ "$opt_inspect" = "1" ] && insp_bool=true
-  jq -n --arg kind "nodes" --argjson inspected "$insp_bool" \
-        --arg generated_at "$(date +%Y-%m-%dT%H:%M:%S%:z)" --argjson items "$items" \
-        '{kind:$kind, inspected:$inspected, generated_at:$generated_at, count:($items|length), items:$items}'
+  #
+  # one jq pass builds the items array: read the FS-separated rows (US=0x1f),
+  # one object per node in output order; hd_size becomes a json number or null.
+  # dc_json_envelope (funcs/status_funcs) then adds the common wrapper.
+  #
+  printf '%s\n' "${json_nodes[@]}" | jq -R -s '
+    def numornull: if test("^[0-9]+$") then tonumber else null end;
+    [ split("\n")[] | select(length>0) | split("\u001f")
+      | {node:.[0], status:.[1], status_reason:.[2], state:.[3],
+         live_state:.[4], type:.[5],
+         groups:(.[6]|split(" ")|map(select(length>0))),
+         os:.[7], os_ver:.[8], arch:.[9], docker_ver:.[10],
+         mde_ver:.[11], mde_monitor:.[12], hd_size:(.[13]|numornull),
+         machine_id:.[14], fqdn:.[15], connection:.[16],
+         last_inspection:.[17], desc:.[18]} ]' \
+  | dc_json_envelope nodes "$insp_bool"
 fi
 exit $return_code

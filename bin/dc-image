@@ -1,6 +1,7 @@
 #!/bin/bash
 
 . /opt/dc/funcs/global
+. /opt/dc/funcs/status_funcs
 
 IAM=`basename $0`
 
@@ -132,42 +133,49 @@ if [ "$1" = "ls" ] ; then
     printf "$MASK" "--" "----------------" "----------------" "------------------------------" "--------------------" "--------------------"
   fi
   found="0"
+  FS=$'\x1f'
   json_rows=()
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
-    dstate="⬜" ; jstatus="unmanaged" ; jreason="not_in_image_list"
+    jstatus="unmanaged" ; jreason="not_in_image_list"
     new_version="                    "
-    new_version_json="null"
+    new_ver=""
     if [ "$opt_inspect" != "1" ] ; then
       # no inspection -> show current versions only, mark as unchecked
-      dstate="☐ " ; jstatus="unchecked" ; jreason="not_inspected"
+      jstatus="unchecked" ; jreason="not_inspected"
     elif [ "${state[$idx]}" = "o" ] ; then
-      dstate="✅" ; jstatus="ok" ; jreason="current"
+      jstatus="ok" ; jreason="current"
     elif  [ "${state[$idx]}" = "!" ] ; then
-      dstate="☑ " ; jstatus="outdated" ; jreason="newer_available"
+      jstatus="outdated" ; jreason="newer_available"
       new_version=${u_ver[$idx]}
-      new_version_json=$( jq -cn --arg v "${u_ver[$idx]}" '$v' )
+      new_ver=${u_ver[$idx]}
       return_code=254
     fi
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
     fi
     if [ "$opt_json" = "1" ] ; then
-      json_rows+=( "$( jq -cn \
-        --arg app "${apps[$idx]}" --arg status "$jstatus" --arg status_reason "$jreason" \
-        --arg node "${nodes[$idx]}" --arg image "${img_name[$idx]}" \
-        --arg current_version "${img_ver[$idx]}" --argjson new_version "$new_version_json" \
-        '{app:$app, status:$status, status_reason:$status_reason, node:$node, image:$image, current_version:$current_version, new_version:$new_version}' )" )
+      # buffer one FS-separated record; the json is built in a single jq pass
+      # after the loop (was: one jq -cn fork per row -> a fork storm).
+      json_rows+=( "${apps[$idx]}${FS}${jstatus}${FS}${jreason}${FS}${nodes[$idx]}${FS}${img_name[$idx]}${FS}${img_ver[$idx]}${FS}${new_ver}" )
     else
+      # emoji from the single source of truth (funcs/status_funcs), no per-row fork
+      dstate="${DC_STATUS_EMOJI[images:$jstatus]:-??}"
       printf "$MASK" "${dstate}" "${apps[$idx]}" "${nodes[$idx]}" "${img_name[$idx]:0:30}" "${img_ver[$idx]}" "${new_version}"
     fi
   done
   if [ "$opt_json" = "1" ] ; then
-    items="[]"
-    [ ${#json_rows[@]} -gt 0 ] && items=$( printf '%s\n' "${json_rows[@]}" | jq -s . )
     insp_bool=false ; [ "$opt_inspect" = "1" ] && insp_bool=true
-    jq -n --arg kind "images" --argjson inspected "$insp_bool" \
-          --arg generated_at "$(date +%Y-%m-%dT%H:%M:%S%:z)" --argjson items "$items" \
-          '{kind:$kind, inspected:$inspected, generated_at:$generated_at, count:($items|length), items:$items}'
+    #
+    # one jq pass builds the items array: read the FS-separated rows (US=0x1f),
+    # one object per (app,node,image) in input order; new_version is null unless
+    # outdated. dc_json_envelope (funcs/status_funcs) then adds the wrapper.
+    #
+    printf '%s\n' "${json_rows[@]}" | jq -R -s '
+      def emptynull: if length>0 then . else null end;
+      [ split("\n")[] | select(length>0) | split("\u001f")
+        | {app:.[0], status:.[1], status_reason:.[2], node:.[3],
+           image:.[4], current_version:.[5], new_version:(.[6]|emptynull)} ]' \
+    | dc_json_envelope images "$insp_bool"
     exit $return_code
   fi
   if [ "${found}" = "1" ] ; then

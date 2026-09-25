@@ -123,7 +123,9 @@ _config_refresh()
         cp $i                                                ${app_dir}/${relPath}/
       fi
       ( cd ${MDE_DC_APP_DIR}/${relPath}/  && docker compose config > ${app_dir}/${relPath}/compose.yml )
-      # overrule app name, if node is mailcowdockerized
+      # overrule app name, if node is mailcowdockerized, but keep orig name for "dc node -a <app> nrc"
+      orig_compose_name=$(dc-yq '.name'  ${app_dir}/${relPath}/compose.yml )
+      dc-yq -i '.orig_compose_name = "'$orig_compose_name'"' ${app_dir}/${relPath}/compose.yml
       app_name=$(dc-yq '.app.overrule_compose_name'  $i)
       if [ "$app_name" != "null" -a "$app_name" != "" ] ; then
         dc-yq -i '.name = "'$app_name'"' ${app_dir}/${relPath}/compose.yml
@@ -448,7 +450,7 @@ if [ "$CMD" = "check" ] ; then
         ret=1
       elif  [ "$sstate" = "off" ] ; then
         connection=$( dc-yq '.nodes.'${p_on_nodes[$h]}'.connection.type' ${MDE_DC_YAML} )
-        if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
+        if [ "$connection" = "intermittently" ] ; then
           printf $MASK "🔃" "[$p] node disconnected <${p_on_nodes[$h]}>, so volume check not possible"
         fi
       else
