@@ -155,34 +155,36 @@ fi
 if [ "$CMD" = "state" ] ; then
   for HOST in $hlist ; do
     state=""
-    hname=$( dc-yq '.nodes.'$HOST'.fqdn' ${MDE_DC_YAML} ) 
+    # single yq read: fqdn, declared type, declared state, connection type
+    # (was up to 4 separate dc-yq spawns, each re-parsing the whole YAML)
+    IFS='|' read -r hname _typ _nstate _conn < <( \
+      dc-yq '[.nodes.'$HOST'.fqdn, .nodes.'$HOST'.type, .nodes.'$HOST'.state, .nodes.'$HOST'.connection.type] | map(. // "") | join("|")' ${MDE_DC_YAML} )
     ping -W 0.5 -c 1 ${hname} >/dev/null 2>&1
     if [ "$?" = "0" ] ; then
       state="ping"
-      ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST true >/dev/null 2>&1
-      if [ "$?" = "0" ] ; then
+      # single SSH round-trip instead of "ssh true" + "ssh pidof dockerd".
+      # decide via exit code:  0 -> dockerd up (dock/dc/dcc)
+      #                      255 -> ssh conn failed -> stay ping
+      #                     else -> sshd up but no dockerd -> sshd
+      ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST pidof dockerd >/dev/null 2>&1
+      ret=$?
+      if [ "$ret" = "0" ] ; then
+        state="dock"
+        # dc and dcc are the two top ladder rungs
+        if [ "$_typ" = "dc" ]  ; then state="dc"  ; fi
+        if [ "$_typ" = "dcc" ] ; then state="dcc" ; fi
+      elif [ "$ret" != "255" ] ; then
         state="sshd"
-        ssh -o BatchMode=yes -o ConnectTimeout=1 $HOST pidof dockerd >/dev/null 2>&1
-        if [ "$?" = "0" ] ; then
-          state="dock"
-          # read declared type once; dc and dcc are the two top ladder rungs
-          _typ=`dc-yq '.nodes.'$HOST'.type' ${MDE_DC_YAML}`
-          if [ "$_typ" = "dc" ]  ; then state="dc"  ; fi
-          if [ "$_typ" = "dcc" ] ; then state="dcc" ; fi
-        fi
       fi
     fi
     if [ "$state" = "" ] ; then
       # check if node is off state==standby
-      if [ `dc-yq '.nodes.'${HOST}'.state' ${MDE_DC_YAML}` = "standby" ] ; then
+      if [ "$_nstate" = "standby" ] ; then
         state="off"
-      else
-        connection=$( dc-yq '.nodes.'${HOST}'.connection.type' ${MDE_DC_YAML} )
-        if [ "$connection" = "wireguard" -o "$connection" = "intermittently" ] ; then
-          state="off"
-        fi
+      elif [ "$_conn" = "wireguard" -o "$_conn" = "intermittently" ] ; then
+        state="off"
       fi
-    fi	    
+    fi
     echo "$state"
   done
   exit 0
@@ -229,7 +231,11 @@ EOF
   fi
   if [ "$CMD" = "nrc" ] ; then
     if [ "$opt_app" != "" ] ; then
-      dc -a $opt_app -n $HOST compose ps --services --filter "status=running" | sed '/^\s*$/d'  | wc -l
+      # count running containers via the compose project label instead of
+      # "docker compose ps" -- avoids the compose-plugin start + compose-file
+      # parse per app; single (multiplexed) ssh, count done on the node.
+      proj=$( dc-yq '.apps.'$opt_app'.compose.name' ${MDE_DC_YAML} )
+      ssh $HOST "docker ps -q -f label=com.docker.compose.project=$proj -f status=running | wc -l"
     else
       ssh $HOST docker ps -q | wc -l
     fi

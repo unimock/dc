@@ -11,6 +11,7 @@ show_help() {
   echo ""
   echo "$IAM ls              # list used images and their states"
   echo "$IAM ls --skip       # list without inspecting (no remote update-check, show current versions only)"
+  echo "$IAM ls --json       # machine-readable JSON output (for the web-UI)"
   echo ""
   echo "$IAM update <app>  koenkk/zigbee2mqtt:2.1.1"
   echo ""
@@ -24,7 +25,8 @@ fi
 # inspection is the default; --skip turns off the remote update-check.
 # --inspect is kept as a hidden no-op for symmetry with dc-ls.
 opt_inspect="1"
-options=$(getopt -l "help,skip,inspect" -o "hp:" -a -- "$@")
+opt_json="0"
+options=$(getopt -l "help,skip,inspect,json" -o "hp:" -a -- "$@")
 eval set -- "$options"
 while true ; do
   case "$1" in
@@ -37,6 +39,9 @@ while true ; do
     ;;
   --inspect)
     opt_inspect="1"
+    ;;
+  --json)
+    opt_json="1"
     ;;
   -p)
     shift
@@ -59,13 +64,13 @@ if [ "$1" = "ls" ] ; then
   if [ "$opt_inspect" = "1" ] ; then
     url=$(   dc-yq '.config.cluster.image_list.url'   )
     if [ "$url" = "null" -o "$url" = "" ] ; then
-      echo "error: image_list.url undefined in cluster.yml"
+      echo "error: image_list.url undefined in cluster.yml" >&2
       exit 1
     fi
     groups=$(dc-yq '.config.cluster.image_list.groups.[]')
     FI=$(mktemp)
     if ! wget -q -O "$FI" "$url" || [ ! -s "$FI" ] ; then
-      echo "error: could not fetch image list from <$url>"
+      echo "error: could not fetch image list from <$url>" >&2
       rm -f "$FI"
       exit 1
     fi
@@ -79,72 +84,92 @@ if [ "$1" = "ls" ] ; then
   # create information arrays
   #
   idx=0
-  app_list=$(dc-yq '(.apps.* | path) [-1]' | sort | uniq )
-  for app in $app_list ; do
-    x=$(dc-yq '.apps.'$app'.dc.image_list.disabled')
-    if [ "$x" = "true" ] ; then
-      continue
-    fi
-    yaml_file=$(dc-yq '.apps.'$app'.compose_yml')
-    #echo "$yaml_file"
-    image_list=$(dc-yq '.services.*.image' $yaml_file  | sort | uniq)
-    #
-    # home-nodes der app laden (alle einträge, ungefiltert). eine zeile pro
-    # (app, node, image) ausgeben. apps ohne home-node trotzdem mit leerer
-    # node-spalte anzeigen.
-    #
-    mapfile -t node_arr < <( dc-yq -r '(.apps.'$app'.dc.home // [])[].node' )
-    if [ ${#node_arr[@]} -eq 0 ] ; then node_arr=("") ; fi
-    for hnode in "${node_arr[@]}" ; do
-      for image in $image_list ; do
-        #echo "  $image"
-        apps[$idx]="$app"
-        nodes[$idx]="$hnode"
-        img_name[$idx]=${image%:*}
-        img_ver[$idx]=${image#*:}
-        state[$idx]=" "
-        for u in $update_list ; do
-          u_name=${u%:*}
-          u_ver[$idx]=${u#*:}
-          if [ "${u_name}" = "${img_name[$idx]}" ] ; then
-            if [ "${u_ver[$idx]}" = "${img_ver[$idx]}" ] ; then
-              state[$idx]="o"
-            else
-              state[$idx]="!"
-            fi
-            break
-          fi
-        done
-        dname[$idx]=$(dirname $yaml_file )
-        let idx=$idx+1
-      done
+  #
+  # single consolidated yq pass instead of ~3 per-app dc-yq spawns (each
+  # re-parsing the whole merged yaml). emit one "app|node|image" line per
+  # (app, node, image); disabled apps filtered, apps without a home-node get
+  # an empty node column, images sorted+deduped. app order kept alphabetical
+  # (sort_by), node order as declared in dc.home, mirroring the old nesting.
+  # images are read from the merged .apps.<app>.compose (same content the
+  # rendered compose_yml held after `dc-config`).
+  #
+  while IFS='|' read -r app hnode image ; do
+    [ -z "$app" ] && continue
+    apps[$idx]="$app"
+    nodes[$idx]="$hnode"
+    img_name[$idx]=${image%:*}
+    img_ver[$idx]=${image#*:}
+    state[$idx]=" "
+    for u in $update_list ; do
+      u_name=${u%:*}
+      u_ver[$idx]=${u#*:}
+      if [ "${u_name}" = "${img_name[$idx]}" ] ; then
+        if [ "${u_ver[$idx]}" = "${img_ver[$idx]}" ] ; then
+          state[$idx]="o"
+        else
+          state[$idx]="!"
+        fi
+        break
+      fi
     done
-  done
+    let idx=$idx+1
+  done < <( dc-yq -r '
+      .apps | to_entries | sort_by(.key) | .[]
+      | select(.value.dc.image_list.disabled != true)
+      | . as $e
+      | ([$e.value.compose.services[].image] | unique) as $imgs
+      | ($e.value.dc.home // [{}]) as $homes
+      | $homes[] as $h
+      | $imgs[] as $img
+      | ($e.key + "|" + ($h.node // "") + "|" + $img)
+    ' ${MDE_DC_YAML} )
   #
   # print informations
   #
   MASK="|%-1s|%-16s|%-16s|%-30s|%-20s|%-20s|\n"
-  printf "$MASK" "  " "app             " "node            " "image                         " "current version     " "new version         "
-  printf "$MASK" "--" "----------------" "----------------" "------------------------------" "--------------------" "--------------------"
+  if [ "$opt_json" != "1" ] ; then
+    printf "$MASK" "  " "app             " "node            " "image                         " "current version     " "new version         "
+    printf "$MASK" "--" "----------------" "----------------" "------------------------------" "--------------------" "--------------------"
+  fi
   found="0"
+  json_rows=()
   for (( idx=0; idx < ${#state[@]}; idx++ )) ; do
-    dstate="⬜"
+    dstate="⬜" ; jstatus="unmanaged" ; jreason="not_in_image_list"
     new_version="                    "
+    new_version_json="null"
     if [ "$opt_inspect" != "1" ] ; then
       # no inspection -> show current versions only, mark as unchecked
-      dstate="☐ "
+      dstate="☐ " ; jstatus="unchecked" ; jreason="not_inspected"
     elif [ "${state[$idx]}" = "o" ] ; then
-      dstate="✅"
+      dstate="✅" ; jstatus="ok" ; jreason="current"
     elif  [ "${state[$idx]}" = "!" ] ; then
-      dstate="☑ "
+      dstate="☑ " ; jstatus="outdated" ; jreason="newer_available"
       new_version=${u_ver[$idx]}
+      new_version_json=$( jq -cn --arg v "${u_ver[$idx]}" '$v' )
       return_code=254
-    fi	  
+    fi
     if [ "${state[$idx]}" = "!" ] ; then
       found="1"
     fi
-    printf "$MASK" "${dstate}" "${apps[$idx]}" "${nodes[$idx]}" "${img_name[$idx]:0:30}" "${img_ver[$idx]}" "${new_version}"
+    if [ "$opt_json" = "1" ] ; then
+      json_rows+=( "$( jq -cn \
+        --arg app "${apps[$idx]}" --arg status "$jstatus" --arg status_reason "$jreason" \
+        --arg node "${nodes[$idx]}" --arg image "${img_name[$idx]}" \
+        --arg current_version "${img_ver[$idx]}" --argjson new_version "$new_version_json" \
+        '{app:$app, status:$status, status_reason:$status_reason, node:$node, image:$image, current_version:$current_version, new_version:$new_version}' )" )
+    else
+      printf "$MASK" "${dstate}" "${apps[$idx]}" "${nodes[$idx]}" "${img_name[$idx]:0:30}" "${img_ver[$idx]}" "${new_version}"
+    fi
   done
+  if [ "$opt_json" = "1" ] ; then
+    items="[]"
+    [ ${#json_rows[@]} -gt 0 ] && items=$( printf '%s\n' "${json_rows[@]}" | jq -s . )
+    insp_bool=false ; [ "$opt_inspect" = "1" ] && insp_bool=true
+    jq -n --arg kind "images" --argjson inspected "$insp_bool" \
+          --arg generated_at "$(date +%Y-%m-%dT%H:%M:%S%:z)" --argjson items "$items" \
+          '{kind:$kind, inspected:$inspected, generated_at:$generated_at, count:($items|length), items:$items}'
+    exit $return_code
+  fi
   if [ "${found}" = "1" ] ; then
     #
     # print update commands
