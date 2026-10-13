@@ -311,7 +311,10 @@ EOF
 
   ####################################################################################################################
   if [ "$CMD" = "reboot"   ] ; then
-    ssh $HOST "init 6"
+    # reboot detached, then close the control master ourselves - otherwise it
+    # stays bound to the dying connection and new clients hang on its socket
+    ssh $HOST "nohup sh -c 'sleep 1; init 6' >/dev/null 2>&1 &"
+    ssh -O exit $HOST >/dev/null 2>&1
     if [ "$1" != "" ] ; then
       sleep 3
       #                   wait <state>

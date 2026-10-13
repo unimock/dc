@@ -27,4 +27,6 @@ node:
     StrictHostKeyChecking: no
     UserKnownHostsFile: /dev/null
     ControlMaster: auto
-    ControlPersist: yes
+    ControlPersist: 10m
+    ServerAliveInterval: 5
+    ServerAliveCountMax: 3

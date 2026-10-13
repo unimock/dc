@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# close ssh control masters (all, or only of the given nodes)
+#
+# usage: dc-ssh-control-reset [-n] [node ..]    -n ... dry run
+#
+# deliberately does not source funcs/global (no config refresh), so it can be
+# called from dc-config, dc-install updates, ...
+#
+CONTROL_DIR=$HOME/.dc/var/ssh/control
+
+dry_run=""
+if [ "$1" = "-n" ] ; then
+  dry_run="1"
+  shift
+fi
+
+if [ $# = 0 ] ; then
+  list=$( find ${CONTROL_DIR} -maxdepth 1 -type s 2>/dev/null )
+else
+  list=""
+  for node in "$@" ; do
+    list="$list ${CONTROL_DIR}/${node}"
+  done
+fi
+
+for sock in $list ; do
+  if [ ! -S "$sock" ] ; then
+    continue
+  fi
+  if [ "$dry_run" = "1" ] ; then
+    echo "would close control master: $sock"
+    continue
+  fi
+  # a master hanging on a dead connection may not answer -> kill exactly its
+  # process (title "ssh: <ControlPath> [mux]"), not every path containing it
+  if ! timeout 5 ssh -o ControlPath="$sock" -O exit dc-reset >/dev/null 2>&1 ; then
+    pat=$( printf '%s' "$sock" | sed 's/[][\.*^$+?(){}|]/\\&/g' )
+    pkill -TERM -f "^ssh: ${pat} \[mux\]$"
+  fi
+  rm -f "$sock"
+  echo "closed control master: $sock"
+done
+
+exit 0

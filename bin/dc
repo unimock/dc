@@ -48,7 +48,7 @@ show_help() {
   echo "     readme                        # show README.md"
   echo "     versions                      # show versions"
   echo "     completion                    # source bash completion like: echo 'source <(dc completion)' >> ~/.bash_aliases"
-  echo "     ssh-control-reset             # remove ssh control sockets"
+  echo "     ssh-control-reset [node ..]   # close ssh control masters"
   echo "     install ...                   # dc installation and update functions"
   echo "     ls [--help]                   # list nodes"
   echo "     list ...                      # list nodes/apps"
@@ -93,7 +93,7 @@ show_help() {
   echo "important user commands:"
   echo ""
   echo "  dc versions                                # show versions"
-  echo "  dc ssh-control-reset                       # remove ssh control sockets"
+  echo "  dc ssh-control-reset [node ..]            # close ssh control masters"
   echo ""
   echo "  dc ls nodes [--skip]                       # show defined nodes (state is inspected; --skip = cached only)"
   echo "  dc ls apps  [--skip]                        # show defined app services (state is inspected; --skip = cached only)"
@@ -163,13 +163,9 @@ if [ "$1" = "mounts" ] ; then
   exit 0 
 fi
 if [ "$1" = "ssh-control-reset" ] ; then
-  list=$( find ${HOME}"/.dc/var/ssh/control/" -type s)
-  for i in ${list} ; do
-    pkill -TERM -f ${i}
-    rm -f $i
-  done
-  #rm -fv  $HOME/.dc/var/ssh/control/*
-  exit 0
+  shift
+  /opt/dc/bin/dc-ssh-control-reset "$@"
+  exit $?
 fi
 wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm image"
 for i in $wrapper_list ; do

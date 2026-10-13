@@ -49,7 +49,7 @@ if [ "$CMD" = "create" ] ; then
   echo "################################################################################"
   ssh-keygen -f "${HOME}/.ssh/known_nodes" -R ${IP} >/dev/null 2>&1
   ssh-keyscan -H ${IP} >> ${HOME}/.ssh/known_nodes
-  rm -f $HOME/.dc/var/ssh/control/${DC_HOST}
+  dc-ssh-control-reset ${DC_HOST} >/dev/null
   # place IP or hostname in node.yml definition and rebuild
   dc-yq -i '.node.fqdn = "'$IP'"'           $node_dir/node.yml
   dc-config refresh

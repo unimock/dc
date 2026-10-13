@@ -308,7 +308,7 @@ if [ "$CMD" = "create" -o "$CMD" = "delete" ] ; then
       fi
       echo "TBD: in $0 : do not allow, if hcloud server is assigned an running!"
       rm -rv ${MDE_DC_HOST_DIR}/$name
-      rm -f $HOME/.dc/var/ssh/control/$name
+      dc-ssh-control-reset $name
       rm -f $HOME/.dc/var/ssh/config/$name
       _config_refresh force
       exit 0

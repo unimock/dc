@@ -88,12 +88,12 @@ if [ !  -f $HOME/.dc/etc/config ] ; then
     echo 'Include '${HOME}'/.dc/var/ssh/config/* #dc-install' > $FI
   fi
   # install additional apt packages
+  first=0
   for p in ${APT_PACKAGES} ; do
-    first=0
     dpkg -s $p >/dev/null 2>&1
     if [ "$?" != "0" ] ; then
       if [ "$first"  = "0" ] ; then
-        apt-get update
+        sudo apt-get update
         first=1
       fi
       sudo apt-get -qq install -y $p
@@ -157,6 +157,21 @@ if [ ! -d ${MDE_DC_BATCH_DIR} ] ; then
   echo "$IAM: createdir <${MDE_DC_BATCH_DIR}>"
   mkdir -p ${MDE_DC_BATCH_DIR}
 fi
+# run pending update scripts (updates/<version>.sh), each only once
+FI=${HOME}/.dc/etc/updates.done
+touch $FI
+for i in $( ls /opt/dc/updates/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.sh$' | sort -V ) ; do
+  if grep -qx "$i" $FI ; then
+    continue
+  fi
+  echo "$IAM: run update <$i>..."
+  PATH=/opt/dc/bin:$PATH bash /opt/dc/updates/$i
+  if [ "$?" = "0" ] ; then
+    echo "$i" >> $FI
+  else
+    echo "$IAM: update <$i> failed, will be retried on next run"
+  fi
+done
 source ${HOME}/.bashrc
 dc-config rebuild
 
