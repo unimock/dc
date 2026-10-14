@@ -221,10 +221,10 @@ EOF
   fi
   if [ "$CMD" = "prune" ] ; then
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-    ssh   ${HOST} apt-get autoremove
-    dc -n  ${HOST} docker volume prune
+    ssh -t ${HOST} apt-get autoremove
+    ssh -t ${HOST} docker volume prune -a
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-    dc -n  ${HOST} docker system prune -a
+    ssh -t ${HOST} docker system prune -a
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
     ssh   ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
     ssh   ${HOST} df -h / | grep -v "^Filesystem"

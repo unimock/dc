@@ -159,6 +159,14 @@ if [ ! -d ${MDE_DC_BATCH_DIR} ] ; then
 fi
 # run pending update scripts (updates/<version>.sh), each only once
 FI=${HOME}/.dc/etc/updates.done
+if [ ! -f $FI ] ; then
+  # fresh installation (no node.yml yet): nothing to migrate,
+  # mark all existing updates as done without running them
+  if [ "$( find ${MDE_DC_HOST_DIR} -name '.?*' -prune -o -name "node.yml" -print -quit )" = "" ] ; then
+    echo "$IAM: fresh installation, mark existing updates as done"
+    ls /opt/dc/updates/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.sh$' | sort -V > $FI
+  fi
+fi
 touch $FI
 for i in $( ls /opt/dc/updates/ | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.sh$' | sort -V ) ; do
   if grep -qx "$i" $FI ; then

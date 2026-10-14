@@ -1,4 +1,13 @@
 #!/bin/bash
+#
+# rules for update scripts (updates/<version>.sh, run once by dc-install):
+#
+#   - idempotent: a second run must not change anything
+#   - no existing data -> do nothing (on a fresh installation all
+#     existing updates are marked as done without running them)
+#   - support -n for a dry run (see 1.29.0.sh)
+#   - exit != 0 on failure, the update is retried on next dc-install
+#
 
 exit 0
 
