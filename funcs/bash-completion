@@ -73,6 +73,8 @@ _dc() {
       COMPREPLY=( $(compgen -W "state config rm up rmup start stop data logs login" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "state" ]] ; then
       COMPREPLY=( $(compgen -W "active disabled" -- "$2") )
+    elif [[ "$COMP_CWORD" == "4" && "${COMP_WORDS[3]}" == "login" ]] ; then
+      COMPREPLY=( $(compgen -W "--root" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "config" ]] ; then
       if [[ "$COMP_CWORD" == "4" ]] ; then
         COMPREPLY=( $(compgen -W "create delete yq edit" -- "$2") )
@@ -156,6 +158,9 @@ _dc() {
         COMPREPLY=( $(compgen -W "$list" -- "$2") )
       fi
     fi
+  # dc login ..
+  elif [[  "$COMP_CWORD" == "2" && "$3" == "login" ]] ; then
+    COMPREPLY=( $(compgen -W "--root" -- "$2") )
   # dc ls ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
     COMPREPLY=( $(compgen -W "apps nodes images addapps" -- "$2") )

@@ -81,7 +81,7 @@ show_help() {
   echo ""
   echo "   container-commands:"
   echo ""
-  echo "     login [command]               # login or run a command within <$DCN>."
+  echo "     login [--root] [command]      # login or run a command within <$DCN> (as login_user or root)."
   echo "     cmd   [command]               # run a command within <$DCN> without terminal (cron jobes, ..)."
   echo "     supervisor                    # connect to supervisord (help|quit|start|stop|restart)"
   echo "     syslog                        # print last lines from syslog"
@@ -401,13 +401,25 @@ case "$CMD" in
     ;;
   login)
     shift
+    as_root=0
+    if [ "$1" = "--root" ] ; then
+      as_root=1
+      shift
+    fi
     if [ "$1" = "" ] ; then
       cmd="sh"
     else
       cmd=$*
     fi
     main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
-	  docker compose exec  ${main_service} $cmd
+    login_user=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.login_user  )' ${MDE_DC_YAML} )
+    if [ "$as_root" = "1" ] ; then
+      docker compose exec -u root ${main_service} $cmd
+    elif [ "$login_user" != "null" -a "$login_user" != "" ] ; then
+      docker compose exec -u ${login_user} ${main_service} $cmd
+    else
+      docker compose exec  ${main_service} $cmd
+    fi
     ;;
   cmd)
     shift

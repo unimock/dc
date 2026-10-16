@@ -226,7 +226,7 @@ EOF
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
     ssh -t ${HOST} docker system prune -a
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
-    ssh   ${HOST} 'truncate -s 0 /var/lib/docker/containers/*/*-json.log'
+    ssh   ${HOST} 'find /var/lib/docker/containers -name "*-json.log" -type f -exec truncate -c -s 0 {} +'
     ssh   ${HOST} df -h / | grep -v "^Filesystem"
   fi
   if [ "$CMD" = "nrc" ] ; then
