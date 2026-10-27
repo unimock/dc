@@ -82,18 +82,24 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
         ($app.value.dc.run_level // ""),
         (($app.value.dc.group // []) | join(",")),
         ($app.value.app_dir // ""),
-        ($root.nodes[$home.node].connection.type // "") ]
+        ($root.nodes[$home.node].connection.type // ""),
+        ($app.value.compose.orig_compose_name // "") ]
     | join("'"$FS"'")' ${MDE_DC_YAML} )
   mapfile -t app_lines <<< "$app_data"
 
   #
-  # inspection: the live probes (node state + running-container count) are the
-  # slow part. do them up front and in parallel instead of once per printed row:
-  #   phase 1 - each UNIQUE node's state, once (a node is shared by many apps)
-  #   phase 2 - the per-(app,node) running-container count, where relevant
+  # inspection: the live probes (node state + container counts) are the slow
+  # part. do them up front and in parallel instead of once per printed row:
+  # one background job per UNIQUE node (a node is shared by many apps) gets the
+  # node state and - if docker is up - ONE "docker ps" listing of all running/
+  # paused compose containers. the per-app counts are then done locally.
+  # a node thus sees at most one ssh session at a time: parallel sessions over
+  # the shared control master would hit sshd's MaxSessions ("Session open
+  # refused by peer") and fall back to extra, noisy direct connections.
   # results are stashed in $INSPDIR and just read back in the display loop.
   #
   INSPDIR=""
+  declare -A _cnt
   if [ "$opt_inspect" = "1" ] ; then
     INSPDIR=$( mktemp -d "${TMPDIR:-/tmp}/dc-ls.XXXXXX" )
     trap 'rm -rf "$INSPDIR"' EXIT
@@ -103,30 +109,31 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       [ -z "$line" ] && continue
       IFS=$FS read -r p h app_node_state _rest <<< "$line"
       [ "$app_node_state" != "active" ] && continue
-      if [ -z "${_seen_node[$h]}" ] ; then
-        _seen_node[$h]=1
-        dc-node "$h" state > "$INSPDIR/state.$h" &
-        _par=$((_par+1))
-        if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
-      fi
+      [ -n "${_seen_node[$h]}" ] && continue
+      _seen_node[$h]=1
+      (
+        st=$( dc-node "$h" state )
+        echo "$st" > "$INSPDIR/state.$h"
+        if [ "$st" = "dock" -o "$st" = "dc" -o "$st" = "dcc" ] ; then
+          # ps.<node> only exists if the listing succeeded
+          if out=$( ssh "$h" "docker ps --filter status=running --filter status=paused --format '{{.State}} {{.Label \"com.docker.compose.project\"}}'" ) ; then
+            printf '%s\n' "$out" > "$INSPDIR/ps.$h"
+          fi
+        fi
+      ) &
+      _par=$((_par+1))
+      if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
     done
     wait
-    _par=0
-    idx=0
-    for line in "${app_lines[@]}" ; do
-      [ -z "$line" ] && continue
-      IFS=$FS read -r p h app_node_state _rest <<< "$line"
-      idx=$((idx+1))
-      [ "$app_node_state" != "active" ] && continue
-      node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
-      if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
-        dc-node "$h" -a "$p" nrc > "$INSPDIR/nrc.$idx" &
-        dc-node "$h" -a "$p" nrc paused > "$INSPDIR/npc.$idx" &
-        _par=$((_par+2))
-        if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
-      fi
+    # _cnt[<node>|<state>|<project>] = number of containers
+    for h in "${!_seen_node[@]}" ; do
+      [ -f "$INSPDIR/ps.$h" ] || continue
+      _cnt["$h|ok"]=1
+      while read -r cstate cproj ; do
+        [ -z "$cstate" ] && continue
+        _cnt["$h|$cstate|$cproj"]=$(( ${_cnt["$h|$cstate|$cproj"]:-0} + 1 ))
+      done < "$INSPDIR/ps.$h"
     done
-    wait
   fi
 
   #
@@ -142,11 +149,9 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   # app), which on slow SBC nodes was a fork storm that roughly doubled runtime.
   json_rows=()
 
-  idx=0
   for line in "${app_lines[@]}" ; do
     [ -z "$line" ] && continue
-    IFS=$FS read -r p h app_node_state ndc p_desc p_rnl p_groups p_dir connection <<< "$line"
-    idx=$((idx+1))
+    IFS=$FS read -r p h app_node_state ndc p_desc p_rnl p_groups p_dir connection proj <<< "$line"
     running=""
     if [ "$opt_inspect" = "1" ]  ; then
       if [ "$app_node_state" != "active" ] ; then
@@ -155,9 +160,12 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       else
         node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
         if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
-          nrc=$( cat "$INSPDIR/nrc.$idx" 2>/dev/null )
+          nrc="" ; npc=""
+          if [ -n "${_cnt["$h|ok"]}" ] ; then
+            nrc=${_cnt["$h|running|$proj"]:-0}
+            npc=${_cnt["$h|paused|$proj"]:-0}
+          fi
           running="$nrc"
-          npc=$( cat "$INSPDIR/npc.$idx" 2>/dev/null )
           if [ "$ndc" = "$nrc" ] ; then
             jstatus="ok" ; jreason="running"
           elif [ "$nrc" = "0" -a "$ndc" = "$npc" ] ; then
