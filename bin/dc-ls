@@ -121,7 +121,8 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       node_state=$( cat "$INSPDIR/state.$h" 2>/dev/null )
       if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
         dc-node "$h" -a "$p" nrc > "$INSPDIR/nrc.$idx" &
-        _par=$((_par+1))
+        dc-node "$h" -a "$p" nrc paused > "$INSPDIR/npc.$idx" &
+        _par=$((_par+2))
         if [ $((_par % 16)) -eq 0 ] ; then wait ; fi
       fi
     done
@@ -156,8 +157,12 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
         if [ "$node_state" = "dock" -o "$node_state" = "dc" -o "$node_state" = "dcc" ] ; then
           nrc=$( cat "$INSPDIR/nrc.$idx" 2>/dev/null )
           running="$nrc"
+          npc=$( cat "$INSPDIR/npc.$idx" 2>/dev/null )
           if [ "$ndc" = "$nrc" ] ; then
             jstatus="ok" ; jreason="running"
+          elif [ "$nrc" = "0" -a "$ndc" = "$npc" ] ; then
+            # all containers paused (docker compose pause) - intentional, no error
+            jstatus="paused" ; jreason="app_paused"
           else
             jstatus="error" ; jreason="container_count"
             return_code=1

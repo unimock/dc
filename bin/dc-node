@@ -51,6 +51,7 @@ if [ "$1" = "" ] ; then
   echo "    upgrade-reboot      # autoremove, dist-upgrade, reboot"
   echo "    update              # update docker-ce"
   echo "    nrc [-a <app>]  # number of all running containers or app container on node"
+  echo "    nrc -a <app> paused # number of paused app containers on node"
   echo "    reboot              # reboot node"
   echo "    large_files <size>  # find lage files, size=xG"
   echo "    dir_entries <count> # find directories with more then count entries"
@@ -64,6 +65,7 @@ if [ "$1" = "" ] ; then
   echo "    check               # check apps on $H"
   echo "    check details       # check apps on $H and show details"
   echo "    stop|start          # start or stop all apps on $H"
+  echo "    pause|unpause       # pause or unpause all apps on $H"
   echo "    rm|up|rmup          # start or stop all apps on $H"
   echo "    ps                  # show app containers on $H"
   echo "    pull                # pull app container images on $H"
@@ -236,7 +238,9 @@ EOF
       # parse per app; single (multiplexed) ssh, count done on the node.
       proj=$( dc-yq '.apps.'$opt_app'.compose.orig_compose_name' ${MDE_DC_YAML} )
       #proj=$( dc-yq '.apps.'$opt_app'.compose.name' ${MDE_DC_YAML} )
-      ssh $HOST "docker ps -q -f label=com.docker.compose.project=$proj -f status=running | wc -l"
+      nrc_status="running"
+      [ "$1" = "paused" ] && nrc_status="paused"
+      ssh $HOST "docker ps -q -f label=com.docker.compose.project=$proj -f status=$nrc_status | wc -l"
     else
       ssh $HOST docker ps -q | wc -l
     fi
@@ -295,10 +299,10 @@ EOF
     done
   fi 
   ####################################################################################################################
-  if [ "$CMD" = "pull" -o "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" ] ; then
+  if [ "$CMD" = "pull" -o "$CMD" = "rmup" -o "$CMD" = "rm" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "stop" -o "$CMD" = "start" -o "$CMD" = "pause" -o "$CMD" = "unpause" ] ; then
     list=$( dc-list apps -n $HOST --sort run_level --state active )    # 4 5 6
     rlist=$(echo "$list" | tr ' ' '\n' | tac)          # 6 5 4
-    if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" ] ; then
+    if [ "$CMD" = "rmup" -o "$CMD" = "up" -o "$CMD" = "ps" -o "$CMD" = "start" -o "$CMD" = "unpause" ] ; then
       for i in $list ; do
         dc -n $HOST -a $i $CMD
       done

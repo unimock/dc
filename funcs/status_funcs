@@ -23,6 +23,7 @@
 declare -gA DC_STATUS_EMOJI=(
   [apps:ok]="✅"            [apps:error]="❌"           [apps:disabled]="⏰"
   [apps:intermittent]="🔃"  [apps:unreachable]="❓"      [apps:unchecked]="☐ "
+  [apps:paused]="⏸️"
 
   [nodes:ok]="✅"           [nodes:warning]="⚠️"         [nodes:error]="❌"
   [nodes:unreachable]="❓"   [nodes:standby]="⏰"         [nodes:intermittent]="🔃"

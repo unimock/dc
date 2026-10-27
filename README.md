@@ -15,6 +15,8 @@ dc login                    # shell inside the app's main service
 
 Current version: see [VERSION](./VERSION) or `dc versions`.
 
+**Technically:** plain bash, no daemon and no own runtime. External tools: `ssh`, `docker`/`docker compose`, `yq`, `jq`, `rsync`, `sshfs`. All state is kept in YAML files (definitions under `~/dc`, generated model in `~/.dc/var/dc.yml`). See [Repository layout](#repository-layout-code-map) for where each function is implemented.
+
 ---
 
 ## Concepts
@@ -208,9 +210,51 @@ dc list nodes all|dc|dcc|used
 dc list apps [-n <node>] [-g <group>] [--sort run_level] [--state active|disabled]
 dc inspect [-n <node>] runtime|config
 dc versions
+dc readme                           # print this README
 ```
 
 By default `dc ls` inspects the nodes live. `--skip` shows only the cached state, and `--json` produces machine-readable output.
+
+#### Status column
+
+`dc ls apps|nodes|images` show a status per row. With `--json` it is in `status` and `status_reason`. A non-zero exit code marks rows that need attention (useful for batch jobs and monitoring).
+
+**`dc ls apps`** (per app and home node)
+
+| | status | status_reason | meaning | exit |
+|---|---|---|---|---|
+| ✅ | `ok` | `running` | all containers of the app are running | 0 |
+| ⏸️ | `paused` | `app_paused` | all containers are paused (`dc pause`) | 0 |
+| ❌ | `error` | `container_count` | number of running containers does not match (also after `dc stop`, or partly paused) | 1 |
+| ⏰ | `disabled` | `app_disabled` | app disabled in `dc-app.yml` (`home[].state`) | 0 |
+| ⏰ | `disabled` | `node_down` | node is in standby (`state: standby` in `node.yml`) | 0 |
+| 🔃 | `intermittent` | `intermittent_link` | node with `connection.type: intermittently` is offline | 0 |
+| ❓ | `unreachable` | `node_unreachable` | node not reachable or without docker | 1 |
+| ☐ | `unchecked` | `not_inspected` | not inspected (`--skip`) | 0 |
+
+**`dc ls nodes`**
+
+| | status | status_reason | meaning | exit |
+|---|---|---|---|---|
+| ✅ | `ok` | `healthy` | detected state matches `type` in `node.yml` | 0 |
+| ⚠️ | `warning` | `disk_high` | disk usage ≥ 92 % | 255 |
+| ❌ | `error` | `disk_critical` | disk usage ≥ 98 % | 1 |
+| ❌ | `error` | `state_mismatch` | detected state differs from `type` (e.g. docker down) | 1 |
+| ⏰ | `standby` | `node_standby` | node not reachable and `state: standby` in `node.yml` | 0 |
+| 🔃 | `intermittent` | `intermittent_link` | node with `connection.type: intermittently` is offline | 0 |
+| ❓ | `unreachable` | `no_ping` | node not pingable | 1 |
+| ☐ | `unchecked` | `not_inspected` | not inspected (`--skip`) | 0 |
+
+**`dc ls images`**
+
+| | status | status_reason | meaning | exit |
+|---|---|---|---|---|
+| ✅ | `ok` | `current` | version matches the remote image list | 0 |
+| ☑ | `outdated` | `newer_available` | remote image list has another version (column "new version") | 254 |
+| ⬜ | `unmanaged` | `not_in_image_list` | image is not in the remote image list | 0 |
+| ☐ | `unchecked` | `not_inspected` | no remote update check (`--skip`) | 0 |
+
+The remote image list is configured in `~/dc/config/cluster.yml` (`image_list.url`, `image_list.groups`). Apps with `image_list.disabled: true` in `dc-app.yml` are not listed at all.
 
 ### Configuration
 
@@ -228,7 +272,7 @@ dc app  <app>  config edit|delete|yq
 dc node <node> state|ip|ports
 dc node <node> cmd <command>        # run a command on the node
 dc node <node> list|check [details] # apps on the node
-dc node <node> up|rm|rmup|start|stop|ps|pull    # all apps on the node
+dc node <node> up|rm|rmup|start|stop|pause|unpause|ps|pull    # all apps on the node
 dc node <node> nrc [-a <app>]       # number of running containers
 dc node <node> update               # apt upgrade of docker-ce
 dc node <node> upgrade|upgrade-reboot|reboot
@@ -243,7 +287,7 @@ dc ssh-control-reset [node ..]      # close stale ssh control masters
 ### Apps (inside the app directory, or with `-a <app>`)
 
 ```
-dc up|rm|rmup|down|ps|pull|start|stop
+dc up|rm|rmup|down|ps|pull|start|stop|pause|unpause
 dc logs [-f]
 dc <any docker compose command>
 dc docker <docker command>          # docker against the app's node
@@ -254,7 +298,17 @@ dc ovw push|fetch <path>|diff <file>  # overlay files under /service/ovw
 dc data pull|push cfg|var|cv [real] # rsync volumes node <-> ./cfg ./var (dry run unless "real")
 dc data mount|umount [subdir]       # sshfs mount of the app volume to ./data
 dc mounts [umount]                  # list / unmount all sshfs mounts
-dc app <app> state active|disabled  # enable/disable an app in dc-app.yml
+dc build                            # build image from docker-compose.yml on the target node
+dc docker login|push <image>        # push an image from the target node to dockerhub
+```
+
+From anywhere, `dc app <app> ...` addresses an app by name:
+
+```
+dc app <app> state disabled         # dc rm, then set state: disabled in dc-app.yml
+dc app <app> state active           # set state: active in dc-app.yml, then dc up
+dc app <app> config <cmd> ...       # app configuration (see Configuration)
+dc app <app> <any other command>    # same as: dc -a <app> <command>  (up, stop, logs, login, data, …)
 ```
 
 ### Moving apps between nodes
@@ -309,6 +363,44 @@ Templates live in `templates/create/vserver/` (`hcloud.yml`, `kvm-amd64.yml`, `k
 dc-md-exec examples/dc-tests@kvm.md list
 dc-md-exec examples/dc-tests@kvm.md run
 dc-md-exec examples/dc-tests@kvm.md run create -o VSERVER="test@kvm1"
+```
+
+---
+
+## Repository layout (code map)
+
+```
+bin/dc                    # entry point: global options, app context (-a/-c/-n/-i), app and container
+                          # commands; delegates cluster commands to bin/dc-<cmd>
+bin/dc-app                # dc app <app> ...  (state, config, else passed on to dc -a <app>)
+bin/dc-node               # dc node <node> ...  (state, cmd, apps on node, upgrade, image backup/restore)
+bin/dc-config             # dc config / node+app config create|edit|delete; builds ~/.dc/var/dc.yml
+bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json)
+bin/dc-image              # dc ls images, image update checks
+bin/dc-list               # dc list nodes|apps  (plain lists for scripting)
+bin/dc-inspect            # dc inspect runtime|config
+bin/dc-manage             # dc manage: sync/copy apps between nodes, backups
+bin/dc-batch              # dc batch: batch jobs with mail reports
+bin/dc-vserver            # dc vserver / dc node <node> vserver: VM life cycle
+bin/dc-hcloud, dc-kvm     # backends for Hetzner Cloud and KVM (kvm needs /opt/kc)
+bin/dc-install            # installation, update, migrations from updates/
+bin/dc-ssh-control-reset  # close stale ssh control masters
+bin/dc-yq                 # yq wrapper (defaults to ~/.dc/var/dc.yml)
+bin/dc-md-exec            # run code blocks of Markdown files section by section
+bin/dc-rdc                # run commands in the rdc backup container on a node (used by dc-manage)
+bin/dc-backup             # rotating backup directories by age mask
+bin/dc-swarm              # experimental, not finished
+bin/dcd                   # copy files listed in ./dcd.list from the app volume to ./dcd.<host>
+bin/replace-helper        # dev tool: find/replace strings across a directory tree
+funcs/global              # sourced by all scripts: loads ~/.dc/etc/config, refreshes dc.yml, history log
+funcs/status_funcs        # status column/emoji for dc ls and dc ls images
+funcs/script_funcs        # helpers for timing/error handling in batch scripts
+funcs/bash-completion     # bash completion (dc completion)
+helper/install/           # scripts run on new nodes/vservers (docker, dist-upgrade, …)
+templates/config          # template for ~/.dc/etc/config
+templates/create/         # templates for app, node, vserver and cluster config files
+updates/<version>.sh      # one-time migrations, run by dc install
+examples/, testing/       # end-to-end test scenarios (KVM, Hetzner Cloud)
 ```
 
 ---
