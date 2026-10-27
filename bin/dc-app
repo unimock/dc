@@ -53,9 +53,8 @@ elif [ "$CMD" = "config"  ] ; then
   shift
   dc-config $cmd app ${app} $@
   exit $?
-elif [[ "$CMD" == "rm" || "$CMD" == "up" || "$CMD" == "rmup" || "$CMD" == "ps" || "$CMD" == "data" || "$CMD" == "logs" || "$CMD" == "login" ]]; then
-  dc -a ${app} $CMD $@
-  exit $?
 fi
 
-exit 0
+# alle anderen Kommandos (rm, up, rmup, ps, start, stop, logs, data, login, ...) an dc durchreichen
+dc -a ${app} $CMD "$@"
+exit $?
