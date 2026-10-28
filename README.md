@@ -204,7 +204,7 @@ An app can list several `home` entries (nodes). By default `dc` uses the first e
 
 ```
 dc ls nodes  [--skip] [--short] [--group=<g>] [--node=<n>] [--json]
-dc ls apps   [--skip] [--short] [--json]
+dc ls apps   [--skip] [--short] [--app=<a>] [--json]
 dc ls images [--skip] [--json]      # used images and available updates
 dc list nodes all|dc|dcc|used
 dc list apps [-n <node>] [-g <group>] [--sort run_level] [--state active|disabled]
@@ -214,6 +214,22 @@ dc readme                           # print this README
 ```
 
 By default `dc ls` inspects the nodes live. `--skip` shows only the cached state, and `--json` produces machine-readable output.
+
+`dc ls apps --app=<a>` limits the list to one app; only the home nodes of that app are inspected. An unknown app is reported on stderr with exit code 2.
+
+#### JSON output (`--json`)
+
+Every `dc ls apps|nodes|images --json` prints one object with a common envelope; `items` holds one entry per app/node/image:
+
+```json
+{ "kind": "apps", "inspected": true, "generated_at": "2026-10-28T12:00:00+01:00", "count": 1,
+  "items": [
+    { "app": "myapp", "services": 2, "groups": ["web"], "run_level": "5", "desc": "…", "app_dir": "/…",
+      "home": [ { "node": "n1", "state": "active", "status": "ok", "status_reason": "running", "running": 2 } ] }
+  ] }
+```
+
+For one app use `dc ls apps --json --app=<a>` (same structure, `count` 1). In `apps` items, `status`, `status_reason` and `running` (number of running containers, `null` without inspection) are per home node, since an app can have several home nodes. The exit code follows the status table below.
 
 #### Status column
 
@@ -375,7 +391,7 @@ bin/dc                    # entry point: global options, app context (-a/-c/-n/-
 bin/dc-app                # dc app <app> ...  (state, config, else passed on to dc -a <app>)
 bin/dc-node               # dc node <node> ...  (state, cmd, apps on node, upgrade, image backup/restore)
 bin/dc-config             # dc config / node+app config create|edit|delete; builds ~/.dc/var/dc.yml
-bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json)
+bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json, --node=, --app=)
 bin/dc-image              # dc ls images, image update checks
 bin/dc-list               # dc list nodes|apps  (plain lists for scripting)
 bin/dc-inspect            # dc inspect runtime|config

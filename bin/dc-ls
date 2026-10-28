@@ -14,6 +14,7 @@ _help() {
   echo "  dc-ls --help             # show this help"
   echo "  dc-ls --active           # "
   echo "  dc-ls --node=<node_name> # show only this node"
+  echo "  dc-ls --app=<app_name>   # apps: show only this app (exit 2 if unknown)"
   echo "  dc-ls --short            # list only node/app names"
   echo "  dc-ls --group=<group>    # show only nodes of group=<group> in '${MDE_DC_HOST_DIR}/*/node.yml'."
   echo "  dc-ls --skip             # list without inspecting (show cached info only)"
@@ -36,6 +37,7 @@ opt_json="0"
 opt_inspect="1"
 opt_group=""
 opt_node=""
+opt_app=""
 COPT=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -44,6 +46,7 @@ while [ "$#" -gt 0 ]; do
     --short)    opt_short="1"               ; shift ;;
     --group=*)  opt_group=${1#"--group="}   ; shift ;;
     --node=*)   opt_node=${1#"--node="}     ; shift ;;
+    --app=*)    opt_app=${1#"--app="}       ; shift ;;
     --skip)     opt_inspect="0"             ; shift ;;
     --json)     opt_json="1"                ; shift ;;
     --inspect)  opt_inspect="1"             ; shift ;; # deprecated, kept for compat
@@ -55,8 +58,16 @@ eval set -- $COPT
 ####################################################################################################################################
 if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   return_code=0
+  if [ "$opt_app" != "" ] && [ "$( APP="$opt_app" dc-yq '.apps | has(strenv(APP))' )" != "true" ] ; then
+    echo "dc-ls: unknown app '$opt_app'" >&2
+    exit 2
+  fi
   if [ "$opt_short" = "1" -a "$opt_json" != "1" ] ; then
-    echo "$( dc-list apps)"
+    if [ "$opt_app" != "" ] ; then
+      echo "$opt_app"
+    else
+      echo "$( dc-list apps)"
+    fi
     exit 0
   fi
   MASK="|%2s|%-12s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|\n"
@@ -68,11 +79,13 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   # fetch all app fields for every (app, home-node) pair in ONE yq pass, instead
   # of ~6 dc-yq calls per app plus one per home node. fields are joined with an
   # ASCII unit separator (0x1f) so empty fields survive the read. apps stay in
-  # document order (same as "dc-list apps").
+  # document order (same as "dc-list apps"). --app=<a> filters here already, so
+  # the inspection below only probes the home nodes of that app.
   #
   FS=$'\x1f'
-  app_data=$( dc-yq -r '
-    . as $root | .apps | to_entries | .[] as $app
+  app_data=$( APP="$opt_app" dc-yq -r '
+    . as $root | .apps | to_entries
+    | map(select(strenv(APP) == "" or .key == strenv(APP))) | .[] as $app
     | ($app.value.dc.home // [])[] as $home
     | [ $app.key,
         ($home.node // ""),

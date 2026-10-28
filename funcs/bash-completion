@@ -172,7 +172,18 @@ _dc() {
   # dc ls ..
   elif [[  "$COMP_CWORD" == "2" && "$3" == "ls" ]] ; then
     COMPREPLY=( $(compgen -W "apps nodes images addapps" -- "$2") )
-  elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" -ge "3" ]] && INLIST "${COMP_WORDS[2]}" "apps nodes images" ; then
+  elif [[ "${COMP_WORDS[1]}" = "ls" && "${COMP_WORDS[2]}" = "apps" && "$COMP_CWORD" -ge "3" ]] ; then
+    # "=" is in COMP_WORDBREAKS by default: "--app=fo" arrives as "--app" "=" "fo"
+    if [[ "$3" == "=" && "${COMP_WORDS[COMP_CWORD-2]}" == "--app" ]] ; then
+      COMPREPLY=( $(compgen -W "$( dc-list apps )" -- "$2") )
+    elif [[ "$2" == --app=* ]] ; then
+      COMPREPLY=( $(compgen -P "--app=" -W "$( dc-list apps )" -- "${2#--app=}") )
+    else
+      compopt -o nospace
+      COMPREPLY=( $(compgen -W "--skip --json --short --app=" -- "$2") )
+      [[ ${#COMPREPLY[@]} == 1 && "${COMPREPLY[0]}" != "--app=" ]] && compopt +o nospace
+    fi
+  elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" -ge "3" ]] && INLIST "${COMP_WORDS[2]}" "nodes images" ; then
       COMPREPLY=( $(compgen -W "--skip --json" -- "$2") )
   # dc list
   elif [[  "$COMP_CWORD" == "2" && "$3" == "list" ]] ; then
