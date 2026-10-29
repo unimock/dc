@@ -15,6 +15,8 @@ dc login                    # shell inside the app's main service
 
 Current version: see [VERSION](./VERSION) or `dc versions`.
 
+**Scheduled tasks:** `dc` has no daemon. Recurring work (health checks, image update checks, backups, reports) runs through **`dc batch`** jobs triggered by the system cron via `~/dc/config/crontab` (linked to `/etc/cron.d/dc-crontab`). See [Scheduled jobs (cron + dc batch)](#scheduled-jobs-cron--dc-batch).
+
 **Technically:** plain bash, no daemon and no own runtime. External tools: `ssh`, `docker`/`docker compose`, `yq`, `jq`, `rsync`, `sshfs`. All state is kept in YAML files (definitions under `~/dc`, generated model in `~/.dc/var/dc.yml`). See [Repository layout](#repository-layout-code-map) for where each function is implemented.
 
 ---
@@ -27,6 +29,7 @@ Current version: see [VERSION](./VERSION) or `dc versions`.
 | **node**    | A host that `dc` can reach over ssh. It is defined by `~/dc/nodes/<node>/node.yml`. A manager can also be a node of itself. |
 | **app**     | A docker compose stack. It is defined by a directory under `~/dc/apps/` that contains `dc-app.yml`, `docker-compose.yml` and `.env`. **App names must be unique across the whole cluster.** |
 | **group**   | A free-form label on nodes or apps (`groups:` in `node.yml`, `group:` in `dc-app.yml`). Use it to filter (`dc ls --group=...`, `dc list apps -g ...`, `dc manage sync_group ...`). |
+| **batch**   | A named list of jobs (`~/dc/batch/<name>.list`) run by `dc batch <name> run`, with a result report by mail. This is the scheduling mechanism of `dc`, triggered by cron via `~/dc/config/crontab`. |
 | **vserver** | An optional virtual machine (local/remote KVM or Hetzner Cloud) that is assigned to a node definition and can be created, rebuilt and deleted through `dc`. |
 
 ### Node types and states
@@ -73,7 +76,7 @@ The installation does the following:
 * creates `~/dc/{apps,nodes,batch,logs,config}` and `/Volumes/{Apps,Data,Cache,Logs,Backup}`
 * generates the cluster ssh key `~/dc/nodes/id_ed25519`
 * extends `PATH`, `~/.bashrc`, `~/.bash_aliases` (bash completion, `cdapp` alias) and `~/.ssh/config` (`Include ~/.dc/var/ssh/config/*`)
-* links `~/dc/config/crontab` to `/etc/cron.d/dc-crontab`
+* links `~/dc/config/crontab` to `/etc/cron.d/dc-crontab` (see [Scheduled jobs](#scheduled-jobs-cron--dc-batch))
 * runs pending migration scripts from `updates/` (each one only once, tracked in `~/.dc/etc/updates.done`)
 
 **Update:** `cd /opt/dc && git pull && dc install`
@@ -133,9 +136,11 @@ dc node hugo config delete
 ~/dc/nodes/<node>/node.yml   # node definitions (+ optional vserver.yml)
 ~/dc/nodes/id_ed25519        # cluster ssh key
 ~/dc/apps/**/dc-app.yml      # app definitions (any depth; dot directories are ignored)
-~/dc/config/                 # cluster.yml, mail.yml, crontab
-~/dc/batch/<name>.list       # batch job definitions
-~/dc/logs/                   # batch logs, dc-history.log
+~/dc/config/                 # cluster.yml, mail.yml (batch report mail), crontab
+~/dc/config/crontab          # cluster cron jobs, symlinked as /etc/cron.d/dc-crontab
+~/dc/batch/<name>.list       # batch job definitions (run by cron via dc batch)
+~/dc/logs/<name>/            # per-batch job logs + report of the last run
+~/dc/logs/dc-history.log     # log of all dc / dc-* calls
 ```
 
 `~/.dc/var/dc.yml` is rebuilt automatically from `node.yml` and `dc-app.yml` files. To query it, use `dc-yq`:
@@ -345,7 +350,7 @@ dc batch nightly run|debug
 dc batch nightly delete
 ```
 
-Reports are sent by mail (configure `~/dc/config/mail.yml`). To schedule the job, enable the example line in `~/dc/config/crontab`.
+Scheduling, list format and reports: see [Scheduled jobs (cron + dc batch)](#scheduled-jobs-cron--dc-batch).
 
 ### Virtual servers
 
@@ -365,6 +370,51 @@ Templates live in `templates/create/vserver/` (`hcloud.yml`, `kvm-amd64.yml`, `k
   dc-hcloud ssh-key create --name dc --public-key-from-file ~/dc/nodes/id_ed25519.pub
   ```
 * **KVM** – needs the companion tool `kc` (`/opt/kc`) on the KVM host. `name@host` creates the VM on a remote KVM host.
+
+---
+
+## Scheduled jobs (cron + dc batch)
+
+`dc` runs nothing in the background by itself. Everything that should happen regularly is set up in two layers:
+
+```
+/etc/cron.d/dc-crontab  ->  ~/dc/config/crontab        # WHEN   (system cron, symlink created by dc install)
+                              └─ dc batch <name> run
+                                   └─ ~/dc/batch/<name>.list   # WHAT  (jobs with timeout + result)
+                                        └─ ~/dc/logs/<name>/   # logs + report, mailed via ~/dc/config/mail.yml
+```
+
+**1. Crontab** – `~/dc/config/crontab` is created from `templates/create/config/crontab` by `dc install`. It is a normal `/etc/cron.d` file (with user field) and already sets `PATH` to include `/opt/dc/bin`. The nightly batch is prepared but commented out:
+
+```
+#10 00 * * * root (cd /root && dc batch nightly run )
+```
+
+Add one line per batch and schedule (e.g. `hourly`, `nightly`, `weekly`). Plain commands are possible too, e.g. `dc -a <app> cmd <command>` (`dc cmd` runs inside the app's main service without a tty).
+
+**2. Batch list** – `dc batch <name> create` writes `~/dc/batch/<name>.list` with the format documented in its header:
+
+```
+mail:admin@example.com:errors,warnings
+cmd: dc ls nodes                                # output goes into the mail body
+job:            :5m : dc manage backup hugo otto 0,7,14   # output only in the job log (attachment)
+JOB: dc-images  :2m : dc ls images              # job log + output in the mail body
+```
+
+`mail:<to>[,<to2>][:<filter>]` sets the report recipients. The optional filter (`ok`, `errors`, `updates`, `warnings`, comma separated) sends the mail only for those results. Don't put comments on `mail:` lines.
+
+`job`/`JOB` fields are `<type>:<job-name>:<timeout>:<command>`. Without a job name, the basename of the command is used. The return code of a job decides its result:
+
+| rc    | result  |
+|-------|---------|
+| 0     | ✅ OK |
+| 254   | ☑ updates available |
+| 255   | ⚠️ warning |
+| other | ❌ error (124 = timeout) |
+
+So custom check scripts only need to `exit 254/255` to show up as updates or warnings in the report.
+
+**3. Report** – after `run`, the result table and logs are in `~/dc/logs/<name>/` and are mailed to the `mail:` recipients via the SMTP settings in `~/dc/config/mail.yml`. Use `dc batch <name> debug` to run the list interactively with output on the terminal.
 
 ---
 
@@ -396,7 +446,7 @@ bin/dc-image              # dc ls images, image update checks
 bin/dc-list               # dc list nodes|apps  (plain lists for scripting)
 bin/dc-inspect            # dc inspect runtime|config
 bin/dc-manage             # dc manage: sync/copy apps between nodes, backups
-bin/dc-batch              # dc batch: batch jobs with mail reports
+bin/dc-batch              # dc batch: batch jobs with mail reports (the target of cron, see templates/create/config/crontab)
 bin/dc-vserver            # dc vserver / dc node <node> vserver: VM life cycle
 bin/dc-hcloud, dc-kvm     # backends for Hetzner Cloud and KVM (kvm needs /opt/kc)
 bin/dc-install            # installation, update, migrations from updates/
