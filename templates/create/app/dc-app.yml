@@ -11,6 +11,7 @@ app:
   # enter the main service name of the compose app to jump into the container with dc login or to copy files.
   main_service: <main_service>
   # optional: user (name|uid[:gid]) for dc login, e.g. for rootless containers. Empty = container default user.
+  # a numeric uid[:gid] is also used as owner for volume dirs below ${MDE_DC_VOL_Apps}/<app>, which are created by dc up|rmup.
   login_user:
   # default run_level is 5, maybe for some apps (like treafik), it make sense to decrease it. Like 4
   run_level: 5

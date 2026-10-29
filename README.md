@@ -162,6 +162,8 @@ The `.env` template provides standard volume paths per app (set `ignore_volume_c
 | `DC_VOL_cache` | `/Volumes/Cache/<app>` |
 | `DC_VOL_logs`  | `/Volumes/Logs/<app>` |
 
+`dc up` / `dc rmup` create missing bind mount directories below `/Volumes/Apps/<app>` on the target node (skipped with `ignore_volume_check: true`). If `login_user` is a numeric `uid[:gid]`, the newly created directories are chowned to it; existing directories are never touched.
+
 ---
 
 ## dc-app.yml
@@ -173,7 +175,7 @@ app:
   overrule_compose_name:      # if COMPOSE_PROJECT_NAME in .env cannot be used
   ignore_volume_check: false
   main_service: <service>     # target of dc login / cmd / supervisor / ovw
-  login_user:                 # optional user for dc login (rootless containers)
+  login_user:                 # optional user for dc login (rootless containers); numeric uid[:gid] = owner of new /Volumes/Apps/<app> dirs
   run_level: 5                # start order, lower = earlier (e.g. traefik: 4)
   group:
   control:

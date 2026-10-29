@@ -72,7 +72,7 @@ show_help() {
   echo ""
   echo "   app-commands"
   echo ""
-  echo "     rmup|up|rm|down|ps|start|stop|pause|unpause # control apps"
+  echo "     rmup|up|rm|down|ps|start|stop|pause|unpause # control apps (up/rmup create missing ${MDE_DC_VOL_Apps}/<app> dirs)"
   echo "     state disabled                # stop app and disable in dc-app.yml"
   echo "     state active                  # enable app in dc-app.yml and start"
   echo "     logs [-f]|stop|start          # print logs from service console"
@@ -299,6 +299,59 @@ fi
 if [ "${MULTI_NODES}" = "" ] ; then
   MULTI_NODES=${HNAME}
 fi
+
+# create missing ${MDE_DC_VOL_Apps}/<app>/.. bind mount dirs on node (newly created dirs: chown to numeric login_user)
+_create_app_dirs() {
+  local app_name base owner dirs vol
+  app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) | path ) [-1] )' ${MDE_DC_YAML} )
+  if [ "$( dc-yq '.apps.'$app_name'.dc.ignore_volume_check' ${MDE_DC_YAML} )" = "true" ] ; then
+    return 0
+  fi
+  base="${MDE_DC_VOL_Apps}/${app_name}"
+  dirs=""
+  for vol in $( dc-yq '.apps.'$app_name'.compose.services.*.volumes.[] | select(.type == "bind") | .source' ${MDE_DC_YAML} | sort -u ) ; do
+    if [[ "$vol" == "$base" || "$vol" == "$base/"* ]] ; then
+      dirs="$dirs $(printf '%q' "$vol")"
+    fi
+  done
+  if [ "$dirs" = "" ] ; then
+    return 0
+  fi
+  owner=$( dc-yq '.apps.'$app_name'.dc.login_user' ${MDE_DC_YAML} )
+  if [ "$owner" = "null" ] ; then
+    owner=""
+  fi
+  if [ "$owner" != "" ] && ! [[ "$owner" =~ ^[0-9]+(:[0-9]+)?$ ]] ; then
+    echo " 💡 [${app_name}@${HNAME}] login_user <$owner> not numeric, no chown of new volume dirs"
+    owner=""
+  fi
+  ssh ${HNAME} bash -s -- "$(printf '%q' "[${app_name}@${HNAME}]")" "$(printf '%q' "$base")" "\"$owner\"" $dirs <<'EOF'
+label=$1 ; base=$2 ; owner=$3 ; shift 3
+for d in "$@" ; do
+  [ -e "$d" ] && continue
+  # first missing dir below $base gets chowned recursively (only newly created, empty dirs)
+  first="$d"
+  if [ "$d" != "$base" ] ; then
+    while [ "$(dirname "$first")" != "$base" ] && [ ! -e "$(dirname "$first")" ] ; do
+      first=$(dirname "$first")
+    done
+  fi
+  mkdir -p "$d" || exit 1
+  if [ -n "$owner" ] ; then
+    chown -R "$owner" "$first" || exit 1
+    echo " 📁 $label created <$d> owner <$owner>"
+  else
+    echo " 📁 $label created <$d>"
+  fi
+done
+EOF
+  if [ "$?" != "0" ] ; then
+    echo " ❌ [${app_name}@${HNAME}] creating volume dirs below <$base> failed"
+    return 1
+  fi
+  return 0
+}
+
 for HNAME in ${MULTI_NODES} ; do
 
 
@@ -312,6 +365,7 @@ case "$CMD" in
     exit $?
     ;;
   up)
+    _create_app_dirs || { echo "!!! error creating volume dirs on ${HNAME}" ; continue ; }
     docker compose up --quiet-pull -d
     ret=$?
     if [ "$ret" != "0" ] ; then
@@ -325,6 +379,7 @@ case "$CMD" in
     docker compose down
     ;;
   rmup)
+    _create_app_dirs || { echo "!!! error creating volume dirs on ${HNAME}" ; continue ; }
     docker compose stop
     docker compose rm -f
     docker compose up --quiet-pull -d
