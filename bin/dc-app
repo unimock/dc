@@ -9,6 +9,7 @@ _show_help() {
   echo "    state disabled            # stop app and disable it in ${MDE_DC_YAML_FILE}"
   echo "    state active              # enable app in ${MDE_DC_YAML_FILE} and start it"
   echo "    config <cmd> ...          # app configuration (see dc-config)"
+  echo "    dir                       # print the app directory (exit 1 if app unknown)"
   echo ""
   echo "    all other commands are passed to 'dc -a <app> <command>', e.g.:"
   echo "    up|rm|rmup|down           # create/remove app containers"
@@ -55,6 +56,15 @@ if [ "$CMD" = "state"  ] ; then
     dc -a ${app} up
     exit 0
   fi
+elif [ "$CMD" = "dir"  ] ; then
+  # print the app directory (for scripts/agents: cd "$(dc app <app> dir)")
+  app_dir=$( dc-yq '.apps.'${app}'.app_dir' ${MDE_DC_YAML} )
+  if [ "$app_dir" = "null" -o "$app_dir" = "" ] ; then
+    echo "error: unknown app <${app}>" >&2
+    exit 1
+  fi
+  echo "$app_dir"
+  exit 0
 elif [ "$CMD" = "config"  ] ; then
   cmd=$1
   shift

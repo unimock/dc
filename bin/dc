@@ -72,12 +72,12 @@ show_help() {
   echo ""
   echo "   app-commands"
   echo ""
-  echo "     rmup|up|rm|down|ps|start|stop|pause|unpause # control apps (up/rmup create missing ${MDE_DC_VOL_Apps}/<app> dirs)"
+  echo "     rmup|up|rm|down|ps|start|stop|pause|unpause # control apps (up/rmup create missing dirs like data mount)"
   echo "     state disabled                # stop app and disable in dc-app.yml"
   echo "     state active                  # enable app in dc-app.yml and start"
   echo "     logs [-f]|stop|start          # print logs from service console"
   echo "     data pull|push ${MDE_DC_VOL_N_CFG}|c|${MDE_DC_VOL_N_VAR}|v|cv [real|r] # sync ${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data"
-  echo "     data mount|umount             # mount p${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data to ./data"
+  echo "     data mount|umount [subdir]    # create missing ${MDE_DC_VOL_N_CFG}/${MDE_DC_VOL_N_VAR} (+bind) dirs on node, sshfs mount ${MDE_DC_VOL_Apps}/<app> to ./data"
   echo ""
   echo "   container-commands:"
   echo ""
@@ -300,8 +300,9 @@ if [ "${MULTI_NODES}" = "" ] ; then
   MULTI_NODES=${HNAME}
 fi
 
-# create missing ${MDE_DC_VOL_Apps}/<app>/.. bind mount dirs on node (newly created dirs: chown to numeric login_user)
-_create_app_dirs() {
+# create missing ${MDE_DC_VOL_Apps}/<app>/{cfg,var} + bind mount dirs below it on node
+# (newly created dirs: chown to numeric login_user). Used by: data mount|push, up, rmup
+_ensure_app_dirs() {
   local app_name base owner dirs vol
   app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) | path ) [-1] )' ${MDE_DC_YAML} )
   if [ "$( dc-yq '.apps.'$app_name'.dc.ignore_volume_check' ${MDE_DC_YAML} )" = "true" ] ; then
@@ -309,14 +310,12 @@ _create_app_dirs() {
   fi
   base="${MDE_DC_VOL_Apps}/${app_name}"
   dirs=""
-  for vol in $( dc-yq '.apps.'$app_name'.compose.services.*.volumes.[] | select(.type == "bind") | .source' ${MDE_DC_YAML} | sort -u ) ; do
+  for vol in $( { echo "$base/${MDE_DC_VOL_N_CFG}" ; echo "$base/${MDE_DC_VOL_N_VAR}" ;
+                  dc-yq '.apps.'$app_name'.compose.services.*.volumes.[] | select(.type == "bind") | .source' ${MDE_DC_YAML} ; } | sort -u ) ; do
     if [[ "$vol" == "$base" || "$vol" == "$base/"* ]] ; then
       dirs="$dirs $(printf '%q' "$vol")"
     fi
   done
-  if [ "$dirs" = "" ] ; then
-    return 0
-  fi
   owner=$( dc-yq '.apps.'$app_name'.dc.login_user' ${MDE_DC_YAML} )
   if [ "$owner" = "null" ] ; then
     owner=""
@@ -352,6 +351,12 @@ EOF
   return 0
 }
 
+# true if <app_dir>/data is an sshfs mount (also a stale one, which mountpoint(1) may not detect)
+_data_mounted() {
+  grep -qs " ${app_dir}/data fuse.sshfs " /proc/mounts
+}
+
+rc=0   # exit code of the app command (last error wins, also with -ia)
 for HNAME in ${MULTI_NODES} ; do
 
 
@@ -365,36 +370,52 @@ case "$CMD" in
     exit $?
     ;;
   up)
-    _create_app_dirs || { echo "!!! error creating volume dirs on ${HNAME}" ; continue ; }
+    _ensure_app_dirs || { echo "!!! error creating volume dirs on ${HNAME}" ; rc=1 ; continue ; }
     docker compose up --quiet-pull -d
     ret=$?
     if [ "$ret" != "0" ] ; then
       echo "!!! error=$ret dc up "
+      rc=$ret
     fi
     ;;
   rm)
-    docker compose stop ; docker compose rm -f
+    docker compose stop || rc=$?
+    docker compose rm -f || rc=$?
     ;;
   down)
-    docker compose down
+    docker compose down || rc=$?
     ;;
   rmup)
-    _create_app_dirs || { echo "!!! error creating volume dirs on ${HNAME}" ; continue ; }
+    _ensure_app_dirs || { echo "!!! error creating volume dirs on ${HNAME}" ; rc=1 ; continue ; }
     docker compose stop
     docker compose rm -f
     docker compose up --quiet-pull -d
     ret=$?
     if [ "$ret" != "0" ] ; then
       echo "!!! error=$ret dc up "
+      rc=$ret
     fi
     ;;
   pull)
-    docker compose pull
+    docker compose pull || rc=$?
     ;;
   data)
     scmd=$2
     app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) | path ) [-1] )' ${MDE_DC_YAML} )
     if [ "$scmd" = "mount" ] ; then
+      _ensure_app_dirs || exit 1
+      if _data_mounted ; then
+        if ls ./data >/dev/null 2>&1 ; then
+          echo " 💡 ./data already mounted"
+          exit 0
+        fi
+        echo " 💡 ./data: stale sshfs mount, remounting"
+        fusermount -uz ./data || exit 1
+      fi
+      if [ -d ./data ] && [ -n "$(ls -A ./data)" ] ; then
+        echo "error: ./data exists, is not mounted and not empty (local data would be hidden by the mount)"
+        exit 1
+      fi
       mkdir -p ./data
       mount_source="$HNAME:/${MDE_DC_VOL_Apps}/${app_name}"
       if [ "$3" != "" ] ; then
@@ -409,8 +430,14 @@ case "$CMD" in
       exit $ret
     fi
     if [ "$scmd" = "umount" ] ; then
-      umount ./data
+      if ! _data_mounted ; then
+        echo " 💡 ./data not mounted"
+        [ -d ./data ] && rmdir ./data 2>/dev/null
+        exit 0
+      fi
+      umount ./data 2>/dev/null || fusermount -uz ./data || exit 1
       rmdir ./data
+      exit $?
     fi
     type=${3%/}
     DRY=" --dry-run " ; if [ "$4" = "real" -o "$4" = "r" ] ; then DRY="" ; fi
@@ -418,23 +445,28 @@ case "$CMD" in
     elif [ "$type" = "c"  ] ; then list="${MDE_DC_VOL_N_CFG}"
     elif [ "$type" = "v"  ] ; then list="${MDE_DC_VOL_N_VAR}"
     else   list="$type" ; fi
+    if [ "$scmd" = "push" ] ; then
+      _ensure_app_dirs || exit 1
+      if [ "$( dc-yq '.apps.'$app_name'.dc.ignore_volume_check' ${MDE_DC_YAML} )" = "true" ] ; then
+        ssh ${HNAME} mkdir -p /${MDE_DC_VOL_Apps}/${app_name}
+      fi
+    fi
     for TYPE in $list ; do
       LDIR=./$TYPE
       if [ "$TYPE" != "${MDE_DC_VOL_N_VAR}" -a "$TYPE" != "${MDE_DC_VOL_N_CFG}" ] ; then
         echo "error neither ${MDE_DC_VOL_N_VAR} nor ${MDE_DC_VOL_N_CFG} given."
-        exit 0
+        exit 1
       fi
       if [ "$scmd" = "push" ] ; then
-        ssh ${HNAME}  mkdir -p /${MDE_DC_VOL_Apps}/${app_name}
         rsync  ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE
+               ${LDIR}/ ${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE || rc=$?
         echo "push $DRY folder FROM <${LDIR}> TO <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE>)"
       elif [ "$scmd" = "pull" ] ; then
         ssh ${HNAME} ls -d /${MDE_DC_VOL_Apps}/${app_name}/$TYPE >/dev/null 2>&1
         if [ "$?" = "0" ] ; then
           mkdir -p ${LDIR}
           rsync   ${DRY} -arvzS --numeric-ids --delete -e "ssh" \
-                  ${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE/ ${LDIR}
+                  ${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE/ ${LDIR} || rc=$?
           echo "pull $DRY folder FROM <$HNAME> (<${HNAME}:/${MDE_DC_VOL_Apps}/${app_name}/$TYPE>) TO <./${TYPE}> done." 
         else
           if [ -d ./${TYPE} ] ; then
@@ -448,11 +480,11 @@ case "$CMD" in
   ############
   supervisor)
     main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
-    docker compose exec ${main_service} supervisorctl
+    docker compose exec ${main_service} supervisorctl || rc=$?
     ;;
   syslog)
     main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
-    docker compose exec ${main_service} tail -n 200 /var/log/syslog
+    docker compose exec ${main_service} tail -n 200 /var/log/syslog || rc=$?
     ;;
   login)
     shift
@@ -469,11 +501,11 @@ case "$CMD" in
     main_service=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.main_service  )' ${MDE_DC_YAML} )
     login_user=$(dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'" ) ) | .dc.login_user  )' ${MDE_DC_YAML} )
     if [ "$as_root" = "1" ] ; then
-      docker compose exec -u root ${main_service} $cmd
+      docker compose exec -u root ${main_service} $cmd || rc=$?
     elif [ "$login_user" != "null" -a "$login_user" != "" ] ; then
-      docker compose exec -u ${login_user} ${main_service} $cmd
+      docker compose exec -u ${login_user} ${main_service} $cmd || rc=$?
     else
-      docker compose exec  ${main_service} $cmd
+      docker compose exec  ${main_service} $cmd || rc=$?
     fi
     ;;
   cmd)
@@ -508,17 +540,18 @@ case "$CMD" in
   #############
   docker)
     shift
-    docker $*
+    docker $* || rc=$?
     ;;
   compose|docker-compose)
     shift
-    docker compose $*
+    docker compose $* || rc=$?
     ;;
   swarm)
     echo "swarm command (have to be done)"
      ;;
   *)
-    docker compose $* 
+    docker compose $* || rc=$?
     ;;
 esac
 done
+exit $rc

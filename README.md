@@ -74,6 +74,7 @@ Use `dc-install --force` to install non-interactively with the default config.
 The installation does the following:
 
 * creates `~/dc/{apps,nodes,batch,logs,config}` and `/Volumes/{Apps,Data,Cache,Logs,Backup}`
+* links `~/dc/AGENTS.md` to `/opt/dc/AGENTS.md` (instructions for AI agents working in `~/dc`)
 * generates the cluster ssh key `~/dc/nodes/id_ed25519`
 * extends `PATH`, `~/.bashrc`, `~/.bash_aliases` (bash completion, `cdapp` alias) and `~/.ssh/config` (`Include ~/.dc/var/ssh/config/*`)
 * links `~/dc/config/crontab` to `/etc/cron.d/dc-crontab` (see [Scheduled jobs](#scheduled-jobs-cron--dc-batch))
@@ -110,11 +111,20 @@ dc node hugo state                                # should print "dc"
 dc app hello-world config create hugo hello-world ~/dc/apps/hello-world
 #                                 ^node ^main_service  ^app directory
 cdapp hello-world
+vi docker-compose.yml .env dc-app.yml     # adapt the stack (volumes: ${DC_VOL_cfg}, ${DC_VOL_var}, …)
+
+dc data mount                             # creates missing cfg/var (+bind) dirs on hugo, mounts them to ./data
+cp -a /path/to/initial/config/. ./data/cfg/
+cp -a /path/to/initial/db/.     ./data/var/
+dc data umount
+
 dc up
 dc ps
 ```
 
 `config create` copies `templates/create/app/` (a hello-world compose stack) into the app directory. Then edit `docker-compose.yml`, `.env` and `dc-app.yml` to fit your app.
+
+**Provide initial data:** most apps need initial data in `cfg` / `var` before the first start. `dc data mount` creates the missing directories on the node and mounts `/Volumes/Apps/<app>` to `./data` via sshfs. If `login_user` is a numeric `uid[:gid]`, the new directories are chowned to it. Copy your data to `./data/cfg` and `./data/var`, run `dc data umount`, and only then run `dc up`. Files copied through sshfs belong to the ssh user on the node (usually root). Rootless containers may therefore need a `chown`, e.g. `dc ssh chown -R 1000:1000 /Volumes/Apps/<app>/cfg`. Alternative: keep the data in `./cfg` / `./var` in the app directory and upload it with `dc data push cv real`. See [App volumes on the nodes](#app-volumes-on-the-nodes).
 
 ### 3. Remove it again
 
@@ -152,17 +162,37 @@ dc-yq '.nodes.hugo.fqdn'
 
 ### App volumes on the nodes
 
-The `.env` template provides standard volume paths per app (set `ignore_volume_check: true` in `dc-app.yml` for apps that do not follow this scheme):
+An app keeps its persistent data on the node below `/Volumes`, in a fixed layout per app name. Because of this layout, `dc` can check, create, sync and move app data without knowing anything about the app itself.
 
-| variable       | path on node |
-|----------------|--------------|
-| `DC_VOL_cfg`   | `/Volumes/Apps/<app>/cfg` |
-| `DC_VOL_var`   | `/Volumes/Apps/<app>/var` |
-| `DC_VOL_data`  | `/Volumes/Data/<app>` |
-| `DC_VOL_cache` | `/Volumes/Cache/<app>` |
-| `DC_VOL_logs`  | `/Volumes/Logs/<app>` |
+| volume  | `.env` variable | path on node              |              | purpose |
+|---------|-----------------|---------------------------|--------------|---------|
+| `cfg`   | `DC_VOL_cfg`    | `/Volumes/Apps/<app>/cfg` | **required** | app configuration |
+| `var`   | `DC_VOL_var`    | `/Volumes/Apps/<app>/var` | **required** | runtime state (databases, …) |
+| `data`  | `DC_VOL_data`   | `/Volumes/Data/<app>`     | optional     | bulk payload data (mail, files, …) |
+| `cache` | `DC_VOL_cache`  | `/Volumes/Cache/<app>`    | optional     | reproducible data, not copied between nodes |
+| `logs`  | `DC_VOL_logs`   | `/Volumes/Logs/<app>`     | optional     | log files, not copied between nodes |
 
-`dc up` / `dc rmup` create missing bind mount directories below `/Volumes/Apps/<app>` on the target node (skipped with `ignore_volume_check: true`). If `login_user` is a numeric `uid[:gid]`, the newly created directories are chowned to it; existing directories are never touched.
+Every app has `cfg` and `var`. `dc data`, `dc manage copy|sync` and `dc up` work on these two. An app uses `data`, `cache` and `logs` only if it needs them. `/Volumes/Backup` is not an app volume: it is the target for `dc manage backup`.
+
+Set the root paths (`MDE_DC_VOL`, `MDE_DC_VOL_Apps|Data|Cache|Logs|Backup`) and the sub-directory names (`MDE_DC_VOL_N_CFG=cfg`, `MDE_DC_VOL_N_VAR=var`) in `~/.dc/etc/config`. `dc install` creates the root directories. The app's `.env` builds the `DC_VOL_*` variables from these values and `COMPOSE_PROJECT_NAME`, in the block between `#dc-start` and `#dc-end`. Use the variables in `docker-compose.yml`:
+
+```yaml
+    volumes:
+      - ${DC_VOL_cfg}/config:/config
+      - ${DC_VOL_var}/mysql:/var/lib/mysql
+      - ${DC_VOL_data}/vmail:/home/vmail      # optional
+      - ${DC_VOL_cache}/xyz:/var/xyz          # optional
+      - ${DC_VOL_logs}/smtp:/var/log          # optional
+```
+
+How `dc` uses the volumes:
+
+* **`dc data mount [subdir]`** (or `dc app <app> data mount`) sets up the app directories on the node. It creates the missing `/Volumes/Apps/<app>/cfg` and `/var`, plus every bind source below `/Volumes/Apps/<app>` from `docker-compose.yml`. Then it mounts `/Volumes/Apps/<app>` (or a sub-directory) to `./data` via sshfs; `dc data umount` removes the mount. If `login_user` is a numeric `uid[:gid]`, the new directories are chowned to it. Existing directories are never touched.
+* **`dc up` / `dc rmup`** and **`dc data push`** create missing directories in the same way as `dc data mount` (the same function), but do not mount anything.
+* **`dc config check`** checks every active home node of each app. It reports ❌ if a bind source below `Apps|Data|Cache|Logs/<app>` is missing on the node. It reports 💡 for a bind source outside this layout; sources below `/etc`, `/var` and `/lib` are not reported.
+* **`ignore_volume_check: true`** in `dc-app.yml` turns off both the check and the automatic directory creation (`dc data mount` then only mounts). Set it for apps that do not follow this layout.
+* **`dc data pull|push cfg|var|cv [real]`** rsyncs `/Volumes/Apps/<app>/{cfg,var}` with `./cfg` / `./var` in the app directory. Without `real` it is a dry run.
+* **`dc manage copy|sync`** copies `/Volumes/Apps/<app>` to the target node, plus `/Volumes/Data/<app>` if it exists. It does not copy `cache` or `logs`.
 
 ---
 
@@ -175,7 +205,7 @@ app:
   overrule_compose_name:      # if COMPOSE_PROJECT_NAME in .env cannot be used
   ignore_volume_check: false
   main_service: <service>     # target of dc login / cmd / supervisor / ovw
-  login_user:                 # optional user for dc login (rootless containers); numeric uid[:gid] = owner of new /Volumes/Apps/<app> dirs
+  login_user:                 # optional user for dc login (rootless containers); numeric uid[:gid] = owner of new /Volumes/Apps/<app> dirs (see App volumes)
   run_level: 5                # start order, lower = earlier (e.g. traefik: 4)
   group:
   control:
@@ -283,6 +313,7 @@ The remote image list is configured in `~/dc/config/cluster.yml` (`image_list.ur
 
 ```
 dc config show|refresh|rebuild
+dc config check                     # node states, unique app names, app volumes on nodes
 dc node <node> config create <hostname_or_ip> [type]
 dc node <node> config edit|delete
 dc app  <app>  config create <node> <main_service> <app_dir>
@@ -319,11 +350,13 @@ dc cmd <command>                    # without tty (cron)
 dc supervisor | dc syslog
 dc ovw push|fetch <path>|diff <file>  # overlay files under /service/ovw
 dc data pull|push cfg|var|cv [real] # rsync volumes node <-> ./cfg ./var (dry run unless "real")
-dc data mount|umount [subdir]       # sshfs mount of the app volume to ./data
+dc data mount|umount [subdir]       # create missing cfg/var dirs on node, sshfs mount of the app volume to ./data (idempotent)
 dc mounts [umount]                  # list / unmount all sshfs mounts
 dc build                            # build image from docker-compose.yml on the target node
 dc docker login|push <image>        # push an image from the target node to dockerhub
 ```
+
+App commands exit with a non-zero code on error (with `-ia`: the last error over all home nodes), so they can be used in scripts. `dc data mount` / `umount` are idempotent: an existing mount or a missing one is reported with 💡 and exit code 0. `mount` refuses to mount over a non-empty, unmounted `./data`.
 
 From anywhere, `dc app <app> ...` addresses an app by name:
 
@@ -331,6 +364,7 @@ From anywhere, `dc app <app> ...` addresses an app by name:
 dc app <app> state disabled         # dc rm, then set state: disabled in dc-app.yml
 dc app <app> state active           # set state: active in dc-app.yml, then dc up
 dc app <app> config <cmd> ...       # app configuration (see Configuration)
+dc app <app> dir                    # print the app directory (exit 1 if the app is unknown)
 dc app <app> <any other command>    # same as: dc -a <app> <command>  (up, stop, logs, login, data, …)
 ```
 
@@ -469,6 +503,7 @@ templates/config          # template for ~/.dc/etc/config
 templates/create/         # templates for app, node, vserver and cluster config files
 updates/<version>.sh      # one-time migrations, run by dc install
 examples/, testing/       # end-to-end test scenarios (KVM, Hetzner Cloud)
+AGENTS.md                 # instructions for AI agents (non-interactive recipes, --json), linked to ~/dc/AGENTS.md
 ```
 
 ---

@@ -157,6 +157,11 @@ if [ ! -d ${MDE_DC_BATCH_DIR} ] ; then
   echo "$IAM: createdir <${MDE_DC_BATCH_DIR}>"
   mkdir -p ${MDE_DC_BATCH_DIR}
 fi
+# make the agent instructions visible for AI agents working in ~/dc (and below)
+if [ ! -e ${MDE_DC_DIR}/AGENTS.md ] ; then
+  ln -s /opt/dc/AGENTS.md ${MDE_DC_DIR}/AGENTS.md
+  echo "$IAM: link <${MDE_DC_DIR}/AGENTS.md> -> </opt/dc/AGENTS.md>"
+fi
 # run pending update scripts (updates/<version>.sh), each only once
 FI=${HOME}/.dc/etc/updates.done
 if [ ! -f $FI ] ; then
