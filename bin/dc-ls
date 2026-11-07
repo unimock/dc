@@ -299,13 +299,14 @@ mapfile -t node_lines <<< "$node_data"
 #
 _inspect_node() {
   local node="$1" os="$2" typ="$3" mid="$4"
-  local state os_ver="" arch="" dock_ver="" size="" serial="" mde_ver="" mde_monitor=""
+  local state os_ver="" arch="" dock_ver="" size="" serial="" mde_ver="" mde_monitor="" kernel_ver=""
   state=$( dc-node "$node" state )
   if [ "$state" = "$typ" ] && { [ "$state" = "sshd" ] || [ "$state" = "dock" ] || [ "$state" = "dc" ] || [ "$state" = "dcc" ]; } && [ "$os" != "android" ] ; then
     local raw k v
-    local ARCH="" LSB="" VERSION_ID="" FREEBSD="" DFMAX="" MID="" MDEVER="" MDEMON="" DOCKERVER=""
+    local ARCH="" LSB="" VERSION_ID="" FREEBSD="" DFMAX="" MID="" MDEVER="" MDEMON="" DOCKERVER="" KERNEL=""
     raw=$( ssh "$node" sh -s 2>/dev/null <<'REMOTE'
 uname -m 2>/dev/null | sed 's/^/ARCH=/'
+uname -r 2>/dev/null | sed 's/^/KERNEL=/'
 lsb_release -d -s 2>/dev/null | sed 's/^/LSB=/'
 [ -r /etc/os-release ] && ( . /etc/os-release; echo "VERSION_ID=$VERSION_ID" )
 command -v freebsd-version >/dev/null 2>&1 && freebsd-version 2>/dev/null | sed 's/^/FREEBSD=/'
@@ -327,6 +328,7 @@ REMOTE
         MDEVER)     MDEVER="$v" ;;
         MDEMON)     MDEMON="$v" ;;
         DOCKERVER)  DOCKERVER="$v" ;;
+        KERNEL)     KERNEL="$v" ;;
       esac
     done <<< "$raw"
 
@@ -337,6 +339,8 @@ REMOTE
     else
       os_ver="${VERSION_ID%_*}"
     fi
+
+    kernel_ver="$KERNEL"
 
     arch="$ARCH"
     if [ "$arch" = "aarch64" ] ; then arch="arm64" ; fi
@@ -370,6 +374,7 @@ REMOTE
   printf 'serial=%q\n'      "$serial"
   printf 'mde_ver=%q\n'     "$mde_ver"
   printf 'mde_monitor=%q\n' "$mde_monitor"
+  printf 'kernel_ver=%q\n'  "$kernel_ver"
 }
 
 #
@@ -417,6 +422,7 @@ for line in "${node_lines[@]}" ; do
   mde_monitor=""
   serial=""
   arch=""
+  kernel_ver=""
   state=""
 
   #
@@ -435,6 +441,7 @@ for line in "${node_lines[@]}" ; do
     echo "insp_machine_id=\"${serial}\""       >> $node_data_file
     echo "insp_arch=\"${arch}\""               >> $node_data_file
     echo "insp_state=\"${state}\""             >> $node_data_file
+    echo "insp_kernel_ver=\"${kernel_ver}\""   >> $node_data_file
     echo "insp_last_inspect=$(date +%s)"       >> $node_data_file
   fi
   insp_os_ver=""
@@ -445,6 +452,7 @@ for line in "${node_lines[@]}" ; do
   insp_machine_id=""
   insp_arch=""
   insp_state=""
+  insp_kernel_ver=""
   insp_last_inspect=""
   eval `cat $node_data_file`
   #
@@ -516,7 +524,7 @@ for line in "${node_lines[@]}" ; do
   if [ "$opt_json" = "1" ] ; then
     # buffer one FS-separated record; the json is built in a single jq pass
     # after the loop (was: one jq -cn fork per node -> a fork storm).
-    json_nodes+=( "${node}${FS}${jstatus}${FS}${jreason}${FS}${yml_state}${FS}${state}${FS}${typ}${FS}${group}${FS}${os}${FS}${insp_os_ver}${FS}${insp_arch}${FS}${insp_dock_ver}${FS}${insp_mde_ver}${FS}${insp_mde_monitor}${FS}${insp_hd_size}${FS}${insp_machine_id}${FS}${hname}${FS}${connection}${FS}${last_inspect}${FS}${desc}" )
+    json_nodes+=( "${node}${FS}${jstatus}${FS}${jreason}${FS}${yml_state}${FS}${state}${FS}${typ}${FS}${group}${FS}${os}${FS}${insp_os_ver}${FS}${insp_arch}${FS}${insp_dock_ver}${FS}${insp_mde_ver}${FS}${insp_mde_monitor}${FS}${insp_hd_size}${FS}${insp_machine_id}${FS}${hname}${FS}${connection}${FS}${last_inspect}${FS}${desc}${FS}${insp_kernel_ver}" )
   else
     # emoji from the single source of truth (funcs/status_funcs), no per-row fork
     dstate="${DC_STATUS_EMOJI[nodes:$jstatus]:-??}"
@@ -539,7 +547,7 @@ if [ "$opt_json" = "1" ] ; then
          os:.[7], os_ver:.[8], arch:.[9], docker_ver:.[10],
          mde_ver:.[11], mde_monitor:.[12], hd_size:(.[13]|numornull),
          machine_id:.[14], fqdn:.[15], connection:.[16],
-         last_inspection:.[17], desc:.[18]} ]' \
+         last_inspection:.[17], desc:.[18], kernel_ver:(.[19] // "")} ]' \
   | dc_json_envelope nodes "$insp_bool"
 fi
 exit $return_code

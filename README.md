@@ -268,6 +268,8 @@ Every `dc ls apps|nodes|images --json` prints one object with a common envelope;
 
 For one app use `dc ls apps --json --app=<a>` (same structure, `count` 1). In `apps` items, `status`, `status_reason` and `running` (number of running containers, `null` without inspection) are per home node, since an app can have several home nodes. The exit code follows the status table below.
 
+`nodes` items contain, among others, `os_ver`, `arch`, `docker_ver` and `kernel_ver` (`uname -r`). These are read in the same single ssh call per node and cached, so `--skip` shows the last known values. `kernel_ver` stays empty until the node has been inspected once with dc ≥ 1.30.7.
+
 #### Status column
 
 `dc ls apps|nodes|images` show a status per row. With `--json` it is in `status` and `status_reason`. A non-zero exit code marks rows that need attention (useful for batch jobs and monitoring).
