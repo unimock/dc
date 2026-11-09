@@ -101,6 +101,10 @@ _dc() {
   elif [[  "$COMP_CWORD" == "2" && "$3" == "node" ]] ; then
     list=$( dc-list nodes all)
     COMPREPLY=( $(compgen -W ". -t $list" -- "$2") )
+  elif [[  "${COMP_WORDS[1]}" == "node" && "${COMP_WORDS[2]}" == "-t" && "$COMP_CWORD" == "3" ]] ; then
+    COMPREPLY=( $(compgen -W "all ping sshd dock dc dcc" -- "$2") )
+  elif [[  "${COMP_WORDS[1]}" == "node" && "${COMP_WORDS[2]}" == "-t" && "$COMP_CWORD" == "4" ]] ; then
+    COMPREPLY=( $(compgen -W "cmd state ip ports upgrade update nrc large_files dir_entries list check pull start stop pause unpause rm rmup up ps" -- "$2") )
   elif [[  "${COMP_WORDS[1]}" == "node"  ]] ; then 
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
       COMPREPLY=( $(compgen -W "vserver config ports state upgrade upgrade-reboot update nrc reboot large_files dir_entries cmd image prune list check pull start stop pause unpause rm rmup up ps ip" -- "$2") )

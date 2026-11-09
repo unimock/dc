@@ -29,6 +29,9 @@ if [ "$CMD" = "" ] ; then
   echo "    commands:"
   echo ""
   echo "       nodes all ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' as state=active|standby"
+  echo "       nodes ping ........... same as 'nodes all' (every type is >= ping)"
+  echo "       nodes sshd ........... list all nodes with type >= sshd (sshd|dock|dc|dcc)"
+  echo "       nodes dock ........... list all nodes with type >= dock (dock|dc|dcc)"
   echo "       nodes dc ............. list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND type=dc or type=dcc"
   echo "       nodes dcc ............ list all nodes, which are defined in '${MDE_DC_HOST_DIR}/*/node.yml' AND type=dcc"
   echo "       nodes used ........... list all nodes, which are used in services"
@@ -40,12 +43,21 @@ fi
 if [ "$CMD" = "nodes" ] ; then
   if [ "$2" = "" -o  "$2" = "all" ] ; then
     dc-ls --short | sort
+  elif [ "$2" = "ping" ] ; then
+    dc-ls --short | sort
+  elif [ "$2" = "sshd" ] ; then
+    dc-yq '((.nodes.* | select (.type == "sshd" or .type == "dock" or .type == "dc" or .type == "dcc")) | path) [-1]' | sort
+  elif [ "$2" = "dock" ] ; then
+    dc-yq '((.nodes.* | select (.type == "dock" or .type == "dc" or .type == "dcc")) | path) [-1]' | sort
   elif [ "$2" = "dc" ] ; then
     dc-yq '((.nodes.* | select (.type == "dc" or .type == "dcc")) | path) [-1]' | sort
   elif [ "$2" = "dcc" ] ; then
     dc-yq '((.nodes.* | select (.type == "dcc")) | path) [-1]' | sort
   elif [ "$2" = "used" ] ; then
     dc-yq '.apps.*.dc.home.[].node'   ${MDE_DC_YAML} | sort | uniq
+  else
+    echo "dc-list: unknown node type '$2' (all|ping|sshd|dock|dc|dcc|used)" >&2
+    exit 1
   fi
   exit 0
 fi

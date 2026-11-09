@@ -35,7 +35,9 @@ if [ "$1" = "" ] ; then
   echo " node:"
   echo "         <node-name>   ... node name"
   echo "         .             ... local hostname as node name"
-  echo "         -t <type>     ... available node types: all|dcc|dc|dock|ping|sshd"
+  echo "         -t <type>     ... all nodes with type >= <type>  (ping < sshd < dock < dc < dcc, all = every node)"
+  echo "                           with type ping (< sshd) ssh based commands do nothing"
+  echo "                           cmd: nodes that are not reachable via ssh are skipped"
   echo ""
   echo " node commands:"
   echo "    state               # state of a node. returns: ||ping|sshd|dock|off|dc|dcc|"
@@ -81,10 +83,20 @@ if [ "$opt_type" = "" ] ; then
   fi
   shift
 else
+  case "$opt_type" in
+    all|ping|sshd|dock|dc|dcc) ;;
+    *) echo "dc-node: unknown node type '$opt_type' (all|ping|sshd|dock|dc|dcc)" >&2 ; exit 1 ;;
+  esac
   hlist=$( dc-list nodes $opt_type )
 fi
 CMD=$1
 shift
+
+# type < sshd: nothing to do for commands that need ssh
+if [ "$opt_type" = "ping" ] && [ "$CMD" != "state" -a "$CMD" != "ip" -a "$CMD" != "config" ] ; then
+  echo "💡 type <ping> < sshd: nothing to do"
+  exit 0
+fi
 
 if [ "$CMD" = "config"  ] ; then
   cmd=$1
@@ -194,15 +206,28 @@ fi
 
 dc mounts umount
 
+cmd_rc=0
+if [ "$CMD" = "cmd" -a "$opt_type" != "" ] ; then
+  cluster_name=$( dc-yq '.config.cluster.name' )
+  [ "$cluster_name" = "null" ] && cluster_name=""
+fi
+
 for HOST in $hlist ; do
   if [ "$CMD" = "cmd" ] ; then
     if [ "$opt_type" != "" ] ; then
-      echo "#"    
-      echo "# ssh ${HOST} $*"
-      echo "#"
-    fi  
-    ssh ${HOST} $*
-  fi    
+      node_state=$( dc-node ${HOST} state )
+      case "$node_state" in
+        sshd|dock|dc|dcc) ;;
+        *) echo "💡 ${HOST}: state=<${node_state}>, skipped" ; continue ;;
+      esac
+      if [ "$cluster_name" != "" ] ; then
+        echo "# ${HOST}@${cluster_name}: $*"
+      else
+        echo "# ${HOST}: $*"
+      fi
+    fi
+    ssh ${HOST} "$@" || cmd_rc=1
+  fi
   if [ "$CMD" = "large_files" -o   "$CMD" = "dir_entries"  ] ; then
     if [ "$CMD" = "large_files" ] ; then
     FI=/tmp/.dc-remote-cmd.lf
@@ -326,6 +351,9 @@ EOF
     fi
   fi
 done
+if [ "$CMD" = "cmd" ] ; then
+  exit $cmd_rc
+fi
 
 ####################################################################################################################
 if [ "$CMD" = "image"   ] ; then

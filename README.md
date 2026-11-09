@@ -335,9 +335,18 @@ dc node <node> upgrade|upgrade-reboot|reboot
 dc node <node> prune
 dc node <node> large_files <size> | dir_entries <count>
 dc node <node> image [config] [-v]  # list/backup/restore node images
-dc node -t <type> <command>         # run for all nodes of a type
+dc node -t <type> <command>         # run for all nodes with type >= <type>
 dc -n <node> ssh [cmd]              # ssh into a node
 dc ssh-control-reset [node ..]      # close stale ssh control masters
+```
+
+`-t <type>` selects all nodes whose `type` in `node.yml` is **at least** `<type>` in the order `ping < sshd < dock < dc < dcc` (`all` = every node). For example, `-t sshd` matches sshd, dock, dc and dcc nodes; `dc list nodes <type>` prints the same list.
+
+* With `-t ping`, commands that need ssh do nothing (💡, exit code 0). Only `state` and `ip` work.
+* `dc node -t <type> cmd <command>` first checks the live state of each node. Nodes that cannot be reached via ssh are skipped with 💡. Each node's output starts with a `# <node>@<cluster>: <command>` header (cluster name from `config/cluster.yml`). The exit code is 1 if the command failed on at least one node.
+
+```
+dc node -t sshd cmd uptime
 ```
 
 ### Apps (inside the app directory, or with `-a <app>`)
