@@ -11,7 +11,7 @@
 * **Read state as JSON, not from tables.** `dc ls nodes|apps|images --json` prints a stable envelope (`kind`, `count`, `items[]`) with `status` / `status_reason` per row, and the exit code follows the status. See README: *JSON output (`--json`)* and *Status column*. For anything not in the JSON, query the generated model with `dc-yq '<yq expr>'` (for example `dc-yq '.nodes.<node>.fqdn'`).
 * **Never edit `~/.dc/var/dc.yml`.** It is generated from `~/dc/nodes/*/node.yml` and `~/dc/apps/**/dc-app.yml`, and rebuilt automatically when those files change.
 * **App names are unique across the whole cluster.** Leave other apps alone.
-* **Ask the user before anything destructive or cluster-wide:** `dc app <app> config delete`, `dc node … config delete`, `dc manage …`, `dc vserver …`, `dc data push … real` (overwrites node data with `--delete`), `dc install`, crontab or batch changes.
+* **Ask the user before anything destructive or cluster-wide:** `dc app <app> disable|enable` (stops/starts the app and changes `dc-app.yml`), `dc app <app> config delete`, `dc node … config delete`, `dc manage …`, `dc vserver …`, `dc data push … real` (overwrites node data with `--delete`), `dc install`, crontab or batch changes.
 * **Check exit codes.** App commands (`up`, `rmup`, `rm`, `stop`, `data …`, …) exit non-zero on error. A zero exit code only means that docker compose accepted the command, so still verify the result with `dc ls apps --json --app=<app>` (see step 6).
 
 ## Recipe: create a new app

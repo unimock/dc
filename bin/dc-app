@@ -6,8 +6,9 @@ _show_help() {
   echo ""
   echo " usage: dc app <app> <command> ..."
   echo ""
-  echo "    state disabled            # stop app and disable it in ${MDE_DC_YAML_FILE}"
-  echo "    state active              # enable app in ${MDE_DC_YAML_FILE} and start it"
+  echo "    disable                   # dc down, then set home[].state active -> disabled in ${MDE_DC_YAML_FILE}"
+  echo "    enable                    # set home[].state disabled -> active in ${MDE_DC_YAML_FILE}, then dc up"
+  echo "    state disabled|active     # same as disable|enable"
   echo "    config <cmd> ...          # app configuration (see dc-config)"
   echo "    dir                       # print the app directory (exit 1 if app unknown)"
   echo ""
@@ -45,16 +46,49 @@ app=$1
 shift
 CMD="$1"
 shift
-if [ "$CMD" = "state"  ] ; then
-  YML=$(dc-yq .apps.${app}.dc_yml)
-  if [ "$1" = "disabled"  ] ; then
-    dc -a ${app} rm
-    dc-yq -i '.app.home.[].state = "disabled"' $YML
+if [ "$CMD" = "state" -o "$CMD" = "disable" -o "$CMD" = "enable" ] ; then
+  # disable: dc down, then home[].state active -> disabled
+  # enable:  home[].state disabled -> active, then dc up
+  # home entries with other states (e.g. standby) stay unchanged
+  case "$CMD:$1" in
+    disable:|state:disabled) target="disabled" ; from="active"   ;;
+    enable:|state:active)    target="active"   ; from="disabled" ;;
+    *)
+      echo "error: invalid argument <$CMD $*>" >&2
+      _show_help
+      exit 1
+      ;;
+  esac
+  YML=$( dc-yq '.apps.'${app}'.dc_yml' ${MDE_DC_YAML} )
+  if [ "$YML" = "null" -o "$YML" = "" -o ! -f "$YML" ] ; then
+    echo "error: unknown app <${app}>" >&2
+    exit 1
+  fi
+  cnt=$( dc-yq '[.app.home[] | select(.state == "'$from'")] | length' "$YML" )
+  if [ "$cnt" = "0" ] ; then
+    echo "💡 app <${app}> is already ${target} in ${YML}"
+  fi
+  if [ "$target" = "disabled" ] ; then
+    dc -a ${app} down
+    rc=$?
+    if [ "$rc" != "0" ] ; then
+      echo "!!! error=$rc dc down <${app}>, ${MDE_DC_YAML_FILE} unchanged" >&2
+      exit $rc
+    fi
+    if [ "$cnt" != "0" ] ; then
+      dc-yq -i '(.app.home[] | select(.state == "active") | .state) = "disabled"' "$YML" || exit $?
+    fi
     exit 0
-  elif [ "$1" = "active"  ] ; then
-    dc-yq -i '.app.home.[].state = "active"'   $YML
+  else
+    if [ "$cnt" != "0" ] ; then
+      dc-yq -i '(.app.home[] | select(.state == "disabled") | .state) = "active"' "$YML" || exit $?
+    fi
     dc -a ${app} up
-    exit 0
+    rc=$?
+    if [ "$rc" != "0" ] ; then
+      echo "!!! error=$rc dc up <${app}> (state is active, see: dc app ${app} logs)" >&2
+    fi
+    exit $rc
   fi
 elif [ "$CMD" = "dir"  ] ; then
   # print the app directory (for scripts/agents: cd "$(dc app <app> dir)")

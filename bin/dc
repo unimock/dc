@@ -73,8 +73,9 @@ show_help() {
   echo "   app-commands"
   echo ""
   echo "     rmup|up|rm|down|ps|start|stop|pause|unpause # control apps (up/rmup create missing dirs like data mount)"
-  echo "     state disabled                # stop app and disable in dc-app.yml"
-  echo "     state active                  # enable app in dc-app.yml and start"
+  echo "     disable                       # dc down, then set state: disabled in dc-app.yml"
+  echo "     enable                        # set state: active in dc-app.yml, then dc up"
+  echo "     state disabled|active         # same as disable|enable"
   echo "     logs [-f]|stop|start          # print logs from service console"
   echo "     data pull|push ${MDE_DC_VOL_N_CFG}|c|${MDE_DC_VOL_N_VAR}|v|cv [real|r] # sync ${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data"
   echo "     data mount|umount [subdir]    # create missing ${MDE_DC_VOL_N_CFG}/${MDE_DC_VOL_N_VAR} (+bind) dirs on node, sshfs mount ${MDE_DC_VOL_Apps}/<app> to ./data"
@@ -248,6 +249,17 @@ fi
 if [[ "$app_dir" == "" ]] ; then
   echo "error: no valid app given"
   exit 1
+fi
+
+# state|disable|enable: handled by dc-app (by app name)
+if [ "$CMD" = "state" -o "$CMD" = "disable" -o "$CMD" = "enable" ] ; then
+  app_name=$( dc-yq '(( .apps.* | select(.app_dir == "'$app_dir'") | path ) [-1] )' ${MDE_DC_YAML} )
+  if [ "$app_name" = "" -o "$app_name" = "null" ] ; then
+    echo "error: no app defined for <$app_dir>" >&2
+    exit 1
+  fi
+  shift
+  exec /opt/dc/bin/dc-app "$app_name" "$CMD" "$@"
 fi
 #echo "app_dir=$app_dir"
 

@@ -52,7 +52,7 @@ _dc() {
     list="completion image app data ssh-control-reset versions update readme inspect node install vserver batch list manage config ls mount umount login"
     # within an app_dir: offer app- and container-commands
     if [[ -f ./${MDE_DC_YAML_FILE:-dc-app.yml} ]] ; then
-      list="$list rmup up rm down ps start stop pause unpause pull state logs cmd supervisor syslog ovw"
+      list="$list rmup up rm down ps start stop pause unpause pull state disable enable logs cmd supervisor syslog ovw"
     fi
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   # dc state .. (within app_dir)
@@ -78,7 +78,7 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "app" ]] ; then
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
-      COMPREPLY=( $(compgen -W "state config dir rm up rmup start stop pause unpause data logs login" -- "$2") )
+      COMPREPLY=( $(compgen -W "state disable enable config dir rm up rmup start stop pause unpause data logs login" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "state" ]] ; then
       COMPREPLY=( $(compgen -W "active disabled" -- "$2") )
     elif [[ "$COMP_CWORD" == "4" && "${COMP_WORDS[3]}" == "login" ]] ; then

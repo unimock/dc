@@ -372,12 +372,15 @@ App commands exit with a non-zero code on error (with `-ia`: the last error over
 From anywhere, `dc app <app> ...` addresses an app by name:
 
 ```
-dc app <app> state disabled         # dc rm, then set state: disabled in dc-app.yml
-dc app <app> state active           # set state: active in dc-app.yml, then dc up
+dc app <app> disable                # dc down, then set home[].state active -> disabled in dc-app.yml
+dc app <app> enable                 # set home[].state disabled -> active in dc-app.yml, then dc up
+dc app <app> state disabled|active  # long form of disable|enable
 dc app <app> config <cmd> ...       # app configuration (see Configuration)
 dc app <app> dir                    # print the app directory (exit 1 if the app is unknown)
 dc app <app> <any other command>    # same as: dc -a <app> <command>  (up, stop, logs, login, data, …)
 ```
+
+`disable` / `enable` (also `dc disable|enable` inside the app directory) only switch `home[]` entries between `active` and `disabled`; other states such as `standby` stay unchanged. `disable` changes `dc-app.yml` only if `dc down` succeeded, otherwise it exits with the error code of `dc down`. `enable` sets the state first and exits with the code of `dc up`. Calling it for an app that is already disabled/active prints 💡, still runs `down`/`up` and exits 0. Unknown apps or invalid arguments exit 1.
 
 ### Moving apps between nodes
 
