@@ -73,6 +73,20 @@ dc app <app> logs --tail 50        # if not ok
 
 **Roll back** (ask the user first): `dc app <app> rm`, then `dc app <app> config delete`. This removes the app directory. Volume data on the node below `/Volumes/*/<app>` stays.
 
+## Recipe: disable / enable an app
+
+Ask the user first. `dc app <app> down` only stops the app; `dc ls apps` then reports an error because the app is still `active`. To switch it off permanently, use:
+
+```bash
+dc app <app> disable               # dc down, then home[].state active -> disabled; dc-app.yml stays unchanged if down fails
+dc ls apps --json --app=<app>      # items[0].home[].status == "disabled", status_reason == "app_disabled"
+
+dc app <app> enable                # home[].state disabled -> active, then dc up; exit code of up
+dc ls apps --json --app=<app>      # every items[0].home[].status must be "ok"
+```
+
+`standby` entries in `home[]` are left unchanged.
+
 ## Developing /opt/dc itself
 
 * Plain bash. Code map: README *Repository layout (code map)*. Run `bash -n <file>` after edits.

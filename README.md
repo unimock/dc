@@ -215,7 +215,7 @@ app:
     disabled: false           # true = exclude from `dc ls images`
   home:
     - type: default
-      state: active           # active | disabled
+      state: active           # active | disabled | standby (switch with `dc app <app> disable|enable`)
       node: <node>            # or "." for the local hostname
 ```
 
@@ -281,7 +281,7 @@ For one app use `dc ls apps --json --app=<a>` (same structure, `count` 1). In `a
 | ✅ | `ok` | `running` | all containers of the app are running | 0 |
 | ⏸️ | `paused` | `app_paused` | all containers are paused (`dc pause`) | 0 |
 | ❌ | `error` | `container_count` | number of running containers does not match (also after `dc stop`, or partly paused) | 1 |
-| ⏰ | `disabled` | `app_disabled` | app disabled in `dc-app.yml` (`home[].state`) | 0 |
+| ⏰ | `disabled` | `app_disabled` | app disabled in `dc-app.yml` (`home[].state`, see `dc app <app> disable`) | 0 |
 | ⏰ | `disabled` | `node_down` | node is in standby (`state: standby` in `node.yml`) | 0 |
 | 🔃 | `intermittent` | `intermittent_link` | node with `connection.type: intermittently` is offline | 0 |
 | ❓ | `unreachable` | `node_unreachable` | node not reachable or without docker | 1 |
@@ -353,6 +353,7 @@ dc node -t sshd cmd uptime
 
 ```
 dc up|rm|rmup|down|ps|pull|start|stop|pause|unpause
+dc disable|enable                   # dc down + state: disabled / state: active + dc up (see dc app <app> disable|enable)
 dc logs [-f]
 dc <any docker compose command>
 dc docker <docker command>          # docker against the app's node
