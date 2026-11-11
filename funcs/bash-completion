@@ -186,10 +186,14 @@ _dc() {
       COMPREPLY=( $(compgen -W "$( dc-yq '.apps.*.dc.group[]' 2>/dev/null | sort -u )" -- "$2") )
     elif [[ "$2" == --group=* ]] ; then
       COMPREPLY=( $(compgen -P "--group=" -W "$( dc-yq '.apps.*.dc.group[]' 2>/dev/null | sort -u )" -- "${2#--group=}") )
+    elif [[ "$3" == "=" && "${COMP_WORDS[COMP_CWORD-2]}" == "--node" ]] ; then
+      COMPREPLY=( $(compgen -W "$( dc-list nodes used )" -- "$2") )
+    elif [[ "$2" == --node=* ]] ; then
+      COMPREPLY=( $(compgen -P "--node=" -W "$( dc-list nodes used )" -- "${2#--node=}") )
     else
       compopt -o nospace
-      COMPREPLY=( $(compgen -W "--skip --json --short --app= --group=" -- "$2") )
-      [[ ${#COMPREPLY[@]} == 1 && "${COMPREPLY[0]}" != "--app=" && "${COMPREPLY[0]}" != "--group=" ]] && compopt +o nospace
+      COMPREPLY=( $(compgen -W "--skip --json --short --app= --group= --node=" -- "$2") )
+      [[ ${#COMPREPLY[@]} == 1 && "${COMPREPLY[0]}" != *= ]] && compopt +o nospace
     fi
   elif [[ "${COMP_WORDS[1]}" = "ls" && "$COMP_CWORD" -ge "3" ]] && INLIST "${COMP_WORDS[2]}" "nodes images" ; then
       COMPREPLY=( $(compgen -W "--skip --json" -- "$2") )

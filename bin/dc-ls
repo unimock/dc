@@ -13,7 +13,7 @@ _help() {
   echo ""
   echo "  dc-ls --help             # show this help"
   echo "  dc-ls --active           # "
-  echo "  dc-ls --node=<node_name> # show only this node"
+  echo "  dc-ls --node=<node_name> # nodes: show only this node / apps: only home entries on this node (exit 2 if unknown)"
   echo "  dc-ls --app=<app_name>   # apps: show only this app (exit 2 if unknown)"
   echo "  dc-ls --short            # list only node/app names"
   echo "  dc-ls --group=<group>    # nodes: groups in node.yml / apps: group in dc-app.yml"
@@ -65,12 +65,17 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     echo "dc-ls: unknown app '$opt_app'" >&2
     exit 2
   fi
+  if [ "$opt_node" != "" ] && [ "$( NODE="$opt_node" dc-yq '(.nodes | has(strenv(NODE))) or ([.apps.*.dc.home[].node] | any_c(. == strenv(NODE)))' )" != "true" ] ; then
+    echo "dc-ls: unknown node '$opt_node'" >&2
+    exit 2
+  fi
   if [ "$opt_short" = "1" -a "$opt_json" != "1" ] ; then
-    if [ "$opt_app" != "" -o "$opt_group" != "" ] ; then
-      APP="$opt_app" GRP="$opt_group" dc-yq -r '
+    if [ "$opt_app" != "" -o "$opt_group" != "" -o "$opt_node" != "" ] ; then
+      APP="$opt_app" GRP="$opt_group" NODE="$opt_node" dc-yq -r '
         .apps | to_entries | .[]
         | select((strenv(APP) == "" or .key == strenv(APP))
-                 and (strenv(GRP) == "" or ((.value.dc.group // []) | any_c(. == strenv(GRP)))))
+                 and (strenv(GRP) == "" or ((.value.dc.group // []) | any_c(. == strenv(GRP))))
+                 and (strenv(NODE) == "" or ((.value.dc.home // []) | any_c(.node == strenv(NODE)))))
         | .key' ${MDE_DC_YAML}
     else
       echo "$( dc-list apps)"
@@ -86,8 +91,9 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   # fetch all app fields for every (app, home-node) pair in ONE yq pass, instead
   # of ~6 dc-yq calls per app plus one per home node. fields are joined with an
   # ASCII unit separator (0x1f) so empty fields survive the read. apps stay in
-  # document order (same as "dc-list apps"). --app=<a> and --group=<g> filter
-  # here already, so the inspection below only probes the home nodes of those apps.
+  # document order (same as "dc-list apps"). --app=<a>, --group=<g> and --node=<n>
+  # (per home entry) filter here already, so the inspection below only probes
+  # the matching home nodes.
   # the filter must come after the "as" bindings: with yq, an empty ".[] as $app"
   # still evaluates the body once and would print a bogus row (empty lines are ok,
   # they are skipped below).
@@ -97,11 +103,12 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
   # would make yq add an empty service in memory, which then shows up in images.
   #
   FS=$'\x1f'
-  app_data=$( APP="$opt_app" GRP="$opt_group" GS=$'\x1d' RS=$'\x1e' dc-yq -r '
+  app_data=$( APP="$opt_app" GRP="$opt_group" NODE="$opt_node" GS=$'\x1d' RS=$'\x1e' dc-yq -r '
     . as $root | .apps | to_entries | .[] as $app
     | ($app.value.dc.home // [])[] as $home
     | select((strenv(APP) == "" or $app.key == strenv(APP))
-             and (strenv(GRP) == "" or (($app.value.dc.group // []) | any_c(. == strenv(GRP)))))
+             and (strenv(GRP) == "" or (($app.value.dc.group // []) | any_c(. == strenv(GRP))))
+             and (strenv(NODE) == "" or $home.node == strenv(NODE)))
     | [ $app.key,
         ($home.node // ""),
         ($home.state // ""),

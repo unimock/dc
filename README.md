@@ -241,7 +241,7 @@ An app can list several `home` entries (nodes). By default `dc` uses the first e
 
 ```
 dc ls nodes  [--skip] [--short] [--group=<g>] [--node=<n>] [--json]
-dc ls apps   [--skip] [--short] [--app=<a>] [--group=<g>] [--json]
+dc ls apps   [--skip] [--short] [--app=<a>] [--group=<g>] [--node=<n>] [--json]
 dc ls images [--skip] [--json]      # used images and available updates
 dc list nodes all|dc|dcc|used
 dc list apps [-n <node>] [-g <group>] [--sort run_level] [--state active|disabled]
@@ -255,6 +255,8 @@ By default `dc ls` inspects the nodes live. `--skip` shows only the cached state
 `dc ls apps --app=<a>` limits the list to one app; only the home nodes of that app are inspected. An unknown app is reported on stderr with exit code 2.
 
 `--group=<g>` limits `dc ls nodes` to nodes with `<g>` in `groups:` (`node.yml`) and `dc ls apps` to apps with `<g>` in `group:` (`dc-app.yml`). It can be combined with `--app=` (both must match). An unknown group gives an empty list (exit code 0).
+
+`dc ls apps --node=<n>` shows only the apps with a home entry on node `<n>`, and of those only that home entry (`home[]` contains just `<n>`, only `<n>` is inspected). It can be combined with `--app=` and `--group=`. A node that is neither defined nor used as a home node is reported on stderr with exit code 2.
 
 Unknown options (for example `--app foo` without `=`) are rejected on stderr with exit code 1 (`dc ls images`: as well).
 
@@ -500,7 +502,7 @@ bin/dc                    # entry point: global options, app context (-a/-c/-n/-
 bin/dc-app                # dc app <app> ...  (state, config, else passed on to dc -a <app>)
 bin/dc-node               # dc node <node> ...  (state, cmd, apps on node, upgrade, image backup/restore)
 bin/dc-config             # dc config / node+app config create|edit|delete; builds ~/.dc/var/dc.yml
-bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json, --node=, --app=, --group=)
+bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json, --node=, --app=, --group=; all filter apps too)
 bin/dc-image              # dc ls images, image update checks
 bin/dc-list               # dc list nodes|apps  (plain lists for scripting)
 bin/dc-inspect            # dc inspect runtime|config
