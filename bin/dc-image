@@ -27,7 +27,7 @@ fi
 # --inspect is kept as a hidden no-op for symmetry with dc-ls.
 opt_inspect="1"
 opt_json="0"
-options=$(getopt -l "help,skip,inspect,json" -o "hp:" -a -- "$@")
+options=$(getopt -l "help,skip,inspect,json" -o "hp:" -a -- "$@") || exit 1 # unknown option
 eval set -- "$options"
 while true ; do
   case "$1" in

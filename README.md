@@ -241,7 +241,7 @@ An app can list several `home` entries (nodes). By default `dc` uses the first e
 
 ```
 dc ls nodes  [--skip] [--short] [--group=<g>] [--node=<n>] [--json]
-dc ls apps   [--skip] [--short] [--app=<a>] [--json]
+dc ls apps   [--skip] [--short] [--app=<a>] [--group=<g>] [--json]
 dc ls images [--skip] [--json]      # used images and available updates
 dc list nodes all|dc|dcc|used
 dc list apps [-n <node>] [-g <group>] [--sort run_level] [--state active|disabled]
@@ -254,6 +254,10 @@ By default `dc ls` inspects the nodes live. `--skip` shows only the cached state
 
 `dc ls apps --app=<a>` limits the list to one app; only the home nodes of that app are inspected. An unknown app is reported on stderr with exit code 2.
 
+`--group=<g>` limits `dc ls nodes` to nodes with `<g>` in `groups:` (`node.yml`) and `dc ls apps` to apps with `<g>` in `group:` (`dc-app.yml`). It can be combined with `--app=` (both must match). An unknown group gives an empty list (exit code 0).
+
+Unknown options (for example `--app foo` without `=`) are rejected on stderr with exit code 1 (`dc ls images`: as well).
+
 #### JSON output (`--json`)
 
 Every `dc ls apps|nodes|images --json` prints one object with a common envelope; `items` holds one entry per app/node/image:
@@ -262,11 +266,15 @@ Every `dc ls apps|nodes|images --json` prints one object with a common envelope;
 { "kind": "apps", "inspected": true, "generated_at": "2026-10-28T12:00:00+01:00", "count": 1,
   "items": [
     { "app": "myapp", "services": 2, "groups": ["web"], "run_level": "5", "desc": "…", "app_dir": "/…",
+      "image": "nginx:1.27.3",
+      "images": [ { "service": "web", "image": "nginx:1.27.3", "tag": "1.27.3" }, { "service": "db", "image": "mariadb:11", "tag": "11" } ],
       "home": [ { "node": "n1", "state": "active", "status": "ok", "status_reason": "running", "running": 2 } ] }
   ] }
 ```
 
 For one app use `dc ls apps --json --app=<a>` (same structure, `count` 1). In `apps` items, `status`, `status_reason` and `running` (number of running containers, `null` without inspection) are per home node, since an app can have several home nodes. The exit code follows the status table below.
+
+`image` is the image of the `main_service` (`null` if it has none), `images` lists the image of every compose service (`image`/`tag` `null` for services without `image:`). The values come from the resolved compose file (`docker compose config`), so variables like `${DC_ENV_IMAGE_TAG}` from `.env` are already filled in. `tag` is the part after the last `:` (a registry port like `reg:5000/img` is not a tag; no tag = `latest`); for a digest reference (`img@sha256:…`) it is the digest.
 
 `nodes` items contain, among others, `os_ver`, `arch`, `docker_ver` and `kernel_ver` (`uname -r`). These are read in the same single ssh call per node and cached, so `--skip` shows the last known values. `kernel_ver` stays empty until the node has been inspected once with dc ≥ 1.30.7.
 
@@ -492,7 +500,7 @@ bin/dc                    # entry point: global options, app context (-a/-c/-n/-
 bin/dc-app                # dc app <app> ...  (state, config, else passed on to dc -a <app>)
 bin/dc-node               # dc node <node> ...  (state, cmd, apps on node, upgrade, image backup/restore)
 bin/dc-config             # dc config / node+app config create|edit|delete; builds ~/.dc/var/dc.yml
-bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json, --node=, --app=)
+bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json, --node=, --app=, --group=)
 bin/dc-image              # dc ls images, image update checks
 bin/dc-list               # dc list nodes|apps  (plain lists for scripting)
 bin/dc-inspect            # dc inspect runtime|config
