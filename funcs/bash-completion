@@ -38,12 +38,12 @@ _cdapp() {
 _dc() {
   # dc logs .. / dc app <app> logs .. : options of docker compose logs (-n = lines, not node)
   if [[ ( "${COMP_WORDS[1]}" == "logs" && "$COMP_CWORD" -ge 2 ) || ( "${COMP_WORDS[1]}" == "app" && "${COMP_WORDS[3]}" == "logs" && "$COMP_CWORD" -ge 4 ) ]] ; then
-    if INLIST "$3" "-n --tail" ; then
+    if INLIST "$3" "-n --tail" ; then   # --tail: deprecated, not offered, value still completed
       COMPREPLY=( $(compgen -W "10 50 100 500 all" -- "$2") )
     elif INLIST "$3" "--since --until" ; then
       COMPREPLY=()
     else
-      COMPREPLY=( $(compgen -W "-f -n -t --follow --tail --timestamps --since --until --no-color" -- "$2") )
+      COMPREPLY=( $(compgen -W "-f -n -t --follow --timestamps --since --until --no-color" -- "$2") )
     fi
   # -t ..
   elif [[ "$3" == "-t" ]] ; then

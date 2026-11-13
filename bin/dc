@@ -186,8 +186,9 @@ done
 
 CURROPT=""
 while [ "$#" -gt 0 ]; do
-  # after "logs" all args go unchanged to docker compose logs (-n/--tail, -f, -t, --since, ...)
+  # after "logs" all args go unchanged to docker compose logs (-n, -f, -t, --since, ...)
   if [ "$CURROPT" = ' "logs"' ] ; then
+    [[ "$1" == "--tail" || "$1" == --tail=* ]] && echo "⚠️ dc logs --tail is deprecated, use -n <lines>" >&2
     CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ; continue
   fi
   case "$1" in
