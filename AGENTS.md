@@ -68,7 +68,7 @@ Files copied through sshfs belong to root on the node. For rootless images, chow
 ```bash
 dc app <app> up
 dc ls apps --json --app=<app>      # every items[0].home[].status must be "ok" (exit code 0)
-dc app <app> logs --tail 50        # if not ok
+dc app <app> logs -n 50            # if not ok
 ```
 
 **Roll back** (ask the user first): `dc app <app> rm`, then `dc app <app> config delete`. This removes the app directory. Volume data on the node below `/Volumes/*/<app>` stays.

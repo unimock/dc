@@ -20,7 +20,7 @@ _show_help() {
   echo "    start|stop                # start or stop app containers"
   echo "    pause|unpause             # pause or unpause app containers"
   echo "    ps                        # show app containers"
-  echo "    logs [-f]                 # print logs"
+  echo "    logs [-f] [-n <lines>]    # print logs (docker compose logs options)"
   echo "    login [--root] [<cmd>]    # login into main service"
   echo "    data ...                  # mount/pull/push app data"
   echo ""

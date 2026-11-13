@@ -76,7 +76,7 @@ show_help() {
   echo "     disable                       # dc down, then set state: disabled in dc-app.yml"
   echo "     enable                        # set state: active in dc-app.yml, then dc up"
   echo "     state disabled|active         # same as disable|enable"
-  echo "     logs [-f]|stop|start          # print logs from service console"
+  echo "     logs [-f] [-n <lines>]|stop|start  # print logs from service console"
   echo "     data pull|push ${MDE_DC_VOL_N_CFG}|c|${MDE_DC_VOL_N_VAR}|v|cv [real|r] # sync ${MDE_DC_VOL_N_CFG} and ${MDE_DC_VOL_N_VAR} data"
   echo "     data mount|umount [subdir]    # create missing ${MDE_DC_VOL_N_CFG}/${MDE_DC_VOL_N_VAR} (+bind) dirs on node, sshfs mount ${MDE_DC_VOL_Apps}/<app> to ./data"
   echo ""
@@ -186,6 +186,10 @@ done
 
 CURROPT=""
 while [ "$#" -gt 0 ]; do
+  # after "logs" all args go unchanged to docker compose logs (-n/--tail, -f, -t, --since, ...)
+  if [ "$CURROPT" = ' "logs"' ] ; then
+    CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ; continue
+  fi
   case "$1" in
     -v)  VERB="1"           ; shift 1 ;; 
     -n)  HOST="$2"          ; shift 2 ;;
