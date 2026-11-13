@@ -364,7 +364,7 @@ dc node -t sshd cmd uptime
 ```
 dc up|rm|rmup|down|ps|pull|start|stop|pause|unpause
 dc disable|enable                   # dc down + state: disabled / state: active + dc up (see dc app <app> disable|enable)
-dc logs [-f] [-n <lines>]           # all args after "logs" go unchanged to docker compose logs (-t, --since, <service>, …); --tail is deprecated (still works, prints ⚠️), use -n
+dc logs [-f] [-n <lines>]           # all args after "logs" (not only the first) go unchanged to docker compose logs (-t, --since, <service>, …); --tail is deprecated (still works, prints ⚠️), use -n
 dc <any docker compose command>
 dc docker <docker command>          # docker against the app's node
 dc login [--root] [command]         # shell / command in main_service

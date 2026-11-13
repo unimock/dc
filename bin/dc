@@ -185,9 +185,11 @@ for i in $wrapper_list ; do
 done
 
 CURROPT=""
+LOGSARGS=""
 while [ "$#" -gt 0 ]; do
-  # after "logs" all args go unchanged to docker compose logs (-n, -f, -t, --since, ...)
-  if [ "$CURROPT" = ' "logs"' ] ; then
+  # once "logs" is the command, all further args go unchanged to docker compose logs (-n, -f, -t, --since, ...)
+  [ "$CURROPT" = ' "logs"' ] && LOGSARGS=1
+  if [ -n "$LOGSARGS" ] ; then
     [[ "$1" == "--tail" || "$1" == --tail=* ]] && echo "⚠️ dc logs --tail is deprecated, use -n <lines>" >&2
     CURROPT="$CURROPT \"${1//\"/\\\"}\"" ; shift 1 ; continue
   fi
