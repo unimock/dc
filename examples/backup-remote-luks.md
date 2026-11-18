@@ -21,6 +21,10 @@ they only exist in that shell, so the block is repeated on the backup host.
 
 ## 1. On the remote node: disk, LVM, LUKS
 
+This section prepares a new, empty disk. If the remote node already has
+a volume group with free space (e.g. a second backup host or dc cluster
+copies to the same remote disk), use section 1a instead.
+
 **Warning:** `parted ... mklabel` and `luksFormat` destroy all data on
 the disk / volume. Check the disk name with `lsblk` first.
 
@@ -102,7 +106,85 @@ cryptsetup luksAddKey /dev/$VG/$N
 exit
 ```
 
+## 1a. Alternative: another volume in an existing volume group
+
+One encrypted volume per backup host (dc cluster), each with its own
+passphrase, on the same disk of the remote node. Here the new volume
+is called `new` in the existing volume group `vg0`.
+
+Size: on the backup host, the size of one complete copy (`latest`,
+without the date snapshots). Take about 1.5 times this value, so the
+remote snapshots have room for the changes:
+
+```bash
+du -sh --exclude='20??-??-??*' /backup
+```
+
+On the remote node, check the free space (`VFree`):
+
+```bash
+ssh node3
+vgs
+```
+
+Set the values (`SIZE` below `VFree`):
+
+```bash
+N=new
+VG=vg0
+SIZE=300G
+MNT=/cust/new
+```
+
+Volume and LUKS (asks for `YES` and the passphrase twice):
+
+```bash
+lvcreate -L $SIZE -n $N $VG
+cryptsetup -y -v luksFormat /dev/$VG/$N
+```
+
+Open, create the file system, test, close:
+
+```bash
+cryptsetup open /dev/$VG/$N $N
+mkfs.xfs /dev/mapper/$N
+mkdir -p $MNT
+mount /dev/mapper/$N $MNT
+echo test > $MNT/test
+cat $MNT/test
+rm $MNT/test
+umount $MNT
+cryptsetup close $N
+```
+
+Header backup (fetched in section 2):
+
+```bash
+H=/root/$N.luks-header
+cryptsetup luksHeaderBackup /dev/$VG/$N --header-backup-file $H
+exit
+```
+
+Then continue with section 2 on the backup host of this cluster, with
+`N=new`, `VG=vg0` and `MNT=/cust/new`.
+
 ## 2. On the backup host: header, keyfile, backup.yml
+
+The remote node must be a dc node on this backup host (reached via ssh
+with the cluster key). Check it:
+
+```bash
+dc node node3 state
+```
+
+It must print `sshd` (or `dock`, `dc`, `dcc`). If not, define the node
+and copy the cluster key to it once (needs one working login to it):
+
+```bash
+dc node node3 config create <hostname_or_ip> sshd
+ssh-copy-id -i ~/dc/nodes/id_ed25519.pub root@<hostname_or_ip>
+dc node node3 state
+```
 
 Set the values again (same as on the remote node):
 

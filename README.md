@@ -557,7 +557,7 @@ So custom check scripts only need to `exit 254/255` to show up as updates or war
 ## Examples & tests
 
 * [examples/dc-tests@kvm.md](./examples/dc-tests@kvm.md) – creates a VM, installs dc on it, deploys and tests an app, then deletes everything.
-* [examples/backup-remote-luks.md](./examples/backup-remote-luks.md) – prepares a LUKS encrypted disk on a remote node for `dc backup remote` (step by step, copy and paste).
+* [examples/backup-remote-luks.md](./examples/backup-remote-luks.md) – prepares a LUKS encrypted disk on a remote node for `dc backup remote`, or another volume for a further backup host on the same disk (step by step, copy and paste).
 * `testing/` – the same as plain scripts for KVM and Hetzner Cloud.
 
 `dc-md-exec` runs the code blocks of such Markdown files section by section:
