@@ -1,0 +1,12 @@
+backup:
+  # defaults for all nodes; a key below nodes.<node> replaces the default
+  target: /backup                                          # backup to <target>/<node>/<path>/{latest,YYYY-MM-DD}
+  plan: 0,1,2,3,4,5,6,7,14,21,28,35                        # ages (days) of the backups to keep
+  paths: [$MDE_DC_VOL_Apps, $MDE_DC_VOL_Data, /root, /etc] # only $MDE_DC_VOL* variables are replaced
+  # nodes to back up (dc backup [<node> ...]); apps with "backup: pause" in
+  # dc-app.yml are paused for a short final sync of their Apps/Data dirs
+  nodes:
+  #  node1:
+  #  node2:
+  #    paths: [/root, /etc]
+  #    plan: 0,1,2,3,7,14

@@ -1,155 +1,448 @@
 #!/bin/bash
+#
+# dc-backup - rotating backups (rsync + hardlink snapshots) of whole nodes.
+#
+# what is backed up (nodes, paths, target, plan) comes from ~/dc/config/backup.yml,
+# apps with "backup: pause" in dc-app.yml are paused for a short final sync.
+# see README: "Backups (dc backup)".
+#
 
 . /opt/dc/funcs/global
+. /opt/dc/funcs/backup_funcs
+
+IAM="dc-backup"
+[ "$(ps -o comm= $PPID)" = "dc" ] && IAM="dc backup"
 
 _help()
 {
   echo ""
-  echo "usage: `basename $0` <source-dir> <target-dir> <mask>"
+  echo "usage: $IAM [-n|--dry-run] [<node> ...]"
   echo ""
-  echo "     example:"
-  echo "       `basename $0` /Docker/Services/traefik ./test/traefik 0,1,2,3,4,5,6,7,14,21,28  "
+  echo "  back up all nodes from ${MDE_DC_CONFIG_DIR}/backup.yml, or only the given ones"
+  echo ""
+  echo "  -n, --dry-run   show nodes, paths, targets and apps to pause; nothing is copied"
+  echo ""
+  echo "  environment:"
+  echo "    DC_BACKUP_PAUSE=0       do not pause any app (final sync is skipped)"
+  echo "    DC_BACKUP_FAKE_DAYS=<n> pretend today is <n> days later (rotation tests)"
+  echo ""
+  echo "  example ${MDE_DC_CONFIG_DIR}/backup.yml:"
+  echo ""
+  sed 's/^/    /' /opt/dc/templates/create/config/backup.yml
   echo ""
   exit 0
 }
 
-today=$(date +%s)
-if [ "$4" != "" ] ; then
-  today=`expr $(date +%s) + ${4} \* 86400`
-fi
-
-get_age()
-{
-   d=${1:0:10}
-   secs=$(date -d "$d" +%s 2>/dev/null) || { echo "" ; return 1 ; }
-   echo $(( (today - secs) / 86400 ))
-}
-
-get_date() 
-{
-  s=`expr ${today} - ${1} \* 86400`
-  d=`date -d @${s} +"%Y-%m-%d"`
-  echo $d
-}
-
-if [ "$3" = "" ] ; then
-  _help
-fi
-
-SDIR="$1"
-TDIR="$2"
-MASK=$( echo $3 | sed 's/,/ /g' )
-
-mkdir -p $TDIR
-
-echo '#!/bin/bash'       > $TDIR/script.sh
-echo "`basename $0` $*" >> $TDIR/script.sh
-chmod a+x                  $TDIR/script.sh
-
-age_array=($MASK)
-
-for i in `seq 0 ${age_array[-1]}` ; do
-  arr_b[$i]=""
-  arr_a[$i]=""
+opt_dry=0
+args=()
+while [ $# -gt 0 ] ; do
+  case "$1" in
+    -n|--dry-run) opt_dry=1 ; shift ;;
+    -h|--help)    _help ;;
+    -*)           echo "$IAM: unknown option <$1>" >&2 ; exit 1 ;;
+    *)            args+=( "$1" ) ; shift ;;
+  esac
 done
 
-for i in "${age_array[@]}" ; do
-  arr_a[${i}]=">"
-done
+if [ "$(dc-yq '.config | has("backup")' ${MDE_DC_YAML} 2>/dev/null)" != "true" ] ; then
+  echo "$IAM: no backup configuration (${MDE_DC_CONFIG_DIR}/backup.yml)" >&2
+  echo "      template: /opt/dc/templates/create/config/backup.yml" >&2
+  exit 1
+fi
 
-comp=$( df -hP "$TDIR" | awk 'END{print $2}'  )
-used=$( df -hP "$TDIR" | awk 'END{print $3}'  ) 
-free=$( df -hP "$TDIR" | awk 'END{print $4}'  ) 
-pers=$( df -hP "$TDIR" | awk 'END{print $5}'  )
-
-echo "Backup-Source   : ${SDIR}"
-echo "Backup-Host     : `hostname`"
-echo "Backup-Directroy: ${TDIR}"
-
-source_node=${SDIR%:*}
-if [ "$source_node" != "$SDIR" ] ; then  # source node is remote
-  STATE=$(dc node $source_node state)
-  if [ "$STATE" = "off" ] ; then
-    echo "-------------------------------------------------------" 
-    echo "skipping backup, because node is off!"
-    echo "-------------------------------------------------------" 
-    exit 0
+if [ ${#args[@]} = 0 ] ; then
+  mapfile -t args < <( dc_backup_nodes )
+  if [ ${#args[@]} = 0 ] ; then
+    echo "$IAM: no nodes in ${MDE_DC_CONFIG_DIR}/backup.yml (backup.nodes)" >&2
+    exit 1
   fi
 fi
 
-echo "-------------------------------------------------------" 
-echo "age|m|directory |operation|size  |used  |free  |used %|"
-echo "-------------------------------------------------------"
-  
-cmd=""
-printf "   |%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" "S" "" "$cmd" "$comp" "$used" "$free" "$pers"
+TODAY=$(date +%s)
+if [ -n "$DC_BACKUP_FAKE_DAYS" ] ; then
+  TODAY=$(( TODAY + DC_BACKUP_FAKE_DAYS * 86400 ))
+fi
 
-backup_list=`(cd $TDIR && ls  -d ????-??-??*/ 2>/dev/null)`
-for backup in $backup_list ; do
-  backup=${backup%/}
-  age=`get_age $backup`
-  [ -z "$age" ] && continue
-  if (( $age > ${age_array[-1]} )) ; then
-    rm -rf $TDIR/$backup
-    comp=$( df -hP "$TDIR" | awk 'END{print $2}'  )
-    used=$( df -hP "$TDIR" | awk 'END{print $3}'  )
-    free=$( df -hP "$TDIR" | awk 'END{print $4}'  ) 
-    pers=$( df -hP "$TDIR" | awk 'END{print $5}'  )
-    cmd="removed"
-    printf "%03d|%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" $age "R" "$backup" "$cmd" "$comp" "$used" "$free" "$pers"
-  else
-    arr_b[$age]=$backup  
+LINE="--------------------------------------------------------------------------------"
+DLINE="================================================================================"
+
+_get_age()   # <dir name YYYY-MM-DD[...]> -> age in days
+{
+  local secs
+  secs=$(date -d "${1:0:10}" +%s 2>/dev/null) || return 1
+  echo $(( (TODAY - secs) / 86400 ))
+}
+
+_get_date()  # <age> -> YYYY-MM-DD
+{
+  date -d @$(( TODAY - $1 * 86400 )) +"%Y-%m-%d"
+}
+
+_df()        # <dir> -> "size used free use%"
+{
+  df -hP "$1" 2>/dev/null | awk 'END{print $2, $3, $4, $5}'
+}
+
+_rsync()     # <node> <src> <dst>  (rc 24 = files vanished during transfer -> ok)
+{
+  local rc
+  mkdir -p "$3" || return 1
+  rsync -azS --numeric-ids --delete -e ssh "$1:$2/./" "$3/" 2>&1 | grep -v '^file has vanished' | sed 's/^/    /'
+  rc=${PIPESTATUS[0]}
+  [ "$rc" = "24" ] && rc=0
+  return $rc
+}
+
+_existing()  # <node> <dir> ... -> prints the dirs that exist on <node>, rc 1 if ssh failed
+{
+  local n="$1" q="" d out
+  shift
+  for d in "$@" ; do q+=" $(printf '%q' "$d")" ; done
+  out=$( ssh "$n" "for d in $q ; do [ -d \"\$d\" ] && echo \"\$d\" ; done ; true" ) || return 1
+  [ -n "$out" ] && echo "$out"
+  return 0
+}
+
+#
+# unpause the app that is paused right now - also on errors and Ctrl-C
+#
+PAUSED_APP="" ; PAUSED_NODE=""
+_cleanup()
+{
+  if [ -n "$PAUSED_APP" ] ; then
+    echo "$IAM: unpause <$PAUSED_APP> on <$PAUSED_NODE> (aborted)" >&2
+    dc -n "$PAUSED_NODE" -a "$PAUSED_APP" unpause >/dev/null 2>&1 \
+      || echo "$IAM: ❌ unpause <$PAUSED_APP> on <$PAUSED_NODE> failed, app is still paused!" >&2
+    PAUSED_APP=""
   fi
-done
+}
+trap _cleanup EXIT
+trap 'exit 130' INT TERM
 
-for i in `seq 0 ${age_array[-1]}` ; do
-  cmd=""
-  if (( $i == 0 )) ; then
-    echo "-------------------------------------------------------"
-    rsync -azS --numeric-ids --delete -e "ssh" $SDIR/./ $TDIR/latest/   
-    ret=$?
-    if [ "$ret" != "0" ] ; then
-      exit $ret
+#
+# _rotate <tdir> <col> <mode>
+#
+# snapshot + rotation of one path, same rules as before:
+#  - age 0: hardlink copy latest/ -> YYYY-MM-DD/ (mode rw)
+#  - older than the highest plan age: removed
+#  - an age that is not in the plan is removed, if an older backup exists before
+#    the next plan age (so one backup "moves" into each plan slot)
+# mode: rw = create + remove, failed = sync failed: nothing created or removed
+# results go to CELL[<age>|<col>] and ROWMARK[<age>]
+#
+_rotate()
+{
+  local tdir="$1" col="$2" mode="$3"
+  local i c age backup list cmd d
+  local -a arr_b=()
+  list=$( cd "$tdir" 2>/dev/null && ls -d ????-??-??*/ 2>/dev/null )
+  for backup in $list ; do
+    backup=${backup%/}
+    age=$( _get_age "$backup" ) || continue
+    (( age < 0 )) && continue
+    if (( age > PLAN_MAX )) ; then
+      if [ "$mode" = "rw" ] ; then
+        rm -rf "$tdir/$backup"
+        CELL["$age|$col"]="removed" ; ROWMARK[$age]="R"
+      else
+        CELL["$age|$col"]="kept"
+      fi
+    else
+      arr_b[$age]=$backup
     fi
-    rm -rf   $TDIR/$(get_date $i)
-    mkdir -p $TDIR/$(get_date $i)
-    cp -la $TDIR/latest/.  $TDIR/$(get_date $i)
-    cmd="created"
+  done
+  for (( i=0 ; i<=PLAN_MAX ; i++ )) ; do
+    cmd=""
+    d=$( _get_date $i )
+    if (( i == 0 )) ; then
+      if [ "$mode" = "rw" ] ; then
+        rm -rf "$tdir/$d"
+        mkdir -p "$tdir/$d"
+        if cp -la "$tdir/latest/." "$tdir/$d" ; then
+          cmd="created"
+        else
+          cmd="failed" ; node_rc=1
+        fi
+      else
+        cmd="failed"
+      fi
+    fi
+    [ -d "$tdir/$d" ] && arr_b[$i]=$d
+    if [[ "$mode" == "rw" && "$cmd" == "" && -z "${IN_PLAN[$i]}" && -n "${arr_b[$i]}" ]] ; then
+      for (( c=i+1 ; c<=PLAN_MAX ; c++ )) ; do
+        if [ -n "${arr_b[$c]}" ] ; then
+          cmd="removed"
+          break
+        fi
+        [ -n "${IN_PLAN[$c]}" ] && break
+      done
+    fi
+    if [ "$cmd" = "removed" ] ; then
+      rm -rf "$tdir/${arr_b[$i]}"
+    fi
+    if [ "$cmd" = "" -a -n "${arr_b[$i]}" ] ; then
+      cmd="kept"
+    fi
+    [ -n "$cmd" ] && CELL["$i|$col"]="$cmd"
+  done
+}
+
+#
+# _backup_node <node>  -> rc 0 ok, 1 error
+#
+_backup_node()
+{
+  local n="$1"
+  local t_start troot state p e i app msg rc secs col plan
+  local -a paths=() cols=()
+  local -A path_ok=()
+  node_rc=0 ; NODE_RESULT=""
+  t_start=$(date +%s)
+
+  echo "$DLINE"
+  dc_backup_node_conf "$n"
+  if [ "$B_KNOWN" != "1" ] ; then
+    echo "❌ node <$n> is not defined in ${MDE_DC_CONFIG_DIR}/backup.yml"
+    return 1
+  fi
+  if ! troot=$( dc_backup_expand "$B_TARGET" ) ; then
+    echo "❌ [$n] target: $troot"
+    return 1
+  fi
+  troot="$troot/$n"
+  if ! plan=$( dc_backup_plan_check "$B_PLAN" ) ; then
+    echo "❌ [$n] $plan"
+    return 1
+  fi
+  IN_PLAN=() ; PLAN_MAX=0
+  for i in $plan ; do IN_PLAN[$i]=">" ; PLAN_MAX=$i ; done
+  for p in "${B_PATHS[@]}" ; do
+    if ! e=$( dc_backup_expand "$p" ) ; then
+      echo "❌ [$n] paths: $e"
+      return 1
+    fi
+    paths+=( "$e" )
+  done
+  if [ ${#paths[@]} = 0 ] ; then
+    echo "❌ [$n] no paths"
+    return 1
   fi
 
-  if [ -d $TDIR/$(get_date $i) ] ; then 
-     arr_b[$i]=$(get_date $i)
+  echo "Backup-Node      : $n"
+  echo "Backup-Host      : $(hostname)"
+  echo "Backup-Directory : $troot"
+  echo "Plan             : ${plan// /,}"
+  echo "Paths            : ${paths[*]}"
+  [ "$opt_dry" = "1" ] && echo "Mode             : dry run, nothing is copied"
+  echo "$LINE"
+
+  state=$( dc-node "$n" state )
+  if [ "$state" = "off" ] ; then
+    echo "💡 skipping backup, node is off"
+    NODE_RESULT="skipped (node off)"
+    return 0
   fi
-  if [ "${arr_a[$i]}" = ""  -a "${arr_b[$i]}" != "" ] ; then
-    for (( c=$i+1 ; c<=${age_array[-1]}; c++ )) ; do
-      if [ "${arr_b[$c]}" != "" ] ; then
-        cmd="removed"
-        break
+  if [ "$state" = "" -o "$state" = "ping" ] ; then
+    echo "❌ node not reachable via ssh (state <${state:-unreachable}>)"
+    return 1
+  fi
+
+  # which paths exist on the node (one ssh)
+  local -A on_node=()
+  local x existing
+  if ! existing=$( _existing "$n" "${paths[@]}" ) ; then
+    echo "❌ ssh to <$n> failed"
+    return 1
+  fi
+  while IFS= read -r x ; do
+    [ -n "$x" ] && on_node["$x"]=1
+  done <<< "$existing"
+
+  # column names: last path element, the full path if not unique
+  local -A base_cnt=()
+  for p in "${paths[@]}" ; do base_cnt["${p##*/}"]=$(( ${base_cnt["${p##*/}"]:-0} + 1 )) ; done
+  local -A colname=()
+  for p in "${paths[@]}" ; do
+    if [ "${base_cnt["${p##*/}"]}" = "1" ] ; then colname["$p"]="${p##*/}" ; else colname["$p"]="$p" ; fi
+  done
+
+  if [ "$opt_dry" != "1" ] ; then
+    mkdir -p "$troot" || { echo "❌ can not create <$troot>" ; return 1 ; }
+    exec 9>"$troot/.dc-backup.lock"
+    if ! flock -n 9 ; then
+      echo "❌ another backup of <$n> is running ($troot/.dc-backup.lock)"
+      exec 9>&-
+      return 1
+    fi
+    DF_BEFORE=$( _df "$troot" )
+  fi
+
+  #
+  # 1. live sync of all paths (the long part, apps keep running)
+  #
+  for p in "${paths[@]}" ; do
+    if [ -z "${on_node[$p]}" ] ; then
+      if [ "$B_PATHS_EXPLICIT" = "1" ] ; then
+        printf "%-6s %-28s %s\n" "sync" "$p" "❌ missing on node"
+        node_rc=1
+      else
+        printf "%-6s %-28s %s\n" "skip" "$p" "💡 not on node"
       fi
-      if [ "${arr_a[$c]}" = ">" ] ; then
-        break ;
-      fi
+      continue
+    fi
+    cols+=( "$p" )
+    if [ "$opt_dry" = "1" ] ; then
+      printf "%-6s %-28s %s\n" "sync" "$p" "-> $troot$p/latest"
+      path_ok["$p"]=1
+      continue
+    fi
+    secs=$(date +%s)
+    _rsync "$n" "$p" "$troot$p/latest" ; rc=$?
+    secs=$(( $(date +%s) - secs ))
+    if [ "$rc" = "0" ] ; then
+      printf "%-6s %-28s %-12s %6ss\n" "sync" "$p" "ok" "$secs"
+      path_ok["$p"]=1
+    else
+      printf "%-6s %-28s %-12s %6ss\n" "sync" "$p" "FAILED rc=$rc" "$secs"
+      node_rc=1
+    fi
+  done
+
+  #
+  # 2. final sync of apps with "backup: pause" (one app paused at a time)
+  #
+  local -a subs=() cand=()
+  local sub base nrc label
+  for app in $( dc_backup_pause_apps "$n" ) ; do
+    subs=()
+    for p in "$MDE_DC_VOL_Apps" "$MDE_DC_VOL_Data" ; do
+      [ -n "${path_ok[$p]}" ] && subs+=( "$p" )
     done
-  fi
-  if [ "$cmd" = "removed" ] ; then
-    rm -Rf $TDIR/${arr_b[$i]} 
+    if [ ${#subs[@]} = 0 ] ; then
+      printf "%-6s %-28s %s\n" "pause" "$app" "💡 neither $MDE_DC_VOL_Apps nor $MDE_DC_VOL_Data is backed up"
+      continue
+    fi
+    # only the app dirs that exist on the node
+    cand=() ; for base in "${subs[@]}" ; do cand+=( "$base/$app" ) ; done
+    if ! existing=$( _existing "$n" "${cand[@]}" ) ; then
+      printf "%-6s %-28s %s\n" "pause" "$app" "❌ ssh to <$n> failed"
+      node_rc=1
+      continue
+    fi
+    subs=()
+    while IFS= read -r x ; do [ -n "$x" ] && subs+=( "$x" ) ; done <<< "$existing"
+    # e.g. "Apps+Data"
+    label="" ; msg=""
+    for sub in "${subs[@]}" ; do x=${sub%/*} ; label+="${x##*/}+" ; done
+    label=${label%+}
+    if [ ${#subs[@]} = 0 ] ; then
+      printf "%-6s %-28s %s\n" "pause" "$app" "💡 no app directory on node"
+      continue
+    fi
+    if [ "$opt_dry" = "1" ] ; then
+      printf "%-6s %-28s %s\n" "pause" "$app" "($label)"
+      continue
+    fi
+    if [ "$DC_BACKUP_PAUSE" = "0" ] ; then
+      printf "%-6s %-28s %s\n" "pause" "$app" "💡 skipped (DC_BACKUP_PAUSE=0)"
+      continue
+    fi
+    secs=$(date +%s)
+    nrc=$( dc-node "$n" -a "$app" nrc 2>/dev/null )
+    rc=0
+    if [ "$nrc" = "0" ] ; then
+      msg="ok (not running)"
+    else
+      PAUSED_APP="$app" ; PAUSED_NODE="$n"
+      if ! out=$( dc -n "$n" -a "$app" pause 2>&1 ) ; then
+        echo "$out" | sed 's/^/    /'
+        msg="PAUSE FAILED" ; rc=1
+      fi
+    fi
+    if [ "$rc" = "0" ] ; then
+      # <base>/<app> on the node -> <troot><base>/latest/<app>
+      for sub in "${subs[@]}" ; do
+        _rsync "$n" "$sub" "$troot${sub%/*}/latest/$app" || { rc=1 ; msg="SYNC FAILED" ; }
+      done
+    fi
+    if [ -n "$PAUSED_APP" ] ; then
+      if ! out=$( dc -n "$n" -a "$app" unpause 2>&1 ) ; then
+        echo "$out" | sed 's/^/    /'
+        msg="❌ UNPAUSE FAILED, app is still paused" ; rc=1
+      fi
+      PAUSED_APP=""
+    fi
+    [ "$rc" = "0" -a -z "$msg" ] && msg="ok"
+    [ "$rc" != "0" ] && node_rc=1
+    secs=$(( $(date +%s) - secs ))
+    printf "%-6s %-28s %-12s %6ss  (%s)\n" "pause" "$app" "$msg" "$secs" "$label"
+  done
+
+  if [ "$opt_dry" = "1" ] ; then
+    return $node_rc
   fi
 
-  dat=${arr_b[$i]}
-  if [ "$cmd" = "" -a "$dat" != "" ] ; then cmd="kept" ; fi
+  #
+  # 3. snapshot + rotation per path
+  #
+  CELL=() ; ROWMARK=()
+  for p in "${cols[@]}" ; do
+    if [ -n "${path_ok[$p]}" ] ; then
+      _rotate "$troot$p" "$p" rw
+    else
+      _rotate "$troot$p" "$p" failed
+    fi
+  done
 
-  if [ "$cmd" = "" ] ; then
-    comp=""
-    used=""
-  else 
-    comp=$( df -hP "$TDIR" | awk 'END{print $2}'  )
-    used=$( df -hP "$TDIR" | awk 'END{print $3}'  )
-    free=$( df -hP "$TDIR" | awk 'END{print $4}'  ) 
-    pers=$( df -hP "$TDIR" | awk 'END{print $5}'  ) 
-  fi
-  if [[ "${arr_a[$i]}" != "" || "${dat}" != "" ]] ; then
-    printf "%03d|%1s|%-10s|%-9s|%-6s|%-6s|%-6s|%-6s|\n" $i "${arr_a[$i]}" "${dat}" "$cmd" "$comp" "$used" "$free" "$pers"
-  fi
+  # table: one row per age (plan ages + ages with a backup), one column per path
+  local -A rows=()
+  local k w hdr sep row cell
+  for i in $plan ; do rows[$i]=1 ; done
+  for k in "${!CELL[@]}" ; do rows[${k%%|*}]=1 ; done
+  hdr=$( printf "%-3s|%1s|%-10s|" "age" "m" "date" )
+  for p in "${cols[@]}" ; do
+    w=${#colname[$p]} ; (( w < 9 )) && w=9
+    hdr+=$( printf "%-${w}s|" "${colname[$p]}" )
+  done
+  echo "$LINE"
+  echo "$hdr"
+  echo "$LINE"
+  for i in $( printf '%s\n' "${!rows[@]}" | sort -n ) ; do
+    row=$( printf "%03d|%1s|%-10s|" "$i" "${ROWMARK[$i]:-${IN_PLAN[$i]}}" "$(_get_date $i)" )
+    for p in "${cols[@]}" ; do
+      w=${#colname[$p]} ; (( w < 9 )) && w=9
+      cell="${CELL["$i|$p"]:--}"
+      row+=$( printf "%-${w}s|" "$cell" )
+    done
+    echo "$row"
+  done
+  echo "$LINE"
+  read -r s_size s_used s_free s_pct <<< "$( _df "$troot" )"
+  read -r b_size b_used b_free b_pct <<< "$DF_BEFORE"
+  echo "disk   $troot: size $s_size, used $s_used (before $b_used), free $s_free, $s_pct"
+  echo "result $( [ "$node_rc" = "0" ] && echo ok || echo ERROR ), duration $(( $(date +%s) - t_start ))s"
+  exec 9>&-
+  return $node_rc
+}
+
+#
+# main
+#
+declare -a IN_PLAN=()
+declare -A CELL=() ROWMARK=()
+PLAN_MAX=0
+ret=0
+declare -a summary=()
+for n in "${args[@]}" ; do
+  _backup_node "$n"
+  rc=$?
+  [ "$rc" != "0" ] && ret=1
+  [ -z "$NODE_RESULT" ] && NODE_RESULT=$( [ "$rc" = "0" ] && echo ok || echo ERROR )
+  summary+=( "$( printf "%-12s %s" "$n" "$NODE_RESULT" )" )
+  echo ""
 done
-echo ""
-exit 0
+if [ ${#args[@]} -gt 1 ] ; then
+  echo "$DLINE"
+  printf '%s\n' "${summary[@]}"
+fi
+exit $ret

@@ -15,6 +15,8 @@ app:
   login_user:
   # default run_level is 5, maybe for some apps (like treafik), it make sense to decrease it. Like 4
   run_level: 5
+  # dc backup: "pause" pauses the app for a short final sync of its Apps/Data dirs (databases, mail, ...). default: none
+  backup: none
   group:
   control:
     type: compose

@@ -37,7 +37,7 @@ This copies `templates/create/app/` into the app directory and replaces `<app_na
 
 * `docker-compose.yml`: set the real `image:`. The template publishes the fixed port `54321:8000`: change it or remove it, because ports must be free on the node (check with `dc app <app> ssh ss -ltn`).
 * Volumes: use only the `${DC_VOL_*}` variables from `.env`. `cfg` and `var` are required; `data`, `cache` and `logs` are optional. See README: *App volumes on the nodes*.
-* `dc-app.yml`: `desc`, `main_service`, and optionally `login_user` (numeric `uid:gid` for rootless images; it becomes the owner of new volume dirs), `run_level`, `group`.
+* `dc-app.yml`: `desc`, `main_service`, and optionally `login_user` (numeric `uid:gid` for rootless images; it becomes the owner of new volume dirs), `run_level`, `group`, `backup` (`pause` for apps with databases, see README: *Backups (dc backup)*).
 * Leave the block between `#dc-start` and `#dc-end` in `.env` unchanged.
 
 **4. Check**

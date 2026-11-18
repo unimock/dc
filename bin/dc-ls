@@ -82,10 +82,10 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
     fi
     exit 0
   fi
-  MASK="|%2s|%-12s|%-2s|%-8s|%-20s|%s|%-35s|%-35s|\n"
+  MASK="|%2s|%-12s|%-2s|%-8s|%-20s|%s|%s|%-35s|%-35s|\n"
   if [ "$opt_json" != "1" ] ; then
-    printf "$MASK" "" "app" "#c" "node" "groups" "!"  "description" "app_directory"
-    printf "$MASK" "${LINE:0:2}" "${LINE:0:12}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}"
+    printf "$MASK" "" "app" "#c" "node" "groups" "!" "b" "description" "app_directory"
+    printf "$MASK" "${LINE:0:2}" "${LINE:0:12}" "${LINE:0:2}" "${LINE:0:8}" "${LINE:0:20}" "${LINE:0:1}" "${LINE:0:1}" "${LINE:0:35}" "${LINE:0:35}"
   fi
   #
   # fetch all app fields for every (app, home-node) pair in ONE yq pass, instead
@@ -122,7 +122,8 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
         ([ ($app.value.compose.services // {}) | to_entries | .[]
            | select(.key == ($app.value.dc.main_service // "")) | (.value.image // "") ] | .[0] // ""),
         ([ ($app.value.compose.services // {}) | to_entries | .[]
-           | .key + strenv(GS) + (.value.image // "") ] | join(strenv(RS))) ]
+           | .key + strenv(GS) + (.value.image // "") ] | join(strenv(RS))),
+        ($app.value.dc.backup // "none") ]
     | join("'"$FS"'")' ${MDE_DC_YAML} )
   mapfile -t app_lines <<< "$app_data"
 
@@ -190,7 +191,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
 
   for line in "${app_lines[@]}" ; do
     [ -z "$line" ] && continue
-    IFS=$FS read -r p h app_node_state ndc p_desc p_rnl p_groups p_dir connection proj p_image p_images <<< "$line"
+    IFS=$FS read -r p h app_node_state ndc p_desc p_rnl p_groups p_dir connection proj p_image p_images p_backup <<< "$line"
     running=""
     if [ "$opt_inspect" = "1" ]  ; then
       if [ "$app_node_state" != "active" ] ; then
@@ -233,11 +234,12 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
       jstatus="unchecked" ; jreason="not_inspected"
     fi
     if [ "$opt_json" = "1" ] ; then
-      json_rows+=( "${p}${FS}${ndc}${FS}${p_groups}${FS}${p_rnl}${FS}${p_desc}${FS}${p_dir}${FS}${h}${FS}${app_node_state}${FS}${jstatus}${FS}${jreason}${FS}${running}${FS}${p_image}${FS}${p_images}" )
+      json_rows+=( "${p}${FS}${ndc}${FS}${p_groups}${FS}${p_rnl}${FS}${p_desc}${FS}${p_dir}${FS}${h}${FS}${app_node_state}${FS}${jstatus}${FS}${jreason}${FS}${running}${FS}${p_image}${FS}${p_images}${FS}${p_backup}" )
     else
       # emoji from the single source of truth (funcs/status_funcs), no per-row fork
       dstate="${DC_STATUS_EMOJI[apps:$jstatus]:-??}"
-      printf "$MASK" "$dstate" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "${p_desc:0:35}" "$p_dir"
+      b_mark=" " ; [ "$p_backup" = "pause" ] && b_mark="p"
+      printf "$MASK" "$dstate" "$p" "${ndc}" "${h}" "$p_groups" "${p_rnl:0:1}" "$b_mark" "${p_desc:0:35}" "$p_dir"
     fi
   done
   if [ "$opt_json" = "1" ] ; then
@@ -265,6 +267,7 @@ if [ "$1" = "apps" -o "$1" = "p"  ] ; then
                 images:( ($r[12] // "") | split("\u001e") | map(select(length>0) | split("\u001d")
                          | {service:.[0], image:(if (.[1] // "") == "" then null else .[1] end),
                             tag:(if (.[1] // "") == "" then null else (.[1] | imgtag) end)}) ),
+                backup:(if ($r[13] // "") == "" then "none" else $r[13] end),
                 home:[] })
               | .home += [ {node:$r[6], state:$r[7], status:$r[8],
                             status_reason:$r[9], running:($r[10]|numornull)} ] ) )

@@ -482,6 +482,69 @@ if [ "$CMD" = "check" ] ; then
       fi
     done
   done
+
+  #
+  # backup: "backup:" in dc-app.yml and ~/dc/config/backup.yml (offline checks only)
+  #
+  . /opt/dc/funcs/backup_funcs
+  while IFS= read -r line ; do
+    [ -z "$line" ] && continue
+    printf $MASK "❌" "[${line%% *}] invalid <backup: ${line#* }> in dc-app.yml (none|pause)"
+    ret=1
+  done < <( dc-yq -r '.apps | to_entries | .[]
+                      | select((.value.dc.backup // "none") != "none" and .value.dc.backup != "pause")
+                      | .key + " " + .value.dc.backup' ${MDE_DC_YAML} )
+  if [ "$( dc-yq '.config | has("backup")' ${MDE_DC_YAML} )" = "true" ] ; then
+    bnodes=$( dc_backup_nodes )
+    declare -A b_vol=()
+    for n in $bnodes ; do
+      dc_backup_node_conf "$n"
+      if [ "$( NODE="$n" dc-yq '.nodes | has(strenv(NODE))' ${MDE_DC_YAML} )" != "true" ] ; then
+        printf $MASK "❌" "[backup] unknown node <$n> in backup.yml"
+        ret=1
+      fi
+      if ! res=$( dc_backup_expand "$B_TARGET" ) ; then
+        printf $MASK "❌" "[backup] node <$n> target: $res"
+        ret=1
+      fi
+      if ! res=$( dc_backup_plan_check "$B_PLAN" ) ; then
+        printf $MASK "❌" "[backup] node <$n>: $res"
+        ret=1
+      fi
+      if [ ${#B_PATHS[@]} = 0 ] ; then
+        printf $MASK "❌" "[backup] node <$n>: no paths"
+        ret=1
+      fi
+      for p in "${B_PATHS[@]}" ; do
+        if ! res=$( dc_backup_expand "$p" ) ; then
+          printf $MASK "❌" "[backup] node <$n> paths: $res"
+          ret=1
+        elif [ "$res" = "$MDE_DC_VOL_Apps" -o "$res" = "$MDE_DC_VOL_Data" ] ; then
+          b_vol[$n]=1
+        fi
+      done
+    done
+    if [ -n "$bnodes" ] ; then
+      # active nodes reachable via ssh, that are not backed up
+      for n in $( dc-yq -r '.nodes | to_entries | .[] | select(.value.state == "active" and .value.type != "ping") | .key' ${MDE_DC_YAML} ) ; do
+        if ! echo "$bnodes" | grep -qx "$n" ; then
+          printf $MASK "💡" "[backup] node <$n> is not in backup.yml"
+        fi
+      done
+    fi
+    # apps with "backup: pause", whose active node does not back up Apps/Data
+    while IFS= read -r line ; do
+      [ -z "$line" ] && continue
+      p=${line%% *} ; n=${line#* }
+      if ! echo "$bnodes" | grep -qx "$n" ; then
+        printf $MASK "💡" "[$p] backup: pause, but node <$n> is not in backup.yml"
+      elif [ -z "${b_vol[$n]}" ] ; then
+        printf $MASK "💡" "[$p] backup: pause, but node <$n> backs up neither Apps nor Data"
+      fi
+    done < <( dc-yq -r '.apps | to_entries | .[] | select(.value.dc.backup == "pause") as $a
+                        | ($a.value.dc.home // [])[] | select(.state == "active")
+                        | $a.key + " " + .node' ${MDE_DC_YAML} )
+  fi
   exit $ret
 fi 
 exit 0

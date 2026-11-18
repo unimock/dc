@@ -61,6 +61,7 @@ show_help() {
   echo "     docker|compose|swarm          # delegate command to standard tools"
   echo "     ssh [<cmd>]                   # login into a node"                          
   echo "     manage ...                    # sync apps between nodes"
+  echo "     backup [-n] [<node> ..]       # rotating backups of nodes (~/dc/config/backup.yml)"
   echo "     hcloud ...                    # link to comptible hcloud version"
   echo "     image  ...                    # list and update images"
   echo ""
@@ -168,7 +169,7 @@ if [ "$1" = "ssh-control-reset" ] ; then
   /opt/dc/bin/dc-ssh-control-reset "$@"
   exit $?
 fi
-wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm image"
+wrapper_list="inspect node app install vserver batch list manage config ls vserver hcloud kvm image backup"
 for i in $wrapper_list ; do
   if [ "$1" = "$i" ] ; then
     shift

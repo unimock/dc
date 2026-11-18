@@ -146,7 +146,7 @@ dc node hugo config delete
 ~/dc/nodes/<node>/node.yml   # node definitions (+ optional vserver.yml)
 ~/dc/nodes/id_ed25519        # cluster ssh key
 ~/dc/apps/**/dc-app.yml      # app definitions (any depth; dot directories are ignored)
-~/dc/config/                 # cluster.yml, mail.yml (batch report mail), crontab
+~/dc/config/                 # cluster.yml, mail.yml (batch report mail), backup.yml (dc backup), crontab
 ~/dc/config/crontab          # cluster cron jobs, symlinked as /etc/cron.d/dc-crontab
 ~/dc/batch/<name>.list       # batch job definitions (run by cron via dc batch)
 ~/dc/logs/<name>/            # per-batch job logs + report of the last run
@@ -207,6 +207,7 @@ app:
   main_service: <service>     # target of dc login / cmd / supervisor / ovw
   login_user:                 # optional user for dc login (rootless containers); numeric uid[:gid] = owner of new /Volumes/Apps/<app> dirs (see App volumes)
   run_level: 5                # start order, lower = earlier (e.g. traefik: 4)
+  backup: none                # none | pause: pause for a short final sync in dc backup (see Backups)
   group:
   control:
     type: compose
@@ -268,7 +269,7 @@ Every `dc ls apps|nodes|images --json` prints one object with a common envelope;
 { "kind": "apps", "inspected": true, "generated_at": "2026-10-28T12:00:00+01:00", "count": 1,
   "items": [
     { "app": "myapp", "services": 2, "groups": ["web"], "run_level": "5", "desc": "…", "app_dir": "/…",
-      "image": "nginx:1.27.3",
+      "image": "nginx:1.27.3", "backup": "none",
       "images": [ { "service": "web", "image": "nginx:1.27.3", "tag": "1.27.3" }, { "service": "db", "image": "mariadb:11", "tag": "11" } ],
       "home": [ { "node": "n1", "state": "active", "status": "ok", "status_reason": "running", "running": 2 } ] }
   ] }
@@ -277,6 +278,8 @@ Every `dc ls apps|nodes|images --json` prints one object with a common envelope;
 For one app use `dc ls apps --json --app=<a>` (same structure, `count` 1). In `apps` items, `status`, `status_reason` and `running` (number of running containers, `null` without inspection) are per home node, since an app can have several home nodes. The exit code follows the status table below.
 
 `image` is the image of the `main_service` (`null` if it has none), `images` lists the image of every compose service (`image`/`tag` `null` for services without `image:`). The values come from the resolved compose file (`docker compose config`), so variables like `${DC_ENV_IMAGE_TAG}` from `.env` are already filled in. `tag` is the part after the last `:` (a registry port like `reg:5000/img` is not a tag; no tag = `latest`); for a digest reference (`img@sha256:…`) it is the digest.
+
+`backup` is the `backup:` value from `dc-app.yml` (`none` or `pause`, `none` if not set). In the table it is the column `b` (`p` = pause).
 
 `nodes` items contain, among others, `os_ver`, `arch`, `docker_ver` and `kernel_ver` (`uname -r`). These are read in the same single ssh call per node and cached, so `--skip` shows the last known values. `kernel_ver` stays empty until the node has been inspected once with dc ≥ 1.30.7.
 
@@ -325,7 +328,7 @@ The remote image list is configured in `~/dc/config/cluster.yml` (`image_list.ur
 
 ```
 dc config show|refresh|rebuild
-dc config check                     # node states, unique app names, app volumes on nodes
+dc config check                     # node states, unique app names, app volumes on nodes, backup.yml
 dc node <node> config create <hostname_or_ip> [type]
 dc node <node> config edit|delete
 dc app  <app>  config create <node> <main_service> <app_dir>
@@ -402,6 +405,40 @@ dc manage -n <src>:<dst> copy              # copy data only
 dc manage -n <src>:<dst> sync_group <group>
 dc manage backup <src> <dst> <mask>        # rotating backups via rdc, e.g. 0,7,14
 ```
+
+### Backups (dc backup)
+
+`dc backup` pulls whole nodes via `rsync` over ssh to the host where it runs, and keeps rotating hard-link snapshots (unchanged files take no extra space). What is backed up is defined in `~/dc/config/backup.yml` (template: `templates/create/config/backup.yml`):
+
+```yaml
+backup:
+  # defaults for all nodes; a key below nodes.<node> replaces the default
+  target: /backup                                          # backup to <target>/<node>/<path>/{latest,YYYY-MM-DD}
+  plan: 0,1,2,3,4,5,6,7,14,21,28,35                        # ages (days) of the backups to keep
+  paths: [$MDE_DC_VOL_Apps, $MDE_DC_VOL_Data, /root, /etc]
+  nodes:
+    dcc:
+    hc2:
+    pve:
+      paths: [/root, /etc]
+    wowo3:
+      plan: 0,1,2,3,7,14
+```
+
+```
+dc backup [-n|--dry-run] [<node> ...]     # all nodes from backup.yml, or only these
+```
+
+* **Paths:** only `$MDE_DC_VOL*` variables are replaced, with the values of the local `~/.dc/etc/config` (dc uses the same `/Volumes` paths on all nodes). Write `${…}` only in quotes (`"${MDE_DC_VOL_Apps}"`), because `{` is special in a YAML flow list. `$MDE_DC_VOL_Apps` → `/backup/<node>/Volumes/Apps/{latest,2026-11-18,…}`, `/etc` → `/backup/<node>/etc/…`. A default path that does not exist on the node is skipped (💡), a path listed below `nodes.<node>` must exist (❌).
+* **Run:** a node that is off (`dc node <node> state` = `off`) is skipped. All paths are synced to `latest/` while the apps keep running. Then each app with `backup: pause` in `dc-app.yml` that is active on the node is paused (`dc pause`), its `Apps/<app>` and `Data/<app>` are synced again (only the changes, usually a few seconds), and it is unpaused. One app is paused at a time; it is unpaused also after errors or Ctrl-C. Apps that do not run are synced without pause. Finally `latest/` is copied as hard links to `YYYY-MM-DD/` for every path that was synced without error.
+* **Plan (rotation):** backups older than the highest age are removed. A backup whose age is not in the plan is removed when an older one exists before the next plan age, so one backup moves on into each plan slot. If the sync of a path fails, no snapshot is created and nothing is removed for that path.
+* **Why pause:** a running database writes while rsync copies its files, so the copy can be inconsistent. A paused container is frozen, the copy is like after a power loss (crash-consistent), which databases recover from. `pause` is set per app, so it moves with the app to another node.
+* **Output** (one block per node): the sync and pause lines with durations, then a table with one row per age and one column per path (`created`, `kept`, `removed`, `failed`; `R` = older than the plan), disk usage before/after. A summary of all nodes follows at the end.
+* **Exit code:** 0 if all nodes are ok (or off), 1 otherwise (sync, pause/unpause or snapshot failed, path missing, invalid config). rsync code 24 (files vanished during the sync) counts as ok. Two runs on the same node are prevented by `<target>/<node>/.dc-backup.lock`.
+* **Environment:** `DC_BACKUP_PAUSE=0` skips all pauses, `DC_BACKUP_FAKE_DAYS=<n>` pretends that today is `<n>` days later (to test a plan).
+* **Check:** `dc config check` reports invalid entries in `backup.yml` and `backup:` values (❌), active nodes that are not backed up and `backup: pause` apps on such nodes (💡).
+
+For a nightly run, add a batch job, e.g. `job: backup :6h : dc backup`.
 
 ### Batch jobs and reports
 
@@ -515,13 +552,14 @@ bin/dc-ssh-control-reset  # close stale ssh control masters
 bin/dc-yq                 # yq wrapper (defaults to ~/.dc/var/dc.yml)
 bin/dc-md-exec            # run code blocks of Markdown files section by section
 bin/dc-rdc                # run commands in the rdc backup container on a node (used by dc-manage)
-bin/dc-backup             # rotating backup directories by age mask
+bin/dc-backup             # dc backup: rotating rsync/hardlink backups of nodes (~/dc/config/backup.yml)
 bin/dc-swarm              # experimental, not finished
 bin/dcd                   # copy files listed in ./dcd.list from the app volume to ./dcd.<host>
 bin/replace-helper        # dev tool: find/replace strings across a directory tree
 funcs/global              # sourced by all scripts: loads ~/.dc/etc/config, refreshes dc.yml, history log
 funcs/status_funcs        # status column/emoji for dc ls and dc ls images
 funcs/script_funcs        # helpers for timing/error handling in batch scripts
+funcs/backup_funcs        # backup.yml access (paths, plan, pause apps) for dc-backup and config check
 funcs/bash-completion     # bash completion (dc completion)
 helper/install/           # scripts run on new nodes/vservers (docker, dist-upgrade, …)
 templates/config          # template for ~/.dc/etc/config

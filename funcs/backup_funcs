@@ -1,0 +1,121 @@
+#
+# backup_funcs - read ~/dc/config/backup.yml (via dc.yml: .config.backup)
+#
+# sourced by bin/dc-backup and bin/dc-config (check). expects funcs/global
+# to be sourced already (MDE_DC_* variables, dc.yml up to date).
+#
+
+#
+# dc_backup_expand <path>
+#
+# replace $MDE_DC_VOL* / ${MDE_DC_VOL*} with the local values (same values are
+# used for the remote paths everywhere in dc). no eval: other variables, empty
+# values, relative paths, "/" itself and ".." are rejected (rc 1, reason on
+# stdout). trailing slashes are removed.
+#
+dc_backup_expand()
+{
+  local s="$1" out="" name val
+  local re='^([^$]*)\$(\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))(.*)$'
+  while [[ "$s" =~ $re ]] ; do
+    out+="${BASH_REMATCH[1]}"
+    name="${BASH_REMATCH[3]}${BASH_REMATCH[4]}"
+    s="${BASH_REMATCH[5]}"
+    if [[ "$name" != MDE_DC_VOL* ]] ; then
+      echo "variable \$$name not allowed (only \$MDE_DC_VOL*)" ; return 1
+    fi
+    val="${!name}"
+    if [ -z "$val" ] ; then
+      echo "variable \$$name not set" ; return 1
+    fi
+    out+="$val"
+  done
+  if [[ "$s" == *'$'* ]] ; then
+    echo "invalid variable syntax in <$1>" ; return 1
+  fi
+  out+="$s"
+  while [[ "$out" == */ && "$out" != "/" ]] ; do out="${out%/}" ; done
+  if [[ "$out" != /* ]] ; then
+    echo "path <$1> is not absolute" ; return 1
+  fi
+  if [ "$out" = "/" ] ; then
+    echo "path </> is not allowed" ; return 1
+  fi
+  if [[ "/$out/" == */../* || "$out" =~ [[:space:]] ]] ; then
+    echo "path <$1> contains '..' or blanks" ; return 1
+  fi
+  echo "$out"
+}
+
+#
+# dc_backup_nodes
+#
+# node names from backup.nodes, in document order
+#
+dc_backup_nodes()
+{
+  dc-yq -r '(.config.backup.nodes // {}) | keys | .[]' ${MDE_DC_YAML} 2>/dev/null
+}
+
+#
+# dc_backup_node_conf <node>
+#
+# sets for <node> (node values replace the defaults):
+#   B_KNOWN           1 if <node> is listed below backup.nodes
+#   B_TARGET          target root (unexpanded value)
+#   B_PLAN            plan as "0,1,7,..." (unchecked)
+#   B_PATHS[]         raw path entries (unexpanded)
+#   B_PATHS_EXPLICIT  1 if the paths come from the node entry
+#
+dc_backup_node_conf()
+{
+  local n="$1" line
+  B_KNOWN=0 ; B_TARGET="" ; B_PLAN="" ; B_PATHS=() ; B_PATHS_EXPLICIT=0
+  {
+    IFS= read -r B_KNOWN
+    IFS= read -r B_PATHS_EXPLICIT
+    IFS= read -r B_TARGET
+    IFS= read -r B_PLAN
+    while IFS= read -r line ; do
+      [ -n "$line" ] && B_PATHS+=( "$line" )
+    done
+  } < <( NODE="$n" dc-yq -r '
+      .config.backup as $b
+      | (($b.nodes // {}) | has(strenv(NODE))) as $known
+      | (($b.nodes // {})[strenv(NODE)] // {}) as $n
+      | ( $known,
+          ($n | has("paths")),
+          ($n.target // $b.target // ""),
+          ([ ($n.plan // $b.plan // "") ] | flatten | join(",")),
+          (($n.paths // $b.paths // [])[]) )' ${MDE_DC_YAML} 2>/dev/null )
+  [ "$B_KNOWN" = "true" ] && B_KNOWN=1 || B_KNOWN=0
+  [ "$B_PATHS_EXPLICIT" = "true" ] && B_PATHS_EXPLICIT=1 || B_PATHS_EXPLICIT=0
+}
+
+#
+# dc_backup_plan_check <plan>
+#
+# prints the plan sorted and without duplicates ("0 1 7 14"), rc 1 if invalid
+#
+dc_backup_plan_check()
+{
+  local p="${1// /}"
+  if [[ ! "$p" =~ ^[0-9]+(,[0-9]+)*$ ]] ; then
+    echo "invalid plan <$1> (expected e.g. 0,1,2,7,14)" ; return 1
+  fi
+  echo "$p" | tr ',' '\n' | sed 's/^0*\([0-9]\)/\1/' | sort -n -u | tr '\n' ' ' | sed 's/ $//'
+}
+
+#
+# dc_backup_pause_apps <node>
+#
+# apps with "backup: pause" in dc-app.yml, that are active on <node>
+#
+dc_backup_pause_apps()
+{
+  NODE="$1" dc-yq -r '
+    .apps | to_entries | .[]
+    | select((.value.dc.backup // "none") == "pause")
+    | select((.value.dc.home // []) | any_c(.node == strenv(NODE) and (.state // "") == "active"))
+    | .key' ${MDE_DC_YAML} 2>/dev/null
+}
