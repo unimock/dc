@@ -188,13 +188,16 @@ ssh-copy-id -i ~/dc/nodes/id_ed25519.pub root@<hostname_or_ip>
 dc node node3 state
 ```
 
-Set the values again (same as on the remote node):
+Set the values again (same as on the remote node). `PLAN` is the
+rotation plan on the remote node, usually longer than the local one;
+leave it empty (`PLAN=`) to use `backup.plan`:
 
 ```bash
 R=node3
 N=offsite
 VG=vg0
 MNT=/cust/backup
+PLAN=0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400
 ```
 
 Fetch the header backup and remove it from the remote node:
@@ -231,6 +234,7 @@ cat <<EOF >> $F
     $N:
       node: $R
       dir: $MNT
+      plan: $PLAN
       crypt:
         device: /dev/$VG/$N
         name: $N
@@ -251,14 +255,14 @@ With the example values the end of the file looks like this:
     offsite:
       node: node3
       dir: /cust/backup
+      plan: 0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400
       crypt:
         device: /dev/vg0/offsite
         name: offsite
 ```
 
-Optional keys: `plan:` (e.g. a longer one than locally,
-`0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400`), `nodes:` and `extra:`
-(see README: *Remote copy*).
+Further optional keys: `nodes:` (only some nodes) and `extra:`
+(additional local directories), see README: *Remote copy*.
 
 ## 3. Test
 
