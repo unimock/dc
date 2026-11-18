@@ -26,10 +26,16 @@ the disk / volume. Check the disk name with `lsblk` first.
 ```bash
 ssh node3
 apt-get install -y lvm2 xfsprogs cryptsetup-bin
-lsblk
 ```
 
-Set the values (adapt them):
+Show the disks first. The new disk has no partitions, no `FSTYPE`
+and no `MOUNTPOINT`; its `NAME` becomes `DISK` below (`/dev/<NAME>`):
+
+```bash
+lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL
+```
+
+Set the values (adapt them, `DISK` from the list above):
 
 ```bash
 N=offsite
