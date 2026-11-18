@@ -5,7 +5,7 @@ How to prepare a LUKS encrypted disk on a remote node, which
 The passphrase stays on the backup host (`~/dc/config/backup-remote-<name>.key`),
 so the data on the remote node cannot be read without it.
 
-All commands are short single lines (no heredocs), run them one by one.
+All commands are short single lines, run them one by one.
 The values are set once as shell variables at the start of each section;
 they only exist in that shell, so the block is repeated on the backup host.
 
@@ -222,14 +222,18 @@ Print the entry for `~/dc/config/backup.yml` with the values filled in,
 then add it below `backup:` (`remote:` only once):
 
 ```bash
-printf '  remote:\n'
-printf '    %s:\n' $N
-printf '      node: %s\n' $R
-printf '      dir: %s\n' $MNT
-printf '      crypt:\n'
-printf '        device: /dev/%s/%s\n' $VG $N
-printf '        name: %s\n' $N
+cat <<EOF
+  remote:
+    $N:
+      node: $R
+      dir: $MNT
+      crypt:
+        device: /dev/$VG/$N
+        name: $N
+EOF
 ```
+
+`EOF` must stand at the beginning of its line (no blanks before it).
 
 With the example values this prints:
 
