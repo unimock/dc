@@ -14,6 +14,7 @@ they only exist in that shell, so the block is repeated on the backup host.
 | `R`      | `node3`        | remote node (dc node, `node.yml`)                  |
 | `N`      | `offsite`      | name: LVM volume, LUKS mapper and remote copy      |
 | `DISK`   | `/dev/sdb`     | empty disk on the remote node                      |
+| `PART`   | `/dev/sdb1`    | the partition created on it                        |
 | `VG`     | `vg0`          | LVM volume group                                   |
 | `SIZE`   | `1000G`        | size of the volume                                 |
 | `MNT`    | `/cust/backup` | mount point on the remote node = `dir:` in backup.yml |
@@ -35,27 +36,29 @@ and no `MOUNTPOINT`; its `NAME` becomes `DISK` below (`/dev/<NAME>`):
 lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL
 ```
 
-Set the values (adapt them, `DISK` from the list above):
+Set the values (adapt them, `DISK` from the list above,
+`PART` is its first partition, e.g. `/dev/nvme0n1p1` for `/dev/nvme0n1`):
 
 ```bash
 N=offsite
 DISK=/dev/sdb
+PART=/dev/sdb1
 VG=vg0
 SIZE=1000G
 MNT=/cust/backup
 ```
 
-Partition and LVM (more volumes for other purposes can be added to `$VG`):
+Partition and LVM (`lsblk $DISK` must show `$PART` before `pvcreate`;
+more volumes for other purposes can be added to `$VG`):
 
 ```bash
 parted -s $DISK mklabel gpt
 parted -s $DISK mkpart primary 0% 100%
-pvcreate ${DISK}1
-vgcreate $VG ${DISK}1
+lsblk $DISK
+pvcreate $PART
+vgcreate $VG $PART
 lvcreate -L $SIZE -n $N $VG
 ```
-
-For an NVMe disk the partition is `${DISK}p1` instead of `${DISK}1`.
 
 LUKS (asks for `YES` and the passphrase twice):
 
