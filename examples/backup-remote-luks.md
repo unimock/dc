@@ -5,18 +5,18 @@ How to prepare a LUKS encrypted disk on a remote node, which
 The passphrase stays on the backup host (`~/dc/config/backup-remote-<name>.key`),
 so the data on the remote node cannot be read without it.
 
-Placeholders used below (replace them):
+All commands are short single lines (no heredocs), run them one by one.
+The values are set once as shell variables at the start of each section;
+they only exist in that shell, so the block is repeated on the backup host.
 
-| placeholder     | meaning                               |
-|-----------------|---------------------------------------|
-| `node3`         | remote node (dc node, `node.yml`)     |
-| `/dev/sdb`      | empty disk on the remote node         |
-| `vg0`           | LVM volume group                      |
-| `offsite`       | LVM volume, LUKS name and remote name |
-| `1000G`         | size of the volume                    |
-| `/cust/backup`  | mount point = `dir:` in `backup.yml`  |
-
-All commands are short single lines, run them one by one.
+| variable | example        | meaning                                            |
+|----------|----------------|----------------------------------------------------|
+| `R`      | `node3`        | remote node (dc node, `node.yml`)                  |
+| `N`      | `offsite`      | name: LVM volume, LUKS mapper and remote copy      |
+| `DISK`   | `/dev/sdb`     | empty disk on the remote node                      |
+| `VG`     | `vg0`          | LVM volume group                                   |
+| `SIZE`   | `1000G`        | size of the volume                                 |
+| `MNT`    | `/cust/backup` | mount point on the remote node = `dir:` in backup.yml |
 
 ## 1. On the remote node: disk, LVM, LUKS
 
@@ -29,34 +29,46 @@ apt-get install -y lvm2 xfsprogs cryptsetup-bin
 lsblk
 ```
 
-Partition and LVM (more volumes for other purposes can be added to `vg0`):
+Set the values (adapt them):
 
 ```bash
-parted -s /dev/sdb mklabel gpt
-parted -s /dev/sdb mkpart primary 0% 100%
-pvcreate /dev/sdb1
-vgcreate vg0 /dev/sdb1
-lvcreate -L 1000G -n offsite vg0
+N=offsite
+DISK=/dev/sdb
+VG=vg0
+SIZE=1000G
+MNT=/cust/backup
 ```
+
+Partition and LVM (more volumes for other purposes can be added to `$VG`):
+
+```bash
+parted -s $DISK mklabel gpt
+parted -s $DISK mkpart primary 0% 100%
+pvcreate ${DISK}1
+vgcreate $VG ${DISK}1
+lvcreate -L $SIZE -n $N $VG
+```
+
+For an NVMe disk the partition is `${DISK}p1` instead of `${DISK}1`.
 
 LUKS (asks for `YES` and the passphrase twice):
 
 ```bash
-cryptsetup -y -v luksFormat /dev/vg0/offsite
+cryptsetup -y -v luksFormat /dev/$VG/$N
 ```
 
 Open, create the file system, test, close:
 
 ```bash
-cryptsetup open /dev/vg0/offsite offsite
-mkfs.xfs /dev/mapper/offsite
-mkdir -p /cust/backup
-mount /dev/mapper/offsite /cust/backup
-echo test > /cust/backup/test
-cat /cust/backup/test
-rm /cust/backup/test
-umount /cust/backup
-cryptsetup close offsite
+cryptsetup open /dev/$VG/$N $N
+mkfs.xfs /dev/mapper/$N
+mkdir -p $MNT
+mount /dev/mapper/$N $MNT
+echo test > $MNT/test
+cat $MNT/test
+rm $MNT/test
+umount $MNT
+cryptsetup close $N
 ```
 
 Do **not** add the device to `/etc/fstab` or `/etc/crypttab`:
@@ -67,25 +79,37 @@ on the remote node.
 
 If the LUKS header gets damaged, the data is lost even with the right
 passphrase. Save the header and keep it on another machine (not on the
-same disk):
+same disk). On the remote node:
 
 ```bash
-H=/root/offsite.luks-header
-cryptsetup luksHeaderBackup /dev/vg0/offsite --header-backup-file $H
-exit
-scp node3:/root/offsite.luks-header ~/dc/config/
-ssh node3 rm /root/offsite.luks-header
+H=/root/$N.luks-header
+cryptsetup luksHeaderBackup /dev/$VG/$N --header-backup-file $H
 ```
 
 Optionally add a second passphrase (key slot) for emergencies:
 
 ```bash
-ssh node3
-cryptsetup luksAddKey /dev/vg0/offsite
+cryptsetup luksAddKey /dev/$VG/$N
 exit
 ```
 
-## 2. On the backup host: keyfile and backup.yml
+## 2. On the backup host: header, keyfile, backup.yml
+
+Set the values again (same as on the remote node):
+
+```bash
+R=node3
+N=offsite
+VG=vg0
+MNT=/cust/backup
+```
+
+Fetch the header backup and remove it from the remote node:
+
+```bash
+scp $R:/root/$N.luks-header ~/dc/config/
+ssh $R rm /root/$N.luks-header
+```
 
 Keyfile with the passphrase (one line, read without echo, not in the
 shell history):
@@ -94,33 +118,49 @@ shell history):
 cd ~/dc/config
 umask 077
 read -rs -p 'Passphrase: ' pw ; echo
-printf '%s\n' "$pw" > backup-remote-offsite.key
+printf '%s\n' "$pw" > backup-remote-$N.key
 unset pw ; umask 022
-ls -l backup-remote-offsite.key
+ls -l backup-remote-$N.key
 ```
 
 If `~/dc` is kept in git, exclude `*.key` and `*.luks-header` (`.gitignore`).
 
-Add the remote copy to `~/dc/config/backup.yml`:
+Print the entry for `~/dc/config/backup.yml` with the values filled in,
+then add it below `backup:` (`remote:` only once):
+
+```bash
+printf '  remote:\n'
+printf '    %s:\n' $N
+printf '      node: %s\n' $R
+printf '      dir: %s\n' $MNT
+printf '      crypt:\n'
+printf '        device: /dev/%s/%s\n' $VG $N
+printf '        name: %s\n' $N
+```
+
+With the example values this prints:
 
 ```yaml
   remote:
     offsite:
       node: node3
       dir: /cust/backup
-      plan: 0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400
       crypt:
         device: /dev/vg0/offsite
         name: offsite
 ```
 
+Optional keys: `plan:` (e.g. a longer one than locally,
+`0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400`), `nodes:` and `extra:`
+(see README: *Remote copy*).
+
 ## 3. Test
 
 ```bash
 dc config check | grep -E 'remote|❌'
-dc backup remote offsite mount
-dc backup remote offsite ls
-dc backup remote offsite umount
+dc backup remote $N mount
+dc backup remote $N ls
+dc backup remote $N umount
 ```
 
 `mount` must report `✅ mounted`. If it fails, the device is closed
@@ -129,11 +169,11 @@ again automatically; check the keyfile (passphrase + newline only).
 After the next `dc backup`:
 
 ```bash
-dc backup remote offsite run -n
-dc backup remote offsite run
+dc backup remote $N run -n
+dc backup remote $N run
 ```
 
-Nightly, as batch jobs (`~/dc/batch/<name>.list`):
+Nightly, as batch jobs (`~/dc/batch/<name>.list`, here for `N=offsite`):
 
 ```
 job: dc_backup         : 1h: dc backup
