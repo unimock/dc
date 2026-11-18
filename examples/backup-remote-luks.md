@@ -120,14 +120,16 @@ remote snapshots have room for the changes:
 du -sh --exclude='20??-??-??*' /backup
 ```
 
-On the remote node, check the free space (`VFree`):
+On the remote node, show the volume groups. The column `VG` is the name
+for `VG` below, `VFree` the free space. (`lsblk` shows the existing
+volumes as `<VG>-<LV>`, e.g. `vg0-offsite`.)
 
 ```bash
 ssh node3
 vgs
 ```
 
-Set the values (`SIZE` below `VFree`):
+Set the values (`VG` from `vgs`, `SIZE` below `VFree`):
 
 ```bash
 N=new
