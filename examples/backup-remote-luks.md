@@ -218,12 +218,16 @@ ls -l backup-remote-$N.key
 
 If `~/dc` is kept in git, exclude `*.key` and `*.luks-header` (`.gitignore`).
 
-Print the entry for `~/dc/config/backup.yml` with the values filled in,
-then add it below `backup:` (`remote:` only once):
+Append the entry to `~/dc/config/backup.yml` (with the values filled
+in). `remote:` must be the last section below `backup:`, as in the
+template, because the entry is appended at the end of the file;
+`remote:` itself is only added if it is not there yet:
 
 ```bash
-cat <<EOF
-  remote:
+F=~/dc/config/backup.yml
+cp -a $F $F.bak
+grep -q '^  remote:' $F || echo '  remote:' >> $F
+cat <<EOF >> $F
     $N:
       node: $R
       dir: $MNT
@@ -231,11 +235,16 @@ cat <<EOF
         device: /dev/$VG/$N
         name: $N
 EOF
+tail -12 $F
+dc backup remote
 ```
 
 `EOF` must stand at the beginning of its line (no blanks before it).
+`dc backup remote` lists the remote copies, `$N` must be among them.
+If not, `remote:` was not the last section: restore `$F.bak`
+(`mv $F.bak $F`) and add the entry by hand.
 
-With the example values this prints:
+With the example values the end of the file looks like this:
 
 ```yaml
   remote:
