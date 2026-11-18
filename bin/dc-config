@@ -525,9 +525,10 @@ if [ "$CMD" = "check" ] ; then
       done
     done
     if [ -n "$bnodes" ] ; then
-      # active nodes reachable via ssh, that are not backed up
+      # active nodes reachable via ssh, that are not backed up (except the remote copy nodes)
+      rnodes=$( dc-yq -r '(.config.backup.remote // {}) | .[] | .node // ""' ${MDE_DC_YAML} )
       for n in $( dc-yq -r '.nodes | to_entries | .[] | select(.value.state == "active" and .value.type != "ping") | .key' ${MDE_DC_YAML} ) ; do
-        if ! echo "$bnodes" | grep -qx "$n" ; then
+        if ! echo "$bnodes" | grep -qx "$n" && ! echo "$rnodes" | grep -qx "$n" ; then
           printf $MASK "💡" "[backup] node <$n> is not in backup.yml"
         fi
       done
@@ -544,6 +545,56 @@ if [ "$CMD" = "check" ] ; then
     done < <( dc-yq -r '.apps | to_entries | .[] | select(.value.dc.backup == "pause") as $a
                         | ($a.value.dc.home // [])[] | select(.state == "active")
                         | $a.key + " " + .node' ${MDE_DC_YAML} )
+    # remote copies (backup.remote)
+    for r in $( dc_backup_remotes ) ; do
+      dc_backup_remote_conf "$r"
+      if [ -z "$R_NODE" ] || [ "$( NODE="$R_NODE" dc-yq '.nodes | has(strenv(NODE))' ${MDE_DC_YAML} )" != "true" ] ; then
+        printf $MASK "❌" "[backup remote $r] unknown node <$R_NODE>"
+        ret=1
+      fi
+      if ! res=$( dc_backup_expand "$R_DIR" ) ; then
+        printf $MASK "❌" "[backup remote $r] dir: $res"
+        ret=1
+      fi
+      if ! res=$( dc_backup_plan_check "$R_PLAN" ) ; then
+        printf $MASK "❌" "[backup remote $r] $res"
+        ret=1
+      fi
+      for n in "${R_NODES[@]}" ; do
+        if ! echo "$bnodes" | grep -qx "$n" ; then
+          printf $MASK "❌" "[backup remote $r] node <$n> is not in backup.nodes"
+          ret=1
+        fi
+      done
+      for i in "${!R_EXTRA_SRC[@]}" ; do
+        if ! res=$( dc_backup_expand "${R_EXTRA_SRC[$i]}" ) ; then
+          printf $MASK "❌" "[backup remote $r] extra: $res"
+          ret=1
+        elif [ ! -d "$res" ] ; then
+          printf $MASK "❌" "[backup remote $r] extra: <$res> does not exist"
+          ret=1
+        fi
+        if ! dc_backup_name_check "${R_EXTRA_NAME[$i]}" ; then
+          printf $MASK "❌" "[backup remote $r] extra: invalid name <${R_EXTRA_NAME[$i]}>"
+          ret=1
+        fi
+      done
+      if [ "$R_CRYPT" = "1" ] ; then
+        if [ -z "$R_CDEV" -o -z "$R_CNAME" ] ; then
+          printf $MASK "❌" "[backup remote $r] crypt: device and name are required"
+          ret=1
+        fi
+        if ! res=$( dc_backup_keyfile "$R_KEYFILE" ) ; then
+          printf $MASK "❌" "[backup remote $r] crypt: $res"
+          ret=1
+        elif [ ! -r "$res" ] ; then
+          printf $MASK "❌" "[backup remote $r] crypt: keyfile <$res> not readable"
+          ret=1
+        elif [ "$( stat -c %a "$res" )" != "600" -a "$( stat -c %a "$res" )" != "400" ] ; then
+          printf $MASK "💡" "[backup remote $r] crypt: keyfile <$res> should be chmod 600"
+        fi
+      fi
+    done
   fi
   exit $ret
 fi 

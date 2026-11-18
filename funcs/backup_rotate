@@ -1,0 +1,80 @@
+#
+# backup_rotate - snapshot + rotation of one backup directory
+#
+# self-contained (bash, GNU date, cp, rm only): dc-backup sources it for the
+# local backups and ships it with "declare -f" via ssh for the remote copy, so
+# both sides rotate with exactly the same rules.
+#
+
+#
+# dc_backup_rotate <dir> <plan "0 1 7 14"> <today epoch> <mode>
+#
+#  <dir>/latest is the current copy, <dir>/YYYY-MM-DD[...] are the snapshots
+#  - age 0: hardlink copy latest/ -> YYYY-MM-DD/ (mode rw)
+#  - older than the highest plan age: removed
+#  - an age that is not in the plan is removed, if an older backup exists before
+#    the next plan age (so one backup "moves" into each plan slot)
+#  mode: rw = create + remove, failed = sync failed: nothing created or removed
+#
+#  prints one line "<age> <op> [R]" per backup (op: created|kept|removed|failed,
+#  R = older than the plan), rc 1 if the snapshot could not be created
+#
+dc_backup_rotate()
+{
+  local dir="$1" plan="$2" today="$3" mode="$4"
+  local i c age backup list cmd d secs max=0 rc=0
+  local -a arr_b=() in_plan=()
+  for i in $plan ; do in_plan[$i]=1 ; max=$i ; done
+  list=$( cd "$dir" 2>/dev/null && ls -d ????-??-??*/ 2>/dev/null )
+  for backup in $list ; do
+    backup=${backup%/}
+    secs=$( date -d "${backup:0:10}" +%s 2>/dev/null ) || continue
+    age=$(( (today - secs) / 86400 ))
+    (( age < 0 )) && continue
+    if (( age > max )) ; then
+      if [ "$mode" = "rw" ] ; then
+        rm -rf "$dir/$backup"
+        echo "$age removed R"
+      else
+        echo "$age kept"
+      fi
+    else
+      arr_b[$age]=$backup
+    fi
+  done
+  for (( i=0 ; i<=max ; i++ )) ; do
+    cmd=""
+    d=$( date -d @$(( today - i * 86400 )) +%Y-%m-%d )
+    if (( i == 0 )) ; then
+      if [ "$mode" = "rw" ] ; then
+        rm -rf "$dir/$d"
+        mkdir -p "$dir/$d"
+        if cp -la "$dir/latest/." "$dir/$d" ; then
+          cmd="created"
+        else
+          cmd="failed" ; rc=1
+        fi
+      else
+        cmd="failed"
+      fi
+    fi
+    [ -d "$dir/$d" ] && arr_b[$i]=$d
+    if [[ "$mode" == "rw" && "$cmd" == "" && -z "${in_plan[$i]}" && -n "${arr_b[$i]}" ]] ; then
+      for (( c=i+1 ; c<=max ; c++ )) ; do
+        if [ -n "${arr_b[$c]}" ] ; then
+          cmd="removed"
+          break
+        fi
+        [ -n "${in_plan[$c]}" ] && break
+      done
+    fi
+    if [ "$cmd" = "removed" ] ; then
+      rm -rf "$dir/${arr_b[$i]}"
+    fi
+    if [[ "$cmd" == "" && -n "${arr_b[$i]}" ]] ; then
+      cmd="kept"
+    fi
+    [ -n "$cmd" ] && echo "$i $cmd"
+  done
+  return $rc
+}

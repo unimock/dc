@@ -417,11 +417,11 @@ backup:
   plan: 0,1,2,3,4,5,6,7,14,21,28,35                        # ages (days) of the backups to keep
   paths: [$MDE_DC_VOL_Apps, $MDE_DC_VOL_Data, /root, /etc]
   nodes:
-    dcc:
-    hc2:
-    pve:
+    node1:
+    node2:
+    node3:
       paths: [/root, /etc]
-    wowo3:
+    node4:
       plan: 0,1,2,3,7,14
 ```
 
@@ -440,6 +440,41 @@ dc backup [-n|--dry-run] [<node> ...]     # all nodes from backup.yml, or only t
 * **Check:** `dc config check` reports invalid entries in `backup.yml` and `backup:` values (❌), active nodes that are not backed up and `backup: pause` apps on such nodes (💡).
 
 For a nightly run, add a batch job, e.g. `job: backup :6h : dc backup`.
+
+#### Remote copy (`dc backup remote`)
+
+`dc backup` keeps the snapshots on the backup host. `dc backup remote <name> run` additionally copies the snapshots of the last `dc backup` run to another node (for example an offsite box with an encrypted disk) and keeps its own snapshots there, usually with a longer plan:
+
+```yaml
+backup:
+  ...
+  remote:
+    offsite:
+      node: offsite1                       # dc node (node.yml), reached via ssh
+      dir: /cust/backup                    # <dir>/latest/<node>/<path>, snapshots <dir>/YYYY-MM-DD
+      plan: 0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400   # default: backup.plan
+      nodes: [node1, node2]                # default: all backup.nodes
+      crypt:                               # optional LUKS device
+        device: /dev/vg0/offsite
+        name: offsite
+        keyfile: backup-remote-offsite.key   # default; relative = in ~/dc/config; passphrase, chmod 600
+      extra:                               # additional local directories -> <dir>/latest/<name>
+        - { src: /backup/rsnapshot/daily.0, name: rsnapshot }
+```
+
+```
+dc backup remote                          # list the remote copies
+dc backup remote <name> run [-n]          # copy + snapshot/rotate on the remote node (-n: only show the sources)
+dc backup remote <name> mount|umount      # open+mount / umount+close the crypt device by hand
+dc backup remote <name> ls                # ls -la <dir> on the remote node
+```
+
+* **Sources:** for each node the snapshot of its last `dc backup` run (`<target>/<node>/<path>/YYYY-MM-DD`, never the half-synced `latest/`). `dc backup` writes `<target>/<node>/.dc-backup.status` (`date`, `end`, `result`) for this. A node whose last run is older than 24 h, or a path without that snapshot (its sync failed), is an error (❌); `latest/` on the remote node keeps its previous copy for it. A node that was off is skipped (💡).
+* **Crypt device:** with `crypt:` the device is opened (`cryptsetup open`) and mounted on `<dir>` before the copy, and umounted and closed afterwards, also after errors, Ctrl-C or a `dc batch` timeout. The passphrase is read from the local keyfile (default `~/dc/config/backup-remote-<name>.key`, a relative `keyfile:` is taken from `~/dc/config`; only `*.yml` files there go into `dc.yml`) and passed via stdin, it never appears on a command line. If `~/dc` is kept in git, exclude `*.key` (`.gitignore`). If `<dir>` is not a mount point after opening, nothing is copied; before each rsync the mount is checked again, so nothing is ever written into the empty mount point. A device that was already mounted (`mount` by hand) stays mounted.
+* **Snapshot/rotation on the remote node:** after the copy `<dir>/latest` is hard-linked to `<dir>/YYYY-MM-DD` and rotated with the same rules as the local backups (the code is sent via ssh, nothing has to be installed there). If a copy failed, no snapshot is made and nothing is removed.
+* **Exit code:** 0 if everything was copied, 1 otherwise. `dc config check` checks the `remote:` entries (node, dir, plan, nodes, extra, keyfile and its permissions).
+
+A nightly run with remote copy: `job: backup :8h : dc backup` followed by `job: backup-offsite :8h : dc backup remote offsite run` (a separate job, so a failed node does not block the copy of the others).
 
 ### Batch jobs and reports
 
@@ -553,7 +588,7 @@ bin/dc-ssh-control-reset  # close stale ssh control masters
 bin/dc-yq                 # yq wrapper (defaults to ~/.dc/var/dc.yml)
 bin/dc-md-exec            # run code blocks of Markdown files section by section
 bin/dc-rdc                # run commands in the rdc backup container on a node (used by dc-manage)
-bin/dc-backup             # dc backup: rotating rsync/hardlink backups of nodes (~/dc/config/backup.yml)
+bin/dc-backup             # dc backup: rotating rsync/hardlink backups of nodes + remote copy (~/dc/config/backup.yml)
 bin/dc-swarm              # experimental, not finished
 bin/dcd                   # copy files listed in ./dcd.list from the app volume to ./dcd.<host>
 bin/replace-helper        # dev tool: find/replace strings across a directory tree
@@ -561,6 +596,7 @@ funcs/global              # sourced by all scripts: loads ~/.dc/etc/config, refr
 funcs/status_funcs        # status column/emoji for dc ls and dc ls images
 funcs/script_funcs        # helpers for timing/error handling in batch scripts
 funcs/backup_funcs        # backup.yml access (paths, plan, pause apps) for dc-backup and config check
+funcs/backup_rotate       # snapshot + rotation of one backup dir (local, and sent via ssh for the remote copy)
 funcs/bash-completion     # bash completion (dc completion)
 helper/install/           # scripts run on new nodes/vservers (docker, dist-upgrade, …)
 templates/config          # template for ~/.dc/etc/config

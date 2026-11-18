@@ -62,6 +62,7 @@ show_help() {
   echo "     ssh [<cmd>]                   # login into a node"                          
   echo "     manage ...                    # sync apps between nodes"
   echo "     backup [-n] [<node> ..]       # rotating backups of nodes (~/dc/config/backup.yml)"
+  echo "     backup remote <name> run|mount|umount|ls # copy the current snapshots to a remote node"
   echo "     hcloud ...                    # link to comptible hcloud version"
   echo "     image  ...                    # list and update images"
   echo ""

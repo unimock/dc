@@ -64,10 +64,22 @@ _dc() {
       list="$list rmup up rm down ps start stop pause unpause pull state disable enable logs cmd supervisor syslog ovw"
     fi
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
-  # dc backup [-n] [<node> ..]  (nodes from backup.yml)
+  # dc backup [-n] [<node> ..] | remote <name> run|mount|umount|ls  (from backup.yml)
   elif [[ "${COMP_WORDS[1]}" == "backup" ]] ; then
-    list=$( dc-yq -r '(.config.backup.nodes // {}) | keys | .[]' 2>/dev/null )
-    COMPREPLY=( $(compgen -W "-n --dry-run $list" -- "$2") )
+    if [[ "${COMP_WORDS[2]}" == "remote" ]] ; then
+      if [[ "$COMP_CWORD" == "3" ]] ; then
+        list=$( dc-yq -r '(.config.backup.remote // {}) | keys | .[]' 2>/dev/null )
+        COMPREPLY=( $(compgen -W "$list" -- "$2") )
+      elif [[ "$COMP_CWORD" == "4" ]] ; then
+        COMPREPLY=( $(compgen -W "run mount umount ls" -- "$2") )
+      elif [[ "${COMP_WORDS[4]}" == "run" ]] ; then
+        COMPREPLY=( $(compgen -W "-n --dry-run" -- "$2") )
+      fi
+    else
+      list=$( dc-yq -r '(.config.backup.nodes // {}) | keys | .[]' 2>/dev/null )
+      [[ "$COMP_CWORD" == "2" ]] && list="remote $list"
+      COMPREPLY=( $(compgen -W "-n --dry-run $list" -- "$2") )
+    fi
   # dc state .. (within app_dir)
   elif [[  "$COMP_CWORD" == "2" && "$3" == "state" ]] ; then
     COMPREPLY=( $(compgen -W "active disabled" -- "$2") )

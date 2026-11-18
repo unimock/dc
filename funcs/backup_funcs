@@ -119,3 +119,93 @@ dc_backup_pause_apps()
     | select((.value.dc.home // []) | any_c(.node == strenv(NODE) and (.state // "") == "active"))
     | .key' ${MDE_DC_YAML} 2>/dev/null
 }
+
+#
+# dc_backup_remotes
+#
+# names below backup.remote, in document order
+#
+dc_backup_remotes()
+{
+  dc-yq -r '(.config.backup.remote // {}) | keys | .[]' ${MDE_DC_YAML} 2>/dev/null
+}
+
+#
+# dc_backup_remote_conf <name>
+#
+# sets for remote <name>:
+#   R_KNOWN        1 if <name> is listed below backup.remote
+#   R_NODE         dc node that receives the copy
+#   R_DIR          directory on R_NODE (unexpanded)
+#   R_PLAN         plan (default: backup.plan)
+#   R_CRYPT        1 if a crypt: section exists
+#   R_CDEV R_CNAME LUKS device and mapper name
+#   R_KEYFILE      local file with the passphrase (default backup-remote-<name>.key, relative = in MDE_DC_CONFIG_DIR)
+#   R_NODES[]      backup nodes to copy (default: all of backup.nodes)
+#   R_EXTRA_SRC[] R_EXTRA_NAME[]  additional local directories -> latest/<name>
+#
+dc_backup_remote_conf()
+{
+  local r="$1" line
+  R_KNOWN=0 ; R_NODE="" ; R_DIR="" ; R_PLAN="" ; R_CRYPT=0 ; R_CDEV="" ; R_CNAME="" ; R_KEYFILE=""
+  R_NODES=() ; R_EXTRA_SRC=() ; R_EXTRA_NAME=()
+  {
+    IFS= read -r R_KNOWN
+    IFS= read -r R_CRYPT
+    IFS= read -r R_NODE
+    IFS= read -r R_DIR
+    IFS= read -r R_PLAN
+    IFS= read -r R_CDEV
+    IFS= read -r R_CNAME
+    IFS= read -r R_KEYFILE
+  } < <( R="$r" dc-yq -r '
+      .config.backup as $b
+      | (($b.remote // {}) | has(strenv(R))) as $known
+      | (($b.remote // {})[strenv(R)] // {}) as $r
+      | ( $known,
+          ($r | has("crypt")),
+          ($r.node // ""),
+          ($r.dir // ""),
+          ([ ($r.plan // $b.plan // "") ] | flatten | join(",")),
+          ($r.crypt.device // ""),
+          ($r.crypt.name // ""),
+          ($r.crypt.keyfile // "") )' ${MDE_DC_YAML} 2>/dev/null )
+  [ "$R_KNOWN" = "true" ] && R_KNOWN=1 || R_KNOWN=0
+  [ "$R_CRYPT" = "true" ] && R_CRYPT=1 || R_CRYPT=0
+  [ "$R_CRYPT" = "1" -a -z "$R_KEYFILE" ] && R_KEYFILE="backup-remote-${r}.key"
+  if [ "$( R="$r" dc-yq '(.config.backup.remote[strenv(R)] // {}) | has("nodes")' ${MDE_DC_YAML} 2>/dev/null )" = "true" ] ; then
+    mapfile -t R_NODES < <( R="$r" dc-yq -r '.config.backup.remote[strenv(R)].nodes // [] | .[]' ${MDE_DC_YAML} 2>/dev/null )
+  else
+    mapfile -t R_NODES < <( dc_backup_nodes )
+  fi
+  while IFS=$'\t' read -r src name ; do
+    [ -z "$src$name" ] && continue
+    R_EXTRA_SRC+=( "$src" ) ; R_EXTRA_NAME+=( "$name" )
+  done < <( R="$r" dc-yq -r '(.config.backup.remote[strenv(R)].extra // [])[] | (.src // "") + "	" + (.name // "")' ${MDE_DC_YAML} 2>/dev/null )
+}
+
+#
+# dc_backup_keyfile <path>  -> absolute path: "~/" = $HOME/, a relative path is
+# taken from MDE_DC_CONFIG_DIR (~/dc/config); rc 1 if empty or with ".."
+#
+dc_backup_keyfile()
+{
+  local k="$1"
+  if [ -z "$k" ] || [[ "/$k/" == */../* ]] ; then
+    echo "invalid keyfile <$1>" ; return 1
+  fi
+  if [[ "$k" == "~/"* ]] ; then
+    k="$HOME/${k#\~/}"
+  elif [[ "$k" != /* ]] ; then
+    k="${MDE_DC_CONFIG_DIR}/$k"
+  fi
+  echo "$k"
+}
+
+#
+# dc_backup_name_check <name>  -> rc 1 if not a plain relative path (extra.name)
+#
+dc_backup_name_check()
+{
+  [[ -n "$1" && "$1" != /* && "/$1/" != */../* && "/$1/" != */./* && ! "$1" =~ [[:space:]] ]]
+}

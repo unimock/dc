@@ -10,3 +10,17 @@ backup:
   #  node2:
   #    paths: [/root, /etc]
   #    plan: 0,1,2,3,7,14
+  # optional: copy the snapshots of the last dc backup run to a remote node
+  # (dc backup remote <name> run), with its own snapshots + plan there
+  remote:
+  #  offsite:
+  #    node: offsite1                       # dc node (node.yml), reached via ssh
+  #    dir: /cust/backup                    # copy to <dir>/latest/<node>/<path>, snapshots <dir>/YYYY-MM-DD
+  #    plan: 0,1,2,3,4,5,6,7,14,21,28,35,42,50,100,200,400   # default: backup.plan
+  #    nodes: [node1, node2]                # default: all backup.nodes
+  #    crypt:                               # optional LUKS device, opened before and closed after the copy
+  #      device: /dev/vg0/offsite
+  #      name: offsite
+  #      keyfile: backup-remote-offsite.key   # passphrase (chmod 600), relative = in ~/dc/config; this is the default
+  #    extra:                               # additional local directories -> <dir>/latest/<name>
+  #      - { src: /backup/rsnapshot/daily.0, name: rsnapshot }

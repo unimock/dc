@@ -1,14 +1,16 @@
 #!/bin/bash
 #
-# dc-backup - rotating backups (rsync + hardlink snapshots) of whole nodes.
+# dc-backup - rotating backups (rsync + hardlink snapshots) of whole nodes,
+#             and a copy of the current snapshots to a remote node.
 #
-# what is backed up (nodes, paths, target, plan) comes from ~/dc/config/backup.yml,
-# apps with "backup: pause" in dc-app.yml are paused for a short final sync.
-# see README: "Backups (dc backup)".
+# what is backed up (nodes, paths, target, plan, remote) comes from
+# ~/dc/config/backup.yml, apps with "backup: pause" in dc-app.yml are paused for
+# a short final sync. see README: "Backups (dc backup)".
 #
 
 . /opt/dc/funcs/global
 . /opt/dc/funcs/backup_funcs
+. /opt/dc/funcs/backup_rotate
 
 IAM="dc-backup"
 [ "$(ps -o comm= $PPID)" = "dc" ] && IAM="dc backup"
@@ -17,10 +19,18 @@ _help()
 {
   echo ""
   echo "usage: $IAM [-n|--dry-run] [<node> ...]"
+  echo "       $IAM remote [<name> run [-n]|mount|umount|ls]"
   echo ""
   echo "  back up all nodes from ${MDE_DC_CONFIG_DIR}/backup.yml, or only the given ones"
   echo ""
   echo "  -n, --dry-run   show nodes, paths, targets and apps to pause; nothing is copied"
+  echo ""
+  echo "  remote                   list the remote copies (backup.remote)"
+  echo "  remote <name> run        copy the snapshots of the last dc backup run to the remote node,"
+  echo "                           then snapshot + rotate there (crypt device: open/mount before, close after)"
+  echo "  remote <name> mount      open + mount the crypt device (stays mounted)"
+  echo "  remote <name> umount     umount + close the crypt device"
+  echo "  remote <name> ls         list the remote directory"
   echo ""
   echo "  environment:"
   echo "    DC_BACKUP_PAUSE=0       do not pause any app (final sync is skipped)"
@@ -50,14 +60,6 @@ if [ "$(dc-yq '.config | has("backup")' ${MDE_DC_YAML} 2>/dev/null)" != "true" ]
   exit 1
 fi
 
-if [ ${#args[@]} = 0 ] ; then
-  mapfile -t args < <( dc_backup_nodes )
-  if [ ${#args[@]} = 0 ] ; then
-    echo "$IAM: no nodes in ${MDE_DC_CONFIG_DIR}/backup.yml (backup.nodes)" >&2
-    exit 1
-  fi
-fi
-
 TODAY=$(date +%s)
 if [ -n "$DC_BACKUP_FAKE_DAYS" ] ; then
   TODAY=$(( TODAY + DC_BACKUP_FAKE_DAYS * 86400 ))
@@ -65,13 +67,6 @@ fi
 
 LINE="--------------------------------------------------------------------------------"
 DLINE="================================================================================"
-
-_get_age()   # <dir name YYYY-MM-DD[...]> -> age in days
-{
-  local secs
-  secs=$(date -d "${1:0:10}" +%s 2>/dev/null) || return 1
-  echo $(( (TODAY - secs) / 86400 ))
-}
 
 _get_date()  # <age> -> YYYY-MM-DD
 {
@@ -83,11 +78,10 @@ _df()        # <dir> -> "size used free use%"
   df -hP "$1" 2>/dev/null | awk 'END{print $2, $3, $4, $5}'
 }
 
-_rsync()     # <node> <src> <dst>  (rc 24 = files vanished during transfer -> ok)
+_rsync()     # <src> <dst> (one of them <node>:<dir>)  (rc 24 = files vanished during transfer -> ok)
 {
   local rc
-  mkdir -p "$3" || return 1
-  rsync -azS --numeric-ids --delete -e ssh "$1:$2/./" "$3/" 2>&1 | grep -v '^file has vanished' | sed 's/^/    /'
+  rsync -azS --numeric-ids --delete -e ssh "$1/./" "$2/" 2>&1 | grep -v '^file has vanished' | sed 's/^/    /'
   rc=${PIPESTATUS[0]}
   [ "$rc" = "24" ] && rc=0
   return $rc
@@ -104,9 +98,12 @@ _existing()  # <node> <dir> ... -> prints the dirs that exist on <node>, rc 1 if
 }
 
 #
-# unpause the app that is paused right now - also on errors and Ctrl-C
+# cleanup - also on errors, Ctrl-C and timeout (dc batch):
+#  - unpause the app that is paused right now
+#  - umount + close the remote crypt device opened by "remote <name> run"
 #
 PAUSED_APP="" ; PAUSED_NODE=""
+REMOTE_OPENED=""
 _cleanup()
 {
   if [ -n "$PAUSED_APP" ] ; then
@@ -115,77 +112,94 @@ _cleanup()
       || echo "$IAM: ❌ unpause <$PAUSED_APP> on <$PAUSED_NODE> failed, app is still paused!" >&2
     PAUSED_APP=""
   fi
+  if [ -n "$REMOTE_OPENED" ] ; then
+    echo "$IAM: umount + close crypt device on <$R_NODE> (aborted)" >&2
+    _crypt_close >/dev/null 2>&1 \
+      || echo "$IAM: ❌ umount/close on <$R_NODE> failed, crypt device is still open!" >&2
+    REMOTE_OPENED=""
+  fi
 }
 trap _cleanup EXIT
 trap 'exit 130' INT TERM
 
 #
-# _rotate <tdir> <col> <mode>
-#
-# snapshot + rotation of one path, same rules as before:
-#  - age 0: hardlink copy latest/ -> YYYY-MM-DD/ (mode rw)
-#  - older than the highest plan age: removed
-#  - an age that is not in the plan is removed, if an older backup exists before
-#    the next plan age (so one backup "moves" into each plan slot)
-# mode: rw = create + remove, failed = sync failed: nothing created or removed
-# results go to CELL[<age>|<col>] and ROWMARK[<age>]
+# _rotate <dir> <col> <mode>  -> CELL[<age>|<col>], ROWMARK[<age>]; node_rc=1 on error
+# (<dir> local, or "<node>:<dir>" for a rotation on that node, see funcs/backup_rotate)
 #
 _rotate()
 {
-  local tdir="$1" col="$2" mode="$3"
-  local i c age backup list cmd d
-  local -a arr_b=()
-  list=$( cd "$tdir" 2>/dev/null && ls -d ????-??-??*/ 2>/dev/null )
-  for backup in $list ; do
-    backup=${backup%/}
-    age=$( _get_age "$backup" ) || continue
-    (( age < 0 )) && continue
-    if (( age > PLAN_MAX )) ; then
-      if [ "$mode" = "rw" ] ; then
-        rm -rf "$tdir/$backup"
-        CELL["$age|$col"]="removed" ; ROWMARK[$age]="R"
-      else
-        CELL["$age|$col"]="kept"
-      fi
-    else
-      arr_b[$age]=$backup
-    fi
-  done
-  for (( i=0 ; i<=PLAN_MAX ; i++ )) ; do
-    cmd=""
-    d=$( _get_date $i )
-    if (( i == 0 )) ; then
-      if [ "$mode" = "rw" ] ; then
-        rm -rf "$tdir/$d"
-        mkdir -p "$tdir/$d"
-        if cp -la "$tdir/latest/." "$tdir/$d" ; then
-          cmd="created"
-        else
-          cmd="failed" ; node_rc=1
-        fi
-      else
-        cmd="failed"
-      fi
-    fi
-    [ -d "$tdir/$d" ] && arr_b[$i]=$d
-    if [[ "$mode" == "rw" && "$cmd" == "" && -z "${IN_PLAN[$i]}" && -n "${arr_b[$i]}" ]] ; then
-      for (( c=i+1 ; c<=PLAN_MAX ; c++ )) ; do
-        if [ -n "${arr_b[$c]}" ] ; then
-          cmd="removed"
-          break
-        fi
-        [ -n "${IN_PLAN[$c]}" ] && break
-      done
-    fi
-    if [ "$cmd" = "removed" ] ; then
-      rm -rf "$tdir/${arr_b[$i]}"
-    fi
-    if [ "$cmd" = "" -a -n "${arr_b[$i]}" ] ; then
-      cmd="kept"
-    fi
-    [ -n "$cmd" ] && CELL["$i|$col"]="$cmd"
-  done
+  local dir="$1" col="$2" mode="$3" out rc age op mark
+  if [[ "$dir" == *:* ]] ; then
+    out=$( ssh "${dir%%:*}" "bash -s" <<< "$(declare -f dc_backup_rotate)
+dc_backup_rotate $(printf '%q' "${dir#*:}") '$PLAN' $TODAY $mode" ) ; rc=$?
+  else
+    out=$( dc_backup_rotate "$dir" "$PLAN" "$TODAY" "$mode" ) ; rc=$?
+  fi
+  while read -r age op mark ; do
+    [ -z "$age" ] && continue
+    CELL["$age|$col"]="$op"
+    [ "$mark" = "R" ] && ROWMARK[$age]="R"
+  done <<< "$out"
+  [ "$rc" != "0" ] && node_rc=1
+  return $rc
 }
+
+#
+# _set_plan <plan>  -> PLAN ("0 1 7"), IN_PLAN[]; rc 1 + message if invalid
+# (call it once in a $( ) to get the message, then again to set the variables)
+#
+_set_plan()
+{
+  local i
+  PLAN=$( dc_backup_plan_check "$1" ) || { echo "$PLAN" ; return 1 ; }
+  IN_PLAN=()
+  for i in $PLAN ; do IN_PLAN[$i]=">" ; done
+  return 0
+}
+
+#
+# _print_table <col> ...  one row per age (plan ages + ages with a backup),
+# one column per <col> (header from COLNAME[<col>])
+#
+_print_table()
+{
+  local -A rows=()
+  local i k p w hdr row
+  for i in $PLAN ; do rows[$i]=1 ; done
+  for k in "${!CELL[@]}" ; do rows[${k%%|*}]=1 ; done
+  hdr=$( printf "%-3s|%1s|%-10s|" "age" "m" "date" )
+  for p in "$@" ; do
+    w=${#COLNAME[$p]} ; (( w < 9 )) && w=9
+    hdr+=$( printf "%-${w}s|" "${COLNAME[$p]}" )
+  done
+  echo "$LINE"
+  echo "$hdr"
+  echo "$LINE"
+  for i in $( printf '%s\n' "${!rows[@]}" | sort -n ) ; do
+    row=$( printf "%03d|%1s|%-10s|" "$i" "${ROWMARK[$i]:-${IN_PLAN[$i]}}" "$(_get_date $i)" )
+    for p in "$@" ; do
+      w=${#COLNAME[$p]} ; (( w < 9 )) && w=9
+      row+=$( printf "%-${w}s|" "${CELL["$i|$p"]:--}" )
+    done
+    echo "$row"
+  done
+  echo "$LINE"
+}
+
+#
+# _write_status <troot> <result>   <troot>/.dc-backup.status, read by "remote <name> run"
+#
+_write_status()
+{
+  mkdir -p "$1" 2>/dev/null || return 0
+  printf 'date=%s\nend=%s\nresult=%s\n' "$(_get_date 0)" "$(date +%s)" "$2" > "$1/.dc-backup.status"
+}
+
+####################################################################################################################
+#
+# local backup of one node
+#
+####################################################################################################################
 
 #
 # _backup_node <node>  -> rc 0 ok, 1 error
@@ -193,7 +207,7 @@ _rotate()
 _backup_node()
 {
   local n="$1"
-  local t_start troot state p e i app msg rc secs col plan
+  local t_start troot state p e app msg rc secs
   local -a paths=() cols=()
   local -A path_ok=()
   node_rc=0 ; NODE_RESULT=""
@@ -210,12 +224,11 @@ _backup_node()
     return 1
   fi
   troot="$troot/$n"
-  if ! plan=$( dc_backup_plan_check "$B_PLAN" ) ; then
-    echo "❌ [$n] $plan"
+  if ! msg=$( _set_plan "$B_PLAN" ) ; then
+    echo "❌ [$n] $msg"
     return 1
   fi
-  IN_PLAN=() ; PLAN_MAX=0
-  for i in $plan ; do IN_PLAN[$i]=">" ; PLAN_MAX=$i ; done
+  _set_plan "$B_PLAN"
   for p in "${B_PATHS[@]}" ; do
     if ! e=$( dc_backup_expand "$p" ) ; then
       echo "❌ [$n] paths: $e"
@@ -231,7 +244,7 @@ _backup_node()
   echo "Backup-Node      : $n"
   echo "Backup-Host      : $(hostname)"
   echo "Backup-Directory : $troot"
-  echo "Plan             : ${plan// /,}"
+  echo "Plan             : ${PLAN// /,}"
   echo "Paths            : ${paths[*]}"
   [ "$opt_dry" = "1" ] && echo "Mode             : dry run, nothing is copied"
   echo "$LINE"
@@ -240,10 +253,12 @@ _backup_node()
   if [ "$state" = "off" ] ; then
     echo "💡 skipping backup, node is off"
     NODE_RESULT="skipped (node off)"
+    [ "$opt_dry" != "1" ] && _write_status "$troot" off
     return 0
   fi
   if [ "$state" = "" -o "$state" = "ping" ] ; then
     echo "❌ node not reachable via ssh (state <${state:-unreachable}>)"
+    [ "$opt_dry" != "1" ] && _write_status "$troot" error
     return 1
   fi
 
@@ -252,6 +267,7 @@ _backup_node()
   local x existing
   if ! existing=$( _existing "$n" "${paths[@]}" ) ; then
     echo "❌ ssh to <$n> failed"
+    [ "$opt_dry" != "1" ] && _write_status "$troot" error
     return 1
   fi
   while IFS= read -r x ; do
@@ -261,9 +277,9 @@ _backup_node()
   # column names: last path element, the full path if not unique
   local -A base_cnt=()
   for p in "${paths[@]}" ; do base_cnt["${p##*/}"]=$(( ${base_cnt["${p##*/}"]:-0} + 1 )) ; done
-  local -A colname=()
+  COLNAME=()
   for p in "${paths[@]}" ; do
-    if [ "${base_cnt["${p##*/}"]}" = "1" ] ; then colname["$p"]="${p##*/}" ; else colname["$p"]="$p" ; fi
+    if [ "${base_cnt["${p##*/}"]}" = "1" ] ; then COLNAME["$p"]="${p##*/}" ; else COLNAME["$p"]="$p" ; fi
   done
 
   if [ "$opt_dry" != "1" ] ; then
@@ -297,7 +313,8 @@ _backup_node()
       continue
     fi
     secs=$(date +%s)
-    _rsync "$n" "$p" "$troot$p/latest" ; rc=$?
+    mkdir -p "$troot$p/latest"
+    _rsync "$n:$p" "$troot$p/latest" ; rc=$?
     secs=$(( $(date +%s) - secs ))
     if [ "$rc" = "0" ] ; then
       printf "%-6s %-28s %-12s %6ss\n" "sync" "$p" "ok" "$secs"
@@ -312,7 +329,7 @@ _backup_node()
   # 2. final sync of apps with "backup: pause" (one app paused at a time)
   #
   local -a subs=() cand=()
-  local sub base nrc label
+  local sub base nrc label out
   for app in $( dc_backup_pause_apps "$n" ) ; do
     subs=()
     for p in "$MDE_DC_VOL_Apps" "$MDE_DC_VOL_Data" ; do
@@ -362,7 +379,8 @@ _backup_node()
     if [ "$rc" = "0" ] ; then
       # <base>/<app> on the node -> <troot><base>/latest/<app>
       for sub in "${subs[@]}" ; do
-        _rsync "$n" "$sub" "$troot${sub%/*}/latest/$app" || { rc=1 ; msg="SYNC FAILED" ; }
+        mkdir -p "$troot${sub%/*}/latest/$app"
+        _rsync "$n:$sub" "$troot${sub%/*}/latest/$app" || { rc=1 ; msg="SYNC FAILED" ; }
       done
     fi
     if [ -n "$PAUSED_APP" ] ; then
@@ -393,44 +411,326 @@ _backup_node()
       _rotate "$troot$p" "$p" failed
     fi
   done
-
-  # table: one row per age (plan ages + ages with a backup), one column per path
-  local -A rows=()
-  local k w hdr sep row cell
-  for i in $plan ; do rows[$i]=1 ; done
-  for k in "${!CELL[@]}" ; do rows[${k%%|*}]=1 ; done
-  hdr=$( printf "%-3s|%1s|%-10s|" "age" "m" "date" )
-  for p in "${cols[@]}" ; do
-    w=${#colname[$p]} ; (( w < 9 )) && w=9
-    hdr+=$( printf "%-${w}s|" "${colname[$p]}" )
-  done
-  echo "$LINE"
-  echo "$hdr"
-  echo "$LINE"
-  for i in $( printf '%s\n' "${!rows[@]}" | sort -n ) ; do
-    row=$( printf "%03d|%1s|%-10s|" "$i" "${ROWMARK[$i]:-${IN_PLAN[$i]}}" "$(_get_date $i)" )
-    for p in "${cols[@]}" ; do
-      w=${#colname[$p]} ; (( w < 9 )) && w=9
-      cell="${CELL["$i|$p"]:--}"
-      row+=$( printf "%-${w}s|" "$cell" )
-    done
-    echo "$row"
-  done
-  echo "$LINE"
+  _print_table "${cols[@]}"
   read -r s_size s_used s_free s_pct <<< "$( _df "$troot" )"
   read -r b_size b_used b_free b_pct <<< "$DF_BEFORE"
   echo "disk   $troot: size $s_size, used $s_used (before $b_used), free $s_free, $s_pct"
   echo "result $( [ "$node_rc" = "0" ] && echo ok || echo ERROR ), duration $(( $(date +%s) - t_start ))s"
+  _write_status "$troot" "$( [ "$node_rc" = "0" ] && echo ok || echo error )"
   exec 9>&-
   return $node_rc
 }
 
+####################################################################################################################
+#
+# remote copy
+#
+####################################################################################################################
+
+#
+# _remote_load <name>  -> R_* (see dc_backup_remote_conf) with R_DIR + R_KEYFILE expanded, PLAN; rc 1 + message
+#
+_remote_load()
+{
+  local r="$1" msg
+  dc_backup_remote_conf "$r"
+  if [ "$R_KNOWN" != "1" ] ; then
+    echo "❌ remote <$r> is not defined in ${MDE_DC_CONFIG_DIR}/backup.yml (backup.remote)" ; return 1
+  fi
+  if [ -z "$R_NODE" ] || [ "$( NODE="$R_NODE" dc-yq '.nodes | has(strenv(NODE))' ${MDE_DC_YAML} )" != "true" ] ; then
+    echo "❌ [remote $r] unknown node <$R_NODE>" ; return 1
+  fi
+  if ! R_DIR=$( dc_backup_expand "$R_DIR" ) ; then
+    echo "❌ [remote $r] dir: $R_DIR" ; return 1
+  fi
+  if ! msg=$( _set_plan "$R_PLAN" ) ; then
+    echo "❌ [remote $r] $msg" ; return 1
+  fi
+  _set_plan "$R_PLAN"
+  if [ "$R_CRYPT" = "1" ] ; then
+    if [ -z "$R_CDEV" -o -z "$R_CNAME" ] ; then
+      echo "❌ [remote $r] crypt: device and name are required" ; return 1
+    fi
+    if ! R_KEYFILE=$( dc_backup_keyfile "$R_KEYFILE" ) ; then
+      echo "❌ [remote $r] crypt: $R_KEYFILE" ; return 1
+    fi
+    if [ ! -r "$R_KEYFILE" ] ; then
+      echo "❌ [remote $r] crypt: keyfile <$R_KEYFILE> not readable" ; return 1
+    fi
+  fi
+  return 0
+}
+
+_r()  # run a command on the remote node
+{
+  ssh "$R_NODE" "$@"
+}
+
+_rdf()  # df of the remote dir -> "size used free use%"
+{
+  _r "df -hP $( printf '%q' "$R_DIR" ) | awk 'END{print \$2, \$3, \$4, \$5}'"
+}
+
+#
+# _crypt_open -> rc 0 if mounted at R_DIR afterwards. R_WAS_MOUNTED=1 if it was mounted before.
+# the passphrase goes via stdin (never on a command line), cryptsetup reads it up to the newline.
+#
+_crypt_open()
+{
+  local q_dir q_dev q_name
+  q_dir=$( printf '%q' "$R_DIR" ) ; q_dev=$( printf '%q' "$R_CDEV" ) ; q_name=$( printf '%q' "$R_CNAME" )
+  R_WAS_MOUNTED=0
+  if _r "mountpoint -q $q_dir" ; then
+    R_WAS_MOUNTED=1
+    return 0
+  fi
+  if ! _r "cryptsetup status $q_name >/dev/null 2>&1" ; then
+    _r "cryptsetup open --type luks $q_dev $q_name" < "$R_KEYFILE" || return 1
+  fi
+  _r "mkdir -p $q_dir && mount /dev/mapper/$q_name $q_dir" || return 1
+  _r "mountpoint -q $q_dir"
+}
+
+_crypt_close()
+{
+  local q_dir q_name
+  q_dir=$( printf '%q' "$R_DIR" ) ; q_name=$( printf '%q' "$R_CNAME" )
+  _r "sync ; if mountpoint -q $q_dir ; then umount $q_dir || exit 1 ; fi ; \
+      if cryptsetup status $q_name >/dev/null 2>&1 ; then cryptsetup close $q_name || exit 1 ; fi"
+}
+
+#
+# _remote <name> <cmd>
+#
+_remote()
+{
+  local r="$1" cmd="$2"
+  local t_start state n p e troot sdate send sres src secs rc ok=1 copy_ok=1 x q lockdir
+  local -a srcs=() dsts=() labels=()
+  t_start=$(date +%s)
+  echo "$DLINE"
+  _remote_load "$r" || return 1
+  echo "Remote           : $r"
+  echo "Remote-Node      : $R_NODE"
+  echo "Remote-Directory : $R_DIR"
+  echo "Plan             : ${PLAN// /,}"
+  [ "$R_CRYPT" = "1" ] && echo "Crypt            : $R_CDEV ($R_CNAME)"
+  [ "$opt_dry" = "1" ] && echo "Mode             : dry run, nothing is copied"
+  echo "$LINE"
+
+  # a stale control master (e.g. after a reboot of the remote node) would hang
+  dc-ssh-control-reset "$R_NODE" >/dev/null 2>&1
+  state=$( dc-node "$R_NODE" state )
+  if [ "$state" = "" -o "$state" = "ping" -o "$state" = "off" ] ; then
+    echo "❌ node <$R_NODE> not reachable via ssh (state <${state:-unreachable}>)"
+    return 1
+  fi
+
+  case "$cmd" in
+    ls)
+      _r "ls -la $( printf '%q' "$R_DIR" )"
+      return $? ;;
+    mount)
+      [ "$R_CRYPT" != "1" ] && { echo "💡 no crypt device configured" ; return 0 ; }
+      if _crypt_open ; then
+        [ "$R_WAS_MOUNTED" = "1" ] && echo "💡 already mounted: $R_NODE:$R_DIR" || echo "✅ mounted: $R_NODE:$R_DIR"
+        return 0
+      fi
+      _crypt_close >/dev/null 2>&1
+      echo "❌ open/mount of $R_CDEV on $R_NODE:$R_DIR failed"
+      return 1 ;;
+    umount)
+      [ "$R_CRYPT" != "1" ] && { echo "💡 no crypt device configured" ; return 0 ; }
+      if _crypt_close ; then echo "✅ closed: $R_NODE:$R_DIR" ; return 0 ; fi
+      echo "❌ umount/close on $R_NODE:$R_DIR failed"
+      return 1 ;;
+    run)
+      ;;
+    *)
+      echo "❌ unknown remote command <$cmd> (run|mount|umount|ls)"
+      return 1 ;;
+  esac
+
+  #
+  # sources: the snapshots of the last dc backup run of each node (<troot>/.dc-backup.status)
+  #
+  for n in "${R_NODES[@]}" ; do
+    dc_backup_node_conf "$n"
+    if [ "$B_KNOWN" != "1" ] ; then
+      printf "%-6s %-28s %s\n" "node" "$n" "❌ not in backup.nodes" ; ok=0 ; continue
+    fi
+    if ! troot=$( dc_backup_expand "$B_TARGET" ) ; then
+      printf "%-6s %-28s %s\n" "node" "$n" "❌ target: $troot" ; ok=0 ; continue
+    fi
+    troot="$troot/$n"
+    sdate="" ; send="" ; sres=""
+    if [ -f "$troot/.dc-backup.status" ] ; then
+      sdate=$( sed -n 's/^date=//p'   "$troot/.dc-backup.status" )
+      send=$(  sed -n 's/^end=//p'    "$troot/.dc-backup.status" )
+      sres=$(  sed -n 's/^result=//p' "$troot/.dc-backup.status" )
+    fi
+    if [ -z "$sdate" ] ; then
+      printf "%-6s %-28s %s\n" "node" "$n" "❌ no dc backup status ($troot/.dc-backup.status)" ; ok=0 ; continue
+    fi
+    if (( $(date +%s) - ${send:-0} > 86400 )) ; then
+      printf "%-6s %-28s %s\n" "node" "$n" "❌ last dc backup is older than 24h ($sdate)" ; ok=0 ; continue
+    fi
+    if [ "$sres" = "off" ] ; then
+      printf "%-6s %-28s %s\n" "node" "$n" "💡 skipped, node was off at the last dc backup ($sdate)" ; continue
+    fi
+    for p in "${B_PATHS[@]}" ; do
+      e=$( dc_backup_expand "$p" ) || continue
+      if [ -d "$troot$e/$sdate" ] ; then
+        srcs+=( "$troot$e/$sdate" ) ; dsts+=( "$R_DIR/latest/$n$e" ) ; labels+=( "$n:$e" )
+      elif [ -d "$troot$e" ] ; then
+        printf "%-6s %-28s %s\n" "sync" "$n:$e" "❌ no snapshot $sdate (dc backup of this path failed)" ; ok=0
+      else
+        printf "%-6s %-28s %s\n" "skip" "$n:$e" "💡 not backed up"
+      fi
+    done
+  done
+  for x in "${!R_EXTRA_SRC[@]}" ; do
+    if ! src=$( dc_backup_expand "${R_EXTRA_SRC[$x]}" ) ; then
+      printf "%-6s %-28s %s\n" "extra" "${R_EXTRA_SRC[$x]}" "❌ $src" ; ok=0 ; continue
+    fi
+    if ! dc_backup_name_check "${R_EXTRA_NAME[$x]}" ; then
+      printf "%-6s %-28s %s\n" "extra" "$src" "❌ invalid name <${R_EXTRA_NAME[$x]}>" ; ok=0 ; continue
+    fi
+    if [ ! -d "$src" ] ; then
+      printf "%-6s %-28s %s\n" "extra" "$src" "❌ missing" ; ok=0 ; continue
+    fi
+    srcs+=( "$src" ) ; dsts+=( "$R_DIR/latest/${R_EXTRA_NAME[$x]}" ) ; labels+=( "${R_EXTRA_NAME[$x]}" )
+  done
+
+  if [ "$opt_dry" = "1" ] ; then
+    for x in "${!srcs[@]}" ; do
+      printf "%-6s %-28s %s\n" "sync" "${labels[$x]}" "${srcs[$x]} -> $R_NODE:${dsts[$x]}"
+    done
+    [ "$ok" = "1" ]
+    return $?
+  fi
+
+  lockdir=$( dc_backup_expand "$( dc-yq -r '.config.backup.target // ""' ${MDE_DC_YAML} )" ) || lockdir="$HOME/.dc/var"
+  mkdir -p "$lockdir"
+  exec 8>"$lockdir/.dc-backup-remote-$r.lock"
+  if ! flock -n 8 ; then
+    echo "❌ another remote copy <$r> is running ($lockdir/.dc-backup-remote-$r.lock)"
+    exec 8>&-
+    return 1
+  fi
+
+  #
+  # open + mount the crypt device; never write into an unmounted mount point
+  #
+  if [ "$R_CRYPT" = "1" ] ; then
+    if ! _crypt_open ; then
+      _crypt_close >/dev/null 2>&1
+      echo "❌ open/mount of $R_CDEV on $R_NODE:$R_DIR failed, nothing copied"
+      exec 8>&-
+      return 1
+    fi
+    if [ "$R_WAS_MOUNTED" = "1" ] ; then
+      echo "💡 crypt device was already mounted, it stays mounted"
+    else
+      REMOTE_OPENED=1
+      echo "✅ crypt device mounted"
+    fi
+  elif ! _r "test -d $( printf '%q' "$R_DIR" )" ; then
+    echo "❌ $R_NODE:$R_DIR does not exist, nothing copied"
+    exec 8>&-
+    return 1
+  fi
+  DF_BEFORE=$( _rdf )
+
+  #
+  # copy
+  #
+  q="" ; for x in "${dsts[@]}" ; do q+=" $(printf '%q' "$x")" ; done
+  [ -n "$q" ] && _r "mkdir -p $q"
+  for x in "${!srcs[@]}" ; do
+    if [ "$R_CRYPT" = "1" ] && ! _r "mountpoint -q $( printf '%q' "$R_DIR" )" ; then
+      echo "❌ $R_NODE:$R_DIR is no longer mounted, abort"
+      ok=0 ; copy_ok=0 ; break
+    fi
+    secs=$(date +%s)
+    _rsync "${srcs[$x]}" "$R_NODE:${dsts[$x]}" ; rc=$?
+    secs=$(( $(date +%s) - secs ))
+    if [ "$rc" = "0" ] ; then
+      printf "%-6s %-28s %-12s %6ss\n" "sync" "${labels[$x]}" "ok" "$secs"
+    else
+      printf "%-6s %-28s %-12s %6ss\n" "sync" "${labels[$x]}" "FAILED rc=$rc" "$secs"
+      ok=0 ; copy_ok=0
+    fi
+  done
+
+  #
+  # snapshot + rotation on the remote node: only if every copy succeeded,
+  # otherwise nothing is created or removed (latest/ is incomplete). a node
+  # without a current local snapshot only is an error: latest/ keeps its last
+  # copy for that node, the snapshot of the others is still made.
+  #
+  node_rc=0
+  CELL=() ; ROWMARK=() ; COLNAME=( [remote]="$r" )
+  if [ "$copy_ok" = "1" ] && { [ "$R_CRYPT" != "1" ] || _r "mountpoint -q $( printf '%q' "$R_DIR" )" ; } ; then
+    _rotate "$R_NODE:$R_DIR" remote rw
+  else
+    ok=0
+    _rotate "$R_NODE:$R_DIR" remote failed
+  fi
+  [ "$node_rc" != "0" ] && ok=0
+  _print_table remote
+  read -r s_size s_used s_free s_pct <<< "$( _rdf )"
+  read -r b_size b_used b_free b_pct <<< "$DF_BEFORE"
+  echo "disk   $R_NODE:$R_DIR: size $s_size, used $s_used (before $b_used), free $s_free, $s_pct"
+
+  if [ -n "$REMOTE_OPENED" ] ; then
+    if _crypt_close ; then
+      echo "✅ crypt device closed"
+    else
+      echo "❌ umount/close on $R_NODE:$R_DIR failed, crypt device is still open!"
+      ok=0
+    fi
+    REMOTE_OPENED=""
+  fi
+  echo "result $( [ "$ok" = "1" ] && echo ok || echo ERROR ), duration $(( $(date +%s) - t_start ))s"
+  exec 8>&-
+  [ "$ok" = "1" ]
+}
+
+####################################################################################################################
 #
 # main
 #
+####################################################################################################################
 declare -a IN_PLAN=()
-declare -A CELL=() ROWMARK=()
-PLAN_MAX=0
+declare -A CELL=() ROWMARK=() COLNAME=()
+PLAN=""
+
+if [ "${args[0]}" = "remote" ] ; then
+  if [ -z "${args[1]}" ] ; then
+    printf "%-12s %-12s %s\n" "remote" "node" "dir"
+    for r in $( dc_backup_remotes ) ; do
+      dc_backup_remote_conf "$r"
+      printf "%-12s %-12s %s%s\n" "$r" "$R_NODE" "$R_DIR" "$( [ "$R_CRYPT" = "1" ] && echo " (crypt $R_CDEV)" )"
+    done
+    exit 0
+  fi
+  if [ -z "${args[2]}" ] ; then
+    echo "$IAM: usage: $IAM remote <name> run [-n]|mount|umount|ls" >&2
+    exit 1
+  fi
+  _remote "${args[1]}" "${args[2]}"
+  exit $?
+fi
+
+if [ ${#args[@]} = 0 ] ; then
+  mapfile -t args < <( dc_backup_nodes )
+  if [ ${#args[@]} = 0 ] ; then
+    echo "$IAM: no nodes in ${MDE_DC_CONFIG_DIR}/backup.yml (backup.nodes)" >&2
+    exit 1
+  fi
+fi
+
 ret=0
 declare -a summary=()
 for n in "${args[@]}" ; do
