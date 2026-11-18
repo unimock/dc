@@ -403,14 +403,18 @@ _backup_node()
   #
   # 3. snapshot + rotation per path
   #
+  # can take a while with many files (hardlink copy, removal) - show progress
   CELL=() ; ROWMARK=()
+  secs=$(date +%s) ; rc=0
+  printf "%-6s %-28s " "rotate" "snapshot + plan"
   for p in "${cols[@]}" ; do
     if [ -n "${path_ok[$p]}" ] ; then
-      _rotate "$troot$p" "$p" rw
+      _rotate "$troot$p" "$p" rw || rc=1
     else
       _rotate "$troot$p" "$p" failed
     fi
   done
+  printf "%-12s %6ss\n" "$( [ "$rc" = "0" ] && echo ok || echo FAILED )" "$(( $(date +%s) - secs ))"
   _print_table "${cols[@]}"
   read -r s_size s_used s_free s_pct <<< "$( _df "$troot" )"
   read -r b_size b_used b_free b_pct <<< "$DF_BEFORE"
@@ -669,12 +673,17 @@ _remote()
   # without a current local snapshot only is an error: latest/ keeps its last
   # copy for that node, the snapshot of the others is still made.
   #
+  # can take a while with many files (hardlink copy, removal on the remote node) - show progress
   node_rc=0
   CELL=() ; ROWMARK=() ; COLNAME=( [remote]="$r" )
+  secs=$(date +%s)
   if [ "$copy_ok" = "1" ] && { [ "$R_CRYPT" != "1" ] || _r "mountpoint -q $( printf '%q' "$R_DIR" )" ; } ; then
+    printf "%-6s %-28s " "rotate" "snapshot + plan on $R_NODE"
     _rotate "$R_NODE:$R_DIR" remote rw
+    printf "%-12s %6ss\n" "$( [ "$node_rc" = "0" ] && echo ok || echo FAILED )" "$(( $(date +%s) - secs ))"
   else
     ok=0
+    printf "%-6s %-28s %s\n" "rotate" "snapshot + plan on $R_NODE" "💡 skipped, copy incomplete"
     _rotate "$R_NODE:$R_DIR" remote failed
   fi
   [ "$node_rc" != "0" ] && ok=0

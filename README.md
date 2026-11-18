@@ -434,10 +434,10 @@ dc backup [-n|--dry-run] [<node> ...]     # all nodes from backup.yml, or only t
 * **Plan (rotation):** backups older than the highest age are removed. A backup whose age is not in the plan is removed when an older one exists before the next plan age, so one backup moves on into each plan slot. If the sync of a path fails, no snapshot is created and nothing is removed for that path.
 * **Existing apps:** `dc install` adds `backup: none` once to every `dc-app.yml` that has no `backup:` key yet (`updates/1.31.0.sh`, below `run_level:`), so no app is paused until you set `backup: pause`.
 * **Why pause:** a running database writes while rsync copies its files, so the copy can be inconsistent. A paused container is frozen, the copy is like after a power loss (crash-consistent), which databases recover from. `pause` is set per app, so it moves with the app to another node.
-* **Output** (one block per node): the sync and pause lines with durations, then a table with one row per age and one column per path (`created`, `kept`, `removed`, `failed`; `R` = older than the plan), disk usage before/after. A summary of all nodes follows at the end.
+* **Output** (one block per node): the sync and pause lines with durations, a `rotate` line (snapshot + rotation, can take a while with many files), then a table with one row per age and one column per path (`created`, `kept`, `removed`, `failed`; `R` = older than the plan), disk usage before/after. A summary of all nodes follows at the end.
 * **Exit code:** 0 if all nodes are ok (or off), 1 otherwise (sync, pause/unpause or snapshot failed, path missing, invalid config). rsync code 24 (files vanished during the sync) counts as ok. Two runs on the same node are prevented by `<target>/<node>/.dc-backup.lock`.
 * **Environment:** `DC_BACKUP_PAUSE=0` skips all pauses, `DC_BACKUP_FAKE_DAYS=<n>` pretends that today is `<n>` days later (to test a plan).
-* **Check:** `dc config check` reports invalid entries in `backup.yml` and `backup:` values (❌), active nodes that are not backed up and `backup: pause` apps on such nodes (💡).
+* **Check:** `dc config check` reports invalid entries in `backup.yml` and `backup:` values (❌), nodes with active apps that are not backed up and `backup: pause` apps on such nodes (💡).
 
 For a nightly run, add a batch job, e.g. `job: backup :6h : dc backup`.
 
@@ -473,6 +473,8 @@ dc backup remote <name> ls                # ls -la <dir> on the remote node
 * **Crypt device:** with `crypt:` the device is opened (`cryptsetup open`) and mounted on `<dir>` before the copy, and umounted and closed afterwards, also after errors, Ctrl-C or a `dc batch` timeout. The passphrase is read from the local keyfile (default `~/dc/config/backup-remote-<name>.key`, a relative `keyfile:` is taken from `~/dc/config`; only `*.yml` files there go into `dc.yml`) and passed via stdin, it never appears on a command line. If `~/dc` is kept in git, exclude `*.key` (`.gitignore`). If `<dir>` is not a mount point after opening, nothing is copied; before each rsync the mount is checked again, so nothing is ever written into the empty mount point. A device that was already mounted (`mount` by hand) stays mounted.
 * **Snapshot/rotation on the remote node:** after the copy `<dir>/latest` is hard-linked to `<dir>/YYYY-MM-DD` and rotated with the same rules as the local backups (the code is sent via ssh, nothing has to be installed there). If a copy failed, no snapshot is made and nothing is removed.
 * **Exit code:** 0 if everything was copied, 1 otherwise. `dc config check` checks the `remote:` entries (node, dir, plan, nodes, extra, keyfile and its permissions).
+
+How to prepare an encrypted disk on the remote node (LVM, LUKS, header backup, keyfile): [examples/backup-remote-luks.md](./examples/backup-remote-luks.md).
 
 A nightly run with remote copy: `job: backup :8h : dc backup` followed by `job: backup-offsite :8h : dc backup remote offsite run` (a separate job, so a failed node does not block the copy of the others).
 
@@ -555,6 +557,7 @@ So custom check scripts only need to `exit 254/255` to show up as updates or war
 ## Examples & tests
 
 * [examples/dc-tests@kvm.md](./examples/dc-tests@kvm.md) – creates a VM, installs dc on it, deploys and tests an app, then deletes everything.
+* [examples/backup-remote-luks.md](./examples/backup-remote-luks.md) – prepares a LUKS encrypted disk on a remote node for `dc backup remote` (step by step, copy and paste).
 * `testing/` – the same as plain scripts for KVM and Hetzner Cloud.
 
 `dc-md-exec` runs the code blocks of such Markdown files section by section:

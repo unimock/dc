@@ -525,11 +525,10 @@ if [ "$CMD" = "check" ] ; then
       done
     done
     if [ -n "$bnodes" ] ; then
-      # active nodes reachable via ssh, that are not backed up (except the remote copy nodes)
-      rnodes=$( dc-yq -r '(.config.backup.remote // {}) | .[] | .node // ""' ${MDE_DC_YAML} )
-      for n in $( dc-yq -r '.nodes | to_entries | .[] | select(.value.state == "active" and .value.type != "ping") | .key' ${MDE_DC_YAML} ) ; do
-        if ! echo "$bnodes" | grep -qx "$n" && ! echo "$rnodes" | grep -qx "$n" ; then
-          printf $MASK "💡" "[backup] node <$n> is not in backup.yml"
+      # nodes with active dc apps (their data is worth a backup), that are not backed up
+      for n in $( dc-yq -r '[.apps[].dc.home[] | select(.state == "active") | .node] | unique | .[]' ${MDE_DC_YAML} ) ; do
+        if ! echo "$bnodes" | grep -qx "$n" ; then
+          printf $MASK "💡" "[backup] node <$n> has active apps, but is not in backup.yml"
         fi
       done
     fi
