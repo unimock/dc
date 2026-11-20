@@ -18,6 +18,10 @@ node:
     type:
   groups:
   desc: ""
+  # optional: traefik on this node (used by "dc app <app> new --traefik=...")
+  #traefik:
+  #  net: traefik_default    # external docker network of traefik
+  #  certresolver:           # tls.certresolver label of the routers; empty = no label
   info: ""
   os: ubuntu
   machine_id: <machine_id>

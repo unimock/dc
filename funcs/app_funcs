@@ -89,8 +89,12 @@ usage: dc app <app> new --node=<node> --image=<image[:tag]> [options]
   --group=<group>                 group in ${MDE_DC_YAML_FILE}
   --port=<[ip:]host:ctr[/udp]>    publish a port (repeatable, default: none)
   --traefik=<fqdn>[:<ctr-port>]   route https://<fqdn> to the main service (default ctr-port 80, not with --port)
+  --traefik-net=<net>             traefik network (default: traefik.net in node.yml, else traefik_default)
+  --traefik-resolver=<name>       certresolver label (default: traefik.certresolver in node.yml, else none)
   --vol=<cfg|var|data|cache|logs>[/<sub>]:<ctr-path>[:ro]   volume below \${DC_VOL_*} (repeatable)
-  --env=<KEY=VALUE>               environment variable (repeatable)
+  --env=<KEY=VALUE>               environment variable, stored in docker-compose.yml (repeatable, no secrets)
+  --secret=<KEY>[=<VALUE>]        secret: value in .env (chmod 600), KEY=\${KEY} in docker-compose.yml;
+                                  without VALUE a random 32 character password is generated (repeatable)
   --login-user=<uid[:gid]|name>   login_user in ${MDE_DC_YAML_FILE}
   --backup=none|pause             backup mode (default: none)
   --run-level=<0-9>               run_level (default: 5)
@@ -101,7 +105,8 @@ EOF
 dc_app_new() {
   local app="$1" ; shift
   local node="" image="" svc="" dir="" desc="" group="" traefik="" login_user="" backup="none" run_level="5" dry=0
-  local -a ports=() vols=() envs=()
+  local t_net="" t_net_set=0 t_res="" t_res_set=0
+  local -a ports=() vols=() envs=() secrets=()
   local a err=0
   for a in "$@" ; do
     case "$a" in
@@ -115,6 +120,9 @@ dc_app_new() {
       --traefik=*)    traefik="${a#*=}" ;;
       --vol=*)        vols+=( "${a#*=}" ) ;;
       --env=*)        envs+=( "${a#*=}" ) ;;
+      --secret=*)     secrets+=( "${a#*=}" ) ;;
+      --traefik-net=*)      t_net="${a#*=}" ; t_net_set=1 ;;
+      --traefik-resolver=*) t_res="${a#*=}" ; t_res_set=1 ;;
       --login-user=*) login_user="${a#*=}" ;;
       --backup=*)     backup="${a#*=}" ;;
       --run-level=*)  run_level="${a#*=}" ;;
@@ -159,13 +167,29 @@ dc_app_new() {
       _e "invalid --traefik=<$traefik> (<fqdn>[:<ctr-port>])"
     fi
     [ ${#ports[@]} -gt 0 ] && _e "--traefik and --port exclude each other (traefik publishes the port)"
+    # network and certresolver of the traefik on this node: option > node.yml (traefik.net/.certresolver) > default
+    [ "$t_net_set" = "1" ] || t_net=$( N="$node" dc-yq '.nodes[strenv(N)].traefik.net // ""' ${MDE_DC_YAML} )
+    [ "$t_res_set" = "1" ] || t_res=$( N="$node" dc-yq '.nodes[strenv(N)].traefik.certresolver // ""' ${MDE_DC_YAML} )
+    [ -z "$t_net" ] && t_net="traefik_default"
+    [[ "$t_net" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || _e "invalid traefik network <$t_net>"
+    [[ "$t_res" =~ ^[A-Za-z0-9_-]*$ ]]              || _e "invalid traefik certresolver <$t_res>"
+  elif [ "$t_net_set" = "1" -o "$t_res_set" = "1" ] ; then
+    _e "--traefik-net/--traefik-resolver only with --traefik"
   fi
+  [ -z "$t_net" ] && t_net="traefik_default"
   for a in "${vols[@]}" ; do
     [[ "$a" =~ ^(cfg|var|data|cache|logs)(/[A-Za-z0-9._/-]+)?:/[^:]*(:(ro|rw))?$ && "$a" != *..* ]] \
       || _e "invalid --vol=<$a> (<cfg|var|data|cache|logs>[/<sub>]:<ctr-path>[:ro])"
   done
   for a in "${envs[@]}" ; do
     [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || _e "invalid --env=<$a> (KEY=VALUE)"
+  done
+  for a in "${secrets[@]}" ; do
+    if ! [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*(=.*)?$ ]] ; then
+      _e "invalid --secret=<${a%%=*}=…> (KEY[=VALUE])"
+    elif [[ "$a" == *"'"* || "$a" == *$'\n'* ]] ; then
+      _e "--secret=${a%%=*}: the value must not contain ' or a newline"
+    fi
   done
   # app directory: default / relative to ${MDE_DC_APP_DIR}, must stay below it
   local base
@@ -186,7 +210,7 @@ dc_app_new() {
   tmp=$( mktemp -d ) || return 1
   cp /opt/dc/templates/create/app/dc-app.yml /opt/dc/templates/create/app/.env "$tmp/" || { rm -rf "$tmp" ; return 1 ; }
   sed -i -e "s|<app_name>|${app}|g" -e "s|<main_service>|${svc}|g" -e "s|<node>|${node}|g" \
-         -e "s|<traefik_net>|traefik_default|g" "$tmp/dc-app.yml" "$tmp/.env"
+         -e "s|<traefik_net>|${t_net}|g" "$tmp/dc-app.yml" "$tmp/.env"
   # container name / traefik router name: the app name (unique in the cluster)
   sed -i "s|^DC_ENV_NAME=.*|DC_ENV_NAME=${app}|" "$tmp/.env"
   if [ -n "$t_fqdn" ] ; then
@@ -210,6 +234,21 @@ dc_app_new() {
   for a in "${envs[@]}" ; do
     S="$svc" V="$a" dc-yq -i '.services[strenv(S)].environment += [strenv(V)]' "$cf"
   done
+  if [ ${#secrets[@]} -gt 0 ] ; then
+    printf '\n# secrets (dc app new --secret): referenced as ${KEY} in docker-compose.yml\n' >> "$tmp/.env"
+    local key val
+    for a in "${secrets[@]}" ; do
+      key="${a%%=*}"
+      if [[ "$a" == *=* ]] ; then
+        val="${a#*=}"
+      else
+        val=$( head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32 )
+      fi
+      printf "%s='%s'\n" "$key" "$val" >> "$tmp/.env"
+      S="$svc" V="${key}=\${${key}}" dc-yq -i '.services[strenv(S)].environment += [strenv(V)]' "$cf"
+    done
+    chmod 600 "$tmp/.env"
+  fi
   for a in "${ports[@]}" ; do
     S="$svc" V="$a" dc-yq -i '.services[strenv(S)].ports += [strenv(V) | . style="double"]' "$cf"
   done
@@ -233,19 +272,23 @@ dc_app_new() {
         "traefik.http.routers.${DC_ENV_NAME}-secure.entrypoints=https",
         "traefik.http.routers.${DC_ENV_NAME}-secure.rule=Host(`${DC_ENV_TRAEFIK_URL}`)",
         "traefik.http.routers.${DC_ENV_NAME}-secure.tls=true",
-        "traefik.http.routers.${DC_ENV_NAME}-secure.tls.certresolver=http",
         "traefik.http.services.${DC_ENV_NAME}.loadbalancer.server.port=${DC_ENV_TRAEFIK_PORT}",
         "traefik.docker.network=${DC_ENV_TRAEFIK_NET}" ]
       | .services[strenv(S)].networks = ["default", "traefik"]
       | .networks.default = {}
       | .networks.traefik.name = "${DC_ENV_TRAEFIK_NET}"
       | .networks.traefik.external = true' "$cf"
+    if [ -n "$t_res" ] ; then
+      S="$svc" R="traefik.http.routers.\${DC_ENV_NAME}-secure.tls.certresolver=$t_res" dc-yq -i '
+        .services[strenv(S)].labels |= (.[:8] + [strenv(R)] + .[8:])' "$cf"
+    fi
   fi
 
   if [ "$dry" = "1" ] ; then
     for a in docker-compose.yml .env dc-app.yml ; do
       echo "######## $dir/$a"
-      cat "$tmp/$a"
+      # secret values are not shown
+      awk '/^# secrets \(dc app new/ { s=1 ; print ; next } s && /=/ { sub(/=.*/, "=***") } { print }' "$tmp/$a"
     done
     rm -rf "$tmp"
     echo "💡 dry run: nothing written"
@@ -261,6 +304,8 @@ dc_app_new() {
     return 1
   fi
   echo "✅ app <$app> created in <$dir> (node <$node>, image <$image>)"
+  [ ${#secrets[@]} -gt 0 ] && echo "🔑 secrets are in <$dir/.env> (chmod 600)"
+  [ -n "$t_fqdn" ] && echo "💡 traefik: network <$t_net>, certresolver <${t_res:-none}>"
   echo "next: adapt the files if needed, then: dc app $app check --pre ; dc app $app up ; dc app $app check"
   return 0
 }
@@ -353,8 +398,13 @@ dc_app_check() {
   else
     _ac error "" main_service "main_service <$ms> is not a service ($( echo $services ))"
   fi
-  if [ "$( dc-yq '.apps' ${MDE_DC_YAML} | grep -c "^${app}:" )" != "1" ] ; then
-    _ac error "" name "app name <$app> not unique"
+  # two app directories with the same compose project name: the refresh keeps only one of them
+  local dups
+  dups=$( grep -lsx -e "COMPOSE_PROJECT_NAME=$app" -e "COMPOSE_PROJECT_NAME=\"$app\"" \
+            $( find "${MDE_DC_APP_DIR}" -type d -name '.?*' -prune -o -name .env -print 2>/dev/null ) /dev/null \
+          | xargs -r -n1 dirname | grep -vxF "$app_dir" )
+  if [ -n "$dups" ] ; then
+    _ac error "" name "compose project name <$app> also used in <$( echo $dups )>"
   fi
   local backup login_user
   backup=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.backup // "none"' )
@@ -377,6 +427,8 @@ dc_app_check() {
   ignore_vol=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.ignore_volume_check // false' )
   vols=$( _dc_app_volumes "$app" )
   names=$( _dc_app_vol_names "$app" )
+  local nets
+  nets=$( _dc_app_yq "$app" '.apps[strenv(APP)].compose.networks[]? | select(.external == true) | .name // ""' | grep -v '^$' | sort -u )
 
   local ls_json=""
   [ "$pre" != "1" ] && ls_json=$( /opt/dc/bin/dc-ls apps --json --app="$app" 2>/dev/null )
@@ -420,6 +472,15 @@ dc_app_check() {
         fi
       done
     fi
+
+    # external networks (e.g. traefik) must exist on the node
+    for k in $nets ; do
+      if ssh "$n" "docker network inspect $( printf '%q' "$k" ) >/dev/null 2>&1" ; then
+        _ac ok "$n" networks "network <$k>"
+      else
+        _ac error "$n" networks "external network <$k> missing on node (traefik net? see traefik.net in node.yml)"
+      fi
+    done
 
     # published ports: conflicts with other apps on this node (model)
     if [ -n "$app_ports" ] ; then

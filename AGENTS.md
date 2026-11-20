@@ -35,13 +35,14 @@ dc app <app> new --node=<node> --image=<image:tag> --desc="<one line>" [options]
 Choose the options with these rules (full list: `dc app <app> new --help`):
 
 * Image: always with a fixed tag, never `latest`.
-* Web UI behind traefik: `--traefik=<fqdn>:<ctr-port>`, no `--port`. Only publish a port (`--port=<host>:<ctr>`) if the service must be reached directly; `check --pre` tells you if it is taken.
+* Web UI behind traefik: `--traefik=<fqdn>:<ctr-port>`, no `--port`. Network and certresolver come from `traefik:` in the node's `node.yml`; if they are wrong there, tell the user instead of editing the labels. Only publish a port (`--port=<host>:<ctr>`) if the service must be reached directly; `check --pre` tells you if it is taken.
 * Persistent data: `--vol=cfg:<ctr-path>` for configuration, `--vol=var[/<sub>]:<ctr-path>` for state/databases, `data`/`cache`/`logs` only if needed. Never use other host paths.
 * Rootless image: `--login-user=<uid>:<gid>` (becomes the owner of new volume dirs).
 * Database or mail inside: `--backup=pause`.
-* Settings: `--env=KEY=VALUE` (repeatable).
+* Settings: `--env=KEY=VALUE` (repeatable), but never for passwords, tokens or keys.
+* Secrets: `--secret=KEY` (generates a random password) or `--secret=KEY=VALUE`. The value goes into `.env` (chmod 600), the compose file only gets `${KEY}`. Never print secret values in your messages; say they are in `.env`.
 
-Only for stacks with more services (app + database, …) edit `docker-compose.yml` in `$(dc app <app> dir)` afterwards: add the services, use only `${DC_VOL_*}` for volumes, do not publish database ports. Leave the block between `#dc-start` and `#dc-end` in `.env` unchanged.
+Only for stacks with more services (app + database, …) edit `docker-compose.yml` in `$(dc app <app> dir)` afterwards: add the services, use only `${DC_VOL_*}` for volumes, do not publish database ports, pass secrets as `${KEY}` (e.g. `POSTGRES_PASSWORD=${DB_PASSWORD}`; new secrets go into `.env`, never as plain values into the compose file). Leave the block between `#dc-start` and `#dc-end` in `.env` unchanged.
 
 **3. Check before the start**
 

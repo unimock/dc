@@ -105,7 +105,7 @@ _dc() {
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
       COMPREPLY=( $(compgen -W "new check delete state disable enable config dir rm up rmup down start stop pause unpause data logs login" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "new" ]] ; then
-      COMPREPLY=( $(compgen -W "--node= --image= --service= --dir= --desc= --group= --port= --traefik= --vol= --env= --login-user= --backup= --run-level= --dry-run" -- "$2") )
+      COMPREPLY=( $(compgen -W "--node= --image= --service= --dir= --desc= --group= --port= --traefik= --traefik-net= --traefik-resolver= --vol= --env= --secret= --login-user= --backup= --run-level= --dry-run" -- "$2") )
       compopt -o nospace
     elif [[ "${COMP_WORDS[3]}" == "check" ]] ; then
       COMPREPLY=( $(compgen -W "--pre --json" -- "$2") )

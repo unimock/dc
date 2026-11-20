@@ -437,23 +437,35 @@ dc app <app> delete [--down] [--volumes] [--keep-config] [real]  # delete the ap
 | `--group=<group>` | empty | `group` |
 | `--port=<[ip:]host:ctr[/udp]>` | no port | published port (repeatable) |
 | `--traefik=<fqdn>[:<ctr-port>]` | – | traefik labels + network, `DC_ENV_TRAEFIK_*` in `.env` (ctr-port default 80); not together with `--port` |
+| `--traefik-net=<net>` | `traefik.net` in `node.yml`, else `traefik_default` | external traefik network (`DC_ENV_TRAEFIK_NET`) |
+| `--traefik-resolver=<name>` | `traefik.certresolver` in `node.yml`, else none | `tls.certresolver` label; empty = no label (resolver at the entrypoint, or no resolver) |
 | `--vol=<cfg\|var\|data\|cache\|logs>[/<sub>]:<ctr-path>[:ro]` | – | volume `${DC_VOL_<kind>}[/<sub>]:<ctr-path>` (repeatable) |
-| `--env=<KEY=VALUE>` | `TZ=Europe/Berlin` | environment variable (repeatable) |
+| `--env=<KEY=VALUE>` | `TZ=Europe/Berlin` | environment variable in `docker-compose.yml` (repeatable); not for secrets |
+| `--secret=<KEY>[=<VALUE>]` | – | secret: `KEY='VALUE'` in `.env` (chmod 600), `KEY=${KEY}` in `docker-compose.yml`; without `VALUE` a random 32 character password (repeatable). `--dry-run` shows `***` |
 | `--login-user=<uid[:gid]\|name>` | empty | `login_user` |
 | `--backup=none\|pause` | `none` | `backup` |
 | `--run-level=<0-9>` | `5` | `run_level` |
 | `--dry-run` | | print the generated files, write nothing |
 
-`container_name` / `hostname` are `${DC_ENV_NAME}` = the app name (unique in the cluster). For stacks with more services (app + database), add them to `docker-compose.yml` afterwards.
+`container_name` / `hostname` are `${DC_ENV_NAME}` = the app name (unique in the cluster). For stacks with more services (app + database), add them to `docker-compose.yml` afterwards; use the same `${KEY}` of a `--secret` there (e.g. `POSTGRES_PASSWORD=${DB_PASSWORD}`).
+
+The traefik on a node is described in its `node.yml` (both optional):
+
+```yaml
+node:
+  traefik:
+    net: proxy            # external docker network of traefik (default traefik_default)
+    certresolver: dns     # only if the routers need a certresolver label; empty/missing = no label
+```
 
 **`check`** prints one line per check (✅ ok, 💡 hint, ❌ error) and exits 1 if there is any ❌:
 
-* definition: `docker compose config`, `main_service` is a service, unique name, `backup`, numeric `login_user`, leftovers of the hello-world template (💡). An app whose compose file is broken drops out of `dc.yml`; `check` then finds its directory and shows the compose error.
-* per home node: node known and reachable, volumes below `${DC_VOL_*}` exist (with `--pre` a missing one is only 💡, `dc up` creates it), published ports not used by another app on the node
+* definition: `docker compose config`, `main_service` is a service, no second app directory with the same `COMPOSE_PROJECT_NAME` (the refresh would keep only one), `backup`, numeric `login_user`, leftovers of the hello-world template (💡). An app whose compose file is broken drops out of `dc.yml`; `check` then finds its directory and shows the compose error.
+* per home node: node known and reachable, external networks (e.g. traefik) exist, volumes below `${DC_VOL_*}` exist (with `--pre` a missing one is only 💡, `dc up` creates it), published ports not used by another app on the node
 * `--pre` (before the first `dc up`): published ports free on the node (`ss`; skipped if the app already runs)
 * without `--pre`: status like `dc ls apps`, and per container: running, health (`unhealthy` ❌, `starting` 💡), restart count (💡)
 
-`--json` prints `{ "kind": "app_check", "inspected": true, "generated_at": …, "count": n, "items": [ {"status": "ok|hint|error", "node": "<node>|null", "check": "compose|main_service|node|volumes|ports|runtime|container|…", "message": "…"} ], "app": "<app>", "pre": false, "result": "ok|error" }`.
+`--json` prints `{ "kind": "app_check", "inspected": true, "generated_at": …, "count": n, "items": [ {"status": "ok|hint|error", "node": "<node>|null", "check": "compose|main_service|name|node|networks|volumes|ports|runtime|container|…", "message": "…"} ], "app": "<app>", "pre": false, "result": "ok|error" }`.
 
 **`delete`** is a dry run unless `real` is given; it lists the containers, the volume dirs with their size and the app directory. Nothing is deleted if one of the checks fails:
 
