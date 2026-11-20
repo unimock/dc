@@ -40,7 +40,7 @@ Choose the options with these rules (full list: `dc app <app> new --help`):
 * Rootless image: `--login-user=<uid>:<gid>` (becomes the owner of new volume dirs).
 * Database or mail inside: `--backup=pause`.
 * Settings: `--env=KEY=VALUE` (repeatable), but never for passwords, tokens or keys.
-* Secrets: `--secret=KEY` (generates a random password) or `--secret=KEY=VALUE`. The value goes into `.env` (chmod 600), the compose file only gets `${KEY}`. Never print secret values in your messages; say they are in `.env`.
+* Secrets: `--secret=KEY` (generates a random password). Only if the user gives a fixed value: `--secret=KEY=-` and pass the value on stdin (`printf '%s\n' "$value" | dc app <app> new … --secret=KEY=-`); `--secret=KEY=VALUE` is refused. The value goes into `.env` (chmod 600), the compose file only gets `${KEY}`. Never print secret values in your messages; say they are in `.env`.
 
 Only for stacks with more services (app + database, …) edit `docker-compose.yml` in `$(dc app <app> dir)` afterwards: add the services, use only `${DC_VOL_*}` for volumes, do not publish database ports, pass secrets as `${KEY}` (e.g. `POSTGRES_PASSWORD=${DB_PASSWORD}`; new secrets go into `.env`, never as plain values into the compose file). Leave the block between `#dc-start` and `#dc-end` in `.env` unchanged.
 

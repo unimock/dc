@@ -24,7 +24,7 @@ fi
 
 if [ -n "$MDE_DC_LOG_DIR" ] ; then
   mkdir -p "$MDE_DC_LOG_DIR" 2>/dev/null
-  printf "%-60s # %s %s\n" "dc $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> "$MDE_DC_LOG_DIR/dc-history.log"
+  printf "%-60s # %s %s\n" "dc $(dc_log_args "$@")" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)"  >> "$MDE_DC_LOG_DIR/dc-history.log"
 fi
 
 ####################################################################################################################################

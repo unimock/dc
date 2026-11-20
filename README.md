@@ -441,11 +441,15 @@ dc app <app> delete [--down] [--volumes] [--keep-config] [real]  # delete the ap
 | `--traefik-resolver=<name>` | `traefik.certresolver` in `node.yml`, else none | `tls.certresolver` label; empty = no label (resolver at the entrypoint, or no resolver) |
 | `--vol=<cfg\|var\|data\|cache\|logs>[/<sub>]:<ctr-path>[:ro]` | – | volume `${DC_VOL_<kind>}[/<sub>]:<ctr-path>` (repeatable) |
 | `--env=<KEY=VALUE>` | `TZ=Europe/Berlin` | environment variable in `docker-compose.yml` (repeatable); not for secrets |
-| `--secret=<KEY>[=<VALUE>]` | – | secret: `KEY='VALUE'` in `.env` (chmod 600), `KEY=${KEY}` in `docker-compose.yml`; without `VALUE` a random 32 character password (repeatable). `--dry-run` shows `***` |
+| `--secret=<KEY>[=-]` | – | secret: `KEY='<value>'` in `.env` (chmod 600), `KEY=${KEY}` in `docker-compose.yml` (repeatable). `--secret=KEY` generates a random 32 character password, `--secret=KEY=-` reads the value as one line from stdin (one line per `=-`, in option order). Values on the command line (`KEY=VALUE`) are refused, so they never reach shell history, `ps` or `dc-history.log`. `--dry-run` shows `***` |
 | `--login-user=<uid[:gid]\|name>` | empty | `login_user` |
 | `--backup=none\|pause` | `none` | `backup` |
 | `--run-level=<0-9>` | `5` | `run_level` |
 | `--dry-run` | | print the generated files, write nothing |
+
+Example with a given password: `printf '%s\n' "$DB_PW" | dc app wiki new --node=n1 --image=… --secret=DB_PASSWORD=-`.
+
+`dc-history.log` masks `--secret=KEY=<value>` as `--secret=KEY=***` (also for other commands).
 
 `container_name` / `hostname` are `${DC_ENV_NAME}` = the app name (unique in the cluster). For stacks with more services (app + database), add them to `docker-compose.yml` afterwards; use the same `${KEY}` of a `--secret` there (e.g. `POSTGRES_PASSWORD=${DB_PASSWORD}`).
 

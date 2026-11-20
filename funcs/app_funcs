@@ -93,8 +93,9 @@ usage: dc app <app> new --node=<node> --image=<image[:tag]> [options]
   --traefik-resolver=<name>       certresolver label (default: traefik.certresolver in node.yml, else none)
   --vol=<cfg|var|data|cache|logs>[/<sub>]:<ctr-path>[:ro]   volume below \${DC_VOL_*} (repeatable)
   --env=<KEY=VALUE>               environment variable, stored in docker-compose.yml (repeatable, no secrets)
-  --secret=<KEY>[=<VALUE>]        secret: value in .env (chmod 600), KEY=\${KEY} in docker-compose.yml;
-                                  without VALUE a random 32 character password is generated (repeatable)
+  --secret=<KEY>[=-]              secret: value in .env (chmod 600), KEY=\${KEY} in docker-compose.yml (repeatable);
+                                  --secret=KEY generates a random 32 character password,
+                                  --secret=KEY=- reads the value as one line from stdin (one line per KEY=-)
   --login-user=<uid[:gid]|name>   login_user in ${MDE_DC_YAML_FILE}
   --backup=none|pause             backup mode (default: none)
   --run-level=<0-9>               run_level (default: 5)
@@ -185,10 +186,10 @@ dc_app_new() {
     [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || _e "invalid --env=<$a> (KEY=VALUE)"
   done
   for a in "${secrets[@]}" ; do
-    if ! [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*(=.*)?$ ]] ; then
-      _e "invalid --secret=<${a%%=*}=…> (KEY[=VALUE])"
-    elif [[ "$a" == *"'"* || "$a" == *$'\n'* ]] ; then
-      _e "--secret=${a%%=*}: the value must not contain ' or a newline"
+    if [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*=. && "$a" != *=- ]] ; then
+      _e "--secret=${a%%=*}=…: no secret values on the command line (shell history, dc-history.log, ps); use --secret=${a%%=*} (generated) or --secret=${a%%=*}=- (value from stdin)"
+    elif ! [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*(=-)?$ ]] ; then
+      _e "invalid --secret=<$a> (KEY or KEY=-)"
     fi
   done
   # app directory: default / relative to ${MDE_DC_APP_DIR}, must stay below it
@@ -204,6 +205,25 @@ dc_app_new() {
     _e "<$dir> exists"
   fi
   [ "$err" = "1" ] && return 1
+
+  # secret values from stdin (--secret=KEY=-), one line each, in the order of the options
+  local -a secret_vals=()
+  for a in "${secrets[@]}" ; do
+    local val=""
+    if [[ "$a" == *=- ]] ; then
+      if ! IFS= read -r val || [ -z "$val" ] ; then
+        echo "error: --secret=${a%%=*}=-: no value on stdin" >&2
+        return 1
+      fi
+      if [[ "$val" == *"'"* ]] ; then
+        echo "error: --secret=${a%%=*}=-: the value must not contain '" >&2
+        return 1
+      fi
+    else
+      val=$( head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32 )
+    fi
+    secret_vals+=( "$val" )
+  done
 
   # generate the files in a temp dir
   local tmp
@@ -236,15 +256,10 @@ dc_app_new() {
   done
   if [ ${#secrets[@]} -gt 0 ] ; then
     printf '\n# secrets (dc app new --secret): referenced as ${KEY} in docker-compose.yml\n' >> "$tmp/.env"
-    local key val
-    for a in "${secrets[@]}" ; do
-      key="${a%%=*}"
-      if [[ "$a" == *=* ]] ; then
-        val="${a#*=}"
-      else
-        val=$( head -c 64 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32 )
-      fi
-      printf "%s='%s'\n" "$key" "$val" >> "$tmp/.env"
+    local key i
+    for i in "${!secrets[@]}" ; do
+      key="${secrets[$i]%%=*}"
+      printf "%s='%s'\n" "$key" "${secret_vals[$i]}" >> "$tmp/.env"
       S="$svc" V="${key}=\${${key}}" dc-yq -i '.services[strenv(S)].environment += [strenv(V)]' "$cf"
     done
     chmod 600 "$tmp/.env"
@@ -280,7 +295,7 @@ dc_app_new() {
       | .networks.traefik.external = true' "$cf"
     if [ -n "$t_res" ] ; then
       S="$svc" R="traefik.http.routers.\${DC_ENV_NAME}-secure.tls.certresolver=$t_res" dc-yq -i '
-        .services[strenv(S)].labels |= (.[:8] + [strenv(R)] + .[8:])' "$cf"
+        .services[strenv(S)].labels += [strenv(R)]' "$cf"
     fi
   fi
 
