@@ -9,7 +9,9 @@ dc_log_args() {
   echo "${out# }"
 }
 
-  if [ "$(basename "$0")" != "dc" -a -n "$MDE_DC_LOG_DIR" ] ; then
+# trace calls of dc-xxx scripts (also internal ones, with the calling process). Not for scripts that the
+# logging "dc" wrapper started directly ($PPID) or exec'ed ($$): bin/dc has logged that call already.
+  if [ "$(basename "$0")" != "dc" -a -n "$MDE_DC_LOG_DIR" ] && [ "$PPID" != "$DC_LOG_PID" -a "$$" != "$DC_LOG_PID" ] ; then
     mkdir -p "$MDE_DC_LOG_DIR" 2>/dev/null
     printf "%-60s # %s %s\n" "$(basename "$0") $(dc_log_args "$@")" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)" >> "$MDE_DC_LOG_DIR/dc-history.log"
   fi
@@ -17,10 +19,5 @@ dc_log_args() {
 if [ "${dc_recursive_call}" != "1" ] ; then
   export dc_recursive_call="1"
   . ${HOME}/.dc/etc/config
-  # log direct (non-wrapper) calls of dc-xxx utilities; the `dc` wrapper logs itself (bin/dc)
-  #if [ "$(basename "$0")" != "dc" -a -n "$MDE_DC_LOG_DIR" ] ; then
-  #  mkdir -p "$MDE_DC_LOG_DIR" 2>/dev/null
-  #  printf "%-60s # %s %s\n" "$(basename "$0") $*" "$(date +'%Y-%m-%d %H:%M:%S')" "$(ps -o comm= $PPID)" >> "$MDE_DC_LOG_DIR/dc-history.log"
-  #fi
   dc-config refresh >/dev/null
 fi

@@ -211,7 +211,14 @@ dc_app_new() {
   for a in "${secrets[@]}" ; do
     local val=""
     if [[ "$a" == *=- ]] ; then
-      if ! IFS= read -r val || [ -z "$val" ] ; then
+      if [ -t 0 ] ; then
+        # interactive: do not echo the secret
+        printf "secret %s: " "${a%%=*}" >&2
+        IFS= read -rs val ; echo >&2
+      else
+        IFS= read -r val
+      fi
+      if [ -z "$val" ] ; then
         echo "error: --secret=${a%%=*}=-: no value on stdin" >&2
         return 1
       fi

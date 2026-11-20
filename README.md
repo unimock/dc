@@ -449,7 +449,7 @@ dc app <app> delete [--down] [--volumes] [--keep-config] [real]  # delete the ap
 
 Example with a given password: `printf '%s\n' "$DB_PW" | dc app wiki new --node=n1 --image=… --secret=DB_PASSWORD=-`.
 
-`dc-history.log` masks `--secret=KEY=<value>` as `--secret=KEY=***` (also for other commands).
+On a terminal (no pipe), `--secret=KEY=-` asks for the value without echoing it. `dc-history.log` masks `--secret=KEY=<value>` as `--secret=KEY=***` (also for other commands).
 
 `container_name` / `hostname` are `${DC_ENV_NAME}` = the app name (unique in the cluster). For stacks with more services (app + database), add them to `docker-compose.yml` afterwards; use the same `${KEY}` of a `--secret` there (e.g. `POSTGRES_PASSWORD=${DB_PASSWORD}`).
 
