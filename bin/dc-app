@@ -9,6 +9,9 @@ _show_help() {
   echo "    disable                   # dc down, then set home[].state active -> disabled in ${MDE_DC_YAML_FILE}"
   echo "    enable                    # set home[].state disabled -> active in ${MDE_DC_YAML_FILE}, then dc up"
   echo "    state disabled|active     # same as disable|enable"
+  echo "    new --node=<n> --image=<i> [...]  # create a new app definition (dc app <app> new --help)"
+  echo "    check [--pre] [--json]    # check the app: definition, node, volumes, ports, containers (exit 1 on errors)"
+  echo "    delete [--down] [--volumes] [--keep-config] [real]  # delete the app (dry run without real)"
   echo "    config <cmd> ...          # app configuration (see dc-config)"
   echo "    dir                       # print the app directory (exit 1 if app unknown)"
   echo ""
@@ -102,6 +105,10 @@ elif [ "$CMD" = "dir"  ] ; then
   fi
   echo "$app_dir"
   exit 0
+elif [ "$CMD" = "new" -o "$CMD" = "check" -o "$CMD" = "delete" ] ; then
+  . /opt/dc/funcs/app_funcs
+  dc_app_${CMD} "${app}" "$@"
+  exit $?
 elif [ "$CMD" = "config"  ] ; then
   cmd=$1
   shift

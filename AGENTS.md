@@ -11,45 +11,47 @@
 * **Read state as JSON, not from tables.** `dc ls nodes|apps|images --json` prints a stable envelope (`kind`, `count`, `items[]`) with `status` / `status_reason` per row, and the exit code follows the status. See README: *JSON output (`--json`)* and *Status column*. `dc ls apps --json` also has `image` (main service) and `images[]` (`service`, `image`, `tag`), and filters with `--app=<app>`, `--group=<group>` and `--node=<node>` (home node); unknown options fail with exit code 1. For anything not in the JSON, query the generated model with `dc-yq '<yq expr>'` (for example `dc-yq '.nodes.<node>.fqdn'`).
 * **Never edit `~/.dc/var/dc.yml`.** It is generated from `~/dc/nodes/*/node.yml` and `~/dc/apps/**/dc-app.yml`, and rebuilt automatically when those files change.
 * **App names are unique across the whole cluster.** Leave other apps alone.
-* **Ask the user before anything destructive or cluster-wide:** `dc app <app> disable|enable` (stops/starts the app and changes `dc-app.yml`), `dc app <app> config delete`, `dc node … config delete`, `dc manage …`, `dc vserver …`, `dc data push … real` (overwrites node data with `--delete`), `dc install`, crontab or batch changes.
-* **Check exit codes.** App commands (`up`, `rmup`, `rm`, `stop`, `data …`, …) exit non-zero on error. A zero exit code only means that docker compose accepted the command, so still verify the result with `dc ls apps --json --app=<app>` (see step 6).
+* **Ask the user before anything destructive or cluster-wide:** `dc app <app> disable|enable` (stops/starts the app and changes `dc-app.yml`), `dc app <app> delete … real` (always show the dry run without `real` first), `dc app <app> config delete`, `dc node … config delete`, `dc manage …`, `dc vserver …`, `dc data push … real` (overwrites node data with `--delete`), `dc install`, crontab or batch changes.
+* **Check exit codes.** App commands (`up`, `rmup`, `rm`, `stop`, `data …`, …) exit non-zero on error. A zero exit code only means that docker compose accepted the command, so always verify the app afterwards with `dc app <app> check --json` (exit 0 = ok).
 
 ## Recipe: create a new app
 
-Placeholders: `<app>` (unique name), `<node>` (target node), `<svc>` (main compose service).
+Placeholders: `<app>` (unique name: lowercase letters, digits, `-`, `_`), `<node>` (target node). Follow the steps in this order; each step names the result that must hold before you go on.
 
 **1. Preflight**
 
 ```bash
-dc ls nodes --json --node=<node>   # items[0].status == "ok" and items[0].type is "dc" or "dcc"
-dc ls apps  --json --app=<app>     # exit code 2 = unknown app = the name is free
+dc ls nodes --json --node=<node>   # must hold: items[0].status == "ok", items[0].type is "dc" or "dcc"
+dc ls apps  --json --app=<app>     # must hold: exit code 2 (unknown app = the name is free)
 ```
 
-**2. Create the definition**
+**2. Create the definition** (one command, no hand editing for single-container apps)
 
 ```bash
-dc app <app> config create <node> <svc> ~/dc/apps/<app>
+dc app <app> new --node=<node> --image=<image:tag> --desc="<one line>" [options] --dry-run   # look at the files
+dc app <app> new --node=<node> --image=<image:tag> --desc="<one line>" [options]             # must hold: exit 0
 ```
 
-This copies `templates/create/app/` into the app directory and replaces `<app_name>`, `<main_service>`, `<node>` and `<image>`. The target directory must not exist yet.
+Choose the options with these rules (full list: `dc app <app> new --help`):
 
-**3. Adapt the files** (in `$(dc app <app> dir)`)
+* Image: always with a fixed tag, never `latest`.
+* Web UI behind traefik: `--traefik=<fqdn>:<ctr-port>`, no `--port`. Only publish a port (`--port=<host>:<ctr>`) if the service must be reached directly; `check --pre` tells you if it is taken.
+* Persistent data: `--vol=cfg:<ctr-path>` for configuration, `--vol=var[/<sub>]:<ctr-path>` for state/databases, `data`/`cache`/`logs` only if needed. Never use other host paths.
+* Rootless image: `--login-user=<uid>:<gid>` (becomes the owner of new volume dirs).
+* Database or mail inside: `--backup=pause`.
+* Settings: `--env=KEY=VALUE` (repeatable).
 
-* `docker-compose.yml`: set the real `image:`. The template publishes the fixed port `54321:8000`: change it or remove it, because ports must be free on the node (check with `dc app <app> ssh ss -ltn`).
-* Volumes: use only the `${DC_VOL_*}` variables from `.env`. `cfg` and `var` are required; `data`, `cache` and `logs` are optional. See README: *App volumes on the nodes*.
-* `dc-app.yml`: `desc`, `main_service`, and optionally `login_user` (numeric `uid:gid` for rootless images; it becomes the owner of new volume dirs), `run_level`, `group`, `backup` (`pause` for apps with databases, see README: *Backups (dc backup)*).
-* Leave the block between `#dc-start` and `#dc-end` in `.env` unchanged.
+Only for stacks with more services (app + database, …) edit `docker-compose.yml` in `$(dc app <app> dir)` afterwards: add the services, use only `${DC_VOL_*}` for volumes, do not publish database ports. Leave the block between `#dc-start` and `#dc-end` in `.env` unchanged.
 
-**4. Check**
+**3. Check before the start**
 
 ```bash
-(cd "$(dc app <app> dir)" && docker compose config -q)   # compose syntax / variable expansion
-dc config check                                    # look at the lines starting with [<app>]; ❌ = must fix
+dc app <app> check --pre --json    # must hold: exit 0 ("result": "ok"); fix every item with "status": "error"
 ```
 
-`dc config check` covers the whole cluster, so ❌ lines of other apps are not your concern.
+💡 items (`"status": "hint"`) are fine, e.g. volume dirs that `dc app <app> up` creates.
 
-**5. Seed initial data** (only if the app needs it)
+**4. Seed initial data** (only if the app needs it)
 
 ```bash
 app_dir=$(dc app <app> dir)
@@ -61,17 +63,25 @@ dc app <app> data umount           # always unmount, also after errors
 
 Files copied through sshfs belong to root on the node. For rootless images, chown them: `dc app <app> ssh chown -R <uid>:<gid> /Volumes/Apps/<app>/cfg`.
 
-`data mount` / `data umount` are idempotent (an existing or missing mount gives 💡 and exit code 0). `mount` fails if `<app_dir>/data` is a non-empty local directory; move it away first.
-
-**6. Start and verify**
+**5. Start and verify**
 
 ```bash
-dc app <app> up
-dc ls apps --json --app=<app>      # every items[0].home[].status must be "ok" (exit code 0)
-dc app <app> logs -n 50            # if not ok
+dc app <app> up                    # must hold: exit 0
+dc app <app> check --json          # must hold: exit 0 ("result": "ok")
 ```
 
-**Roll back** (ask the user first): `dc app <app> rm`, then `dc app <app> config delete`. This removes the app directory. Volume data on the node below `/Volumes/*/<app>` stays.
+If `check` fails: `dc app <app> logs -n 50`, fix the files, `dc app <app> rmup`, run `check` again. A container with `health: starting` (💡) needs a little time: run `check` again after 30 s.
+
+**6. Report**: tell the user the app, node, image and URL/port, and include the table output of `dc app <app> check`.
+
+**Roll back** (ask the user first):
+
+```bash
+dc app <app> delete --down --volumes          # dry run: show the user what would be deleted
+dc app <app> delete --down --volumes real     # only after the user agreed
+```
+
+Without `--volumes` only the containers and the app directory are removed and the data on the node stays.
 
 ## Recipe: disable / enable an app
 

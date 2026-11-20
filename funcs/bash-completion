@@ -103,7 +103,14 @@ _dc() {
     COMPREPLY=( $(compgen -W "$list" -- "$2") )
   elif [[ "${COMP_WORDS[1]}" = "app" ]] ; then
     if  [[  "$COMP_CWORD" == "3" ]]  ; then
-      COMPREPLY=( $(compgen -W "state disable enable config dir rm up rmup down start stop pause unpause data logs login" -- "$2") )
+      COMPREPLY=( $(compgen -W "new check delete state disable enable config dir rm up rmup down start stop pause unpause data logs login" -- "$2") )
+    elif [[ "${COMP_WORDS[3]}" == "new" ]] ; then
+      COMPREPLY=( $(compgen -W "--node= --image= --service= --dir= --desc= --group= --port= --traefik= --vol= --env= --login-user= --backup= --run-level= --dry-run" -- "$2") )
+      compopt -o nospace
+    elif [[ "${COMP_WORDS[3]}" == "check" ]] ; then
+      COMPREPLY=( $(compgen -W "--pre --json" -- "$2") )
+    elif [[ "${COMP_WORDS[3]}" == "delete" ]] ; then
+      COMPREPLY=( $(compgen -W "--down --volumes --keep-config real" -- "$2") )
     elif [[ "${COMP_WORDS[3]}" == "state" ]] ; then
       COMPREPLY=( $(compgen -W "active disabled" -- "$2") )
     elif [[ "$COMP_CWORD" == "4" && "${COMP_WORDS[3]}" == "login" ]] ; then

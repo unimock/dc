@@ -107,6 +107,17 @@ dc node hugo state                                # should print "dc"
 
 ### 2. Create an app
 
+The short way (all files generated from options, see [New app, check, delete](#new-app-check-delete-dc-app-app-newcheckdelete)):
+
+```
+dc app web new --node=hugo --image=nginx:alpine --port=8080:80 --vol=cfg:/etc/nginx/conf.d --desc="Web server"
+dc app web check --pre                    # definition, node, volumes, ports (before the first start)
+dc app web up
+dc app web check                          # same + runtime: containers running / healthy
+```
+
+The classic way with the hello-world template:
+
 ```
 dc app hello-world config create hugo hello-world ~/dc/apps/hello-world
 #                                 ^node ^main_service  ^app directory
@@ -132,6 +143,13 @@ dc ps
 dc app hello-world rm
 dc app hello-world config delete
 dc node hugo config delete
+```
+
+or, with the data of the app on the node (dry run first):
+
+```
+dc app web delete --down --volumes        # shows what would be deleted
+dc app web delete --down --volumes real
 ```
 
 ---
@@ -389,10 +407,60 @@ From anywhere, `dc app <app> ...` addresses an app by name:
 dc app <app> disable                # dc down, then set home[].state active -> disabled in dc-app.yml
 dc app <app> enable                 # set home[].state disabled -> active in dc-app.yml, then dc up
 dc app <app> state disabled|active  # long form of disable|enable
+dc app <app> new --node=<n> --image=<i> ...  # create a new app (see below)
+dc app <app> check [--pre] [--json] # check one app (see below)
+dc app <app> delete [...] [real]    # delete an app, optionally with its volume data (see below)
 dc app <app> config <cmd> ...       # app configuration (see Configuration)
 dc app <app> dir                    # print the app directory (exit 1 if the app is unknown)
 dc app <app> <any other command>    # same as: dc -a <app> <command>  (up, stop, logs, login, data, …)
 ```
+
+#### New app, check, delete (`dc app <app> new|check|delete`)
+
+```
+dc app <app> new --node=<node> --image=<image[:tag]> [options]   # create the app definition (no start)
+dc app <app> check [--pre] [--json]                              # check one app, exit 1 on errors (❌)
+dc app <app> delete [--down] [--volumes] [--keep-config] [real]  # delete the app (dry run without real)
+```
+
+`check` and `delete` also work inside the app directory (`dc check`, `dc delete`). `dc config create|delete app` stay unchanged.
+
+**`new`** writes `docker-compose.yml`, `.env` and `dc-app.yml` from the options and refreshes `dc.yml`. All options are checked before anything is written.
+
+| option | default | effect |
+|---|---|---|
+| `--node=<node>` | required | `home[0].node` |
+| `--image=<image[:tag]>` | required | `image:` of the main service |
+| `--service=<svc>` | `<app>` | main service and `main_service` |
+| `--dir=<path>` | `~/dc/apps/<app>` | app directory; a relative path is relative to `${MDE_DC_APP_DIR}`, the directory must be below it |
+| `--desc=<text>` | `<app>` | `desc` |
+| `--group=<group>` | empty | `group` |
+| `--port=<[ip:]host:ctr[/udp]>` | no port | published port (repeatable) |
+| `--traefik=<fqdn>[:<ctr-port>]` | – | traefik labels + network, `DC_ENV_TRAEFIK_*` in `.env` (ctr-port default 80); not together with `--port` |
+| `--vol=<cfg\|var\|data\|cache\|logs>[/<sub>]:<ctr-path>[:ro]` | – | volume `${DC_VOL_<kind>}[/<sub>]:<ctr-path>` (repeatable) |
+| `--env=<KEY=VALUE>` | `TZ=Europe/Berlin` | environment variable (repeatable) |
+| `--login-user=<uid[:gid]\|name>` | empty | `login_user` |
+| `--backup=none\|pause` | `none` | `backup` |
+| `--run-level=<0-9>` | `5` | `run_level` |
+| `--dry-run` | | print the generated files, write nothing |
+
+`container_name` / `hostname` are `${DC_ENV_NAME}` = the app name (unique in the cluster). For stacks with more services (app + database), add them to `docker-compose.yml` afterwards.
+
+**`check`** prints one line per check (✅ ok, 💡 hint, ❌ error) and exits 1 if there is any ❌:
+
+* definition: `docker compose config`, `main_service` is a service, unique name, `backup`, numeric `login_user`, leftovers of the hello-world template (💡). An app whose compose file is broken drops out of `dc.yml`; `check` then finds its directory and shows the compose error.
+* per home node: node known and reachable, volumes below `${DC_VOL_*}` exist (with `--pre` a missing one is only 💡, `dc up` creates it), published ports not used by another app on the node
+* `--pre` (before the first `dc up`): published ports free on the node (`ss`; skipped if the app already runs)
+* without `--pre`: status like `dc ls apps`, and per container: running, health (`unhealthy` ❌, `starting` 💡), restart count (💡)
+
+`--json` prints `{ "kind": "app_check", "inspected": true, "generated_at": …, "count": n, "items": [ {"status": "ok|hint|error", "node": "<node>|null", "check": "compose|main_service|node|volumes|ports|runtime|container|…", "message": "…"} ], "app": "<app>", "pre": false, "result": "ok|error" }`.
+
+**`delete`** is a dry run unless `real` is given; it lists the containers, the volume dirs with their size and the app directory. Nothing is deleted if one of the checks fails:
+
+* all home nodes reachable, no containers of the app (also stopped ones) – `--down` runs `dc down` on these nodes first
+* no sshfs mount below the app directory (`dc data umount`)
+* `--volumes`: deletes `<root>/<app>` below `${MDE_DC_VOL_Apps}`, `…_Data`, `…_Cache` and `…_Logs` on all home nodes (also the original compose project name, if `overrule_compose_name` is used); refused if another app uses one of these paths. Bind mounts outside these roots, `${MDE_DC_VOL_Backup}`, `dc backup` snapshots and remote copies are never deleted.
+* `--keep-config` (only with `--volumes`): delete only the volume data, keep the app directory (start again with empty data)
 
 `disable` / `enable` (also `dc disable|enable` inside the app directory) only switch `home[]` entries between `active` and `disabled`; other states such as `standby` stay unchanged. `disable` changes `dc-app.yml` only if `dc down` succeeded, otherwise it exits with the error code of `dc down`. `enable` sets the state first and exits with the code of `dc up`. Calling it for an app that is already disabled/active prints 💡, still runs `down`/`up` and exits 0. Unknown apps or invalid arguments exit 1.
 
@@ -575,7 +643,7 @@ dc-md-exec examples/dc-tests@kvm.md run create -o VSERVER="test@kvm1"
 ```
 bin/dc                    # entry point: global options, app context (-a/-c/-n/-i), app and container
                           # commands; delegates cluster commands to bin/dc-<cmd>
-bin/dc-app                # dc app <app> ...  (state, config, else passed on to dc -a <app>)
+bin/dc-app                # dc app <app> ...  (new, check, delete, state, config, else passed on to dc -a <app>)
 bin/dc-node               # dc node <node> ...  (state, cmd, apps on node, upgrade, image backup/restore)
 bin/dc-config             # dc config / node+app config create|edit|delete; builds ~/.dc/var/dc.yml
 bin/dc-ls                 # dc ls nodes|apps  (live inspection, --skip, --json, --node=, --app=, --group=; all filter apps too)
@@ -597,6 +665,7 @@ bin/dcd                   # copy files listed in ./dcd.list from the app volume 
 bin/replace-helper        # dev tool: find/replace strings across a directory tree
 funcs/global              # sourced by all scripts: loads ~/.dc/etc/config, refreshes dc.yml, history log
 funcs/status_funcs        # status column/emoji for dc ls and dc ls images
+funcs/app_funcs           # dc app <app> new|check|delete
 funcs/script_funcs        # helpers for timing/error handling in batch scripts
 funcs/backup_funcs        # backup.yml access (paths, plan, pause apps) for dc-backup and config check
 funcs/backup_rotate       # snapshot + rotation of one backup dir (local, and sent via ssh for the remote copy)

@@ -1,0 +1,633 @@
+#
+# app_funcs - "dc app <app> new|check|delete" (sourced by bin/dc-app after funcs/global)
+#
+#   dc_app_new    <app> --node=.. --image=.. [...]      create an app definition below ${MDE_DC_APP_DIR}
+#   dc_app_check  <app> [--pre] [--json]                 check one app (definition, node, volumes, ports, runtime)
+#   dc_app_delete <app> [--down] [--volumes] [--keep-config] [real]
+#
+# "dc config create|delete app" (bin/dc-config) stay unchanged for compatibility.
+#
+
+DC_APP_NAME_RE='^[a-z0-9][a-z0-9_-]*$'          # docker compose project name rules
+DC_APP_US=$'\x1f'
+
+# _dc_app_yq <app> <expr> : yq on the generated model with $APP set (no quoting issues with app names)
+_dc_app_yq() {
+  APP="$1" dc-yq "$2" ${MDE_DC_YAML}
+}
+
+# the four volume roots, below which <root>/<app> belongs to the app
+_dc_app_vol_roots() {
+  echo "${MDE_DC_VOL_Apps} ${MDE_DC_VOL_Data} ${MDE_DC_VOL_Cache} ${MDE_DC_VOL_Logs}"
+}
+
+# volume sources of all services of <app> (without system dirs, same filter as "dc config check")
+_dc_app_volumes() {
+  _dc_app_yq "$1" '.apps[strenv(APP)].compose.services[].volumes[]?.source // ""' \
+    | grep -v '^$' | grep -v "^/etc/" | grep -v "^/var/" | grep -v "^/lib/" | sort -u
+}
+
+# names below the volume roots that belong to <app>: the app name and (if different) the
+# original compose project name (COMPOSE_PROJECT_NAME, used by ${DC_VOL_*} in .env)
+_dc_app_vol_names() {
+  local orig
+  echo "$1"
+  orig=$( _dc_app_yq "$1" '.apps[strenv(APP)].compose.orig_compose_name // ""' )
+  [ -n "$orig" -a "$orig" != "$1" ] && echo "$orig"
+}
+
+# _dc_app_vol_owner <vol> <name>... : prints <root>/<name> if <vol> is (below) one of them
+_dc_app_vol_owner() {
+  local vol="$1" root name ; shift
+  for root in $( _dc_app_vol_roots ) ; do
+    for name in "$@" ; do
+      if [[ "$vol" == "$root/$name" || "$vol" == "$root/$name/"* ]] ; then
+        echo "$root/$name"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+# _dc_app_safe_path <path> : exactly one level below a volume root, no "." / ".."
+_dc_app_safe_path() {
+  local p="$1" root rest
+  for root in $( _dc_app_vol_roots ) ; do
+    [[ "$root" == /?* && "$root" != */ ]] || continue
+    if [[ "$p" == "$root/"* ]] ; then
+      rest="${p#$root/}"
+      [[ "$rest" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ && "$rest" != *..* ]] && return 0
+    fi
+  done
+  return 1
+}
+
+# app known? sets DC_APP_DIR
+_dc_app_known() {
+  DC_APP_DIR=$( _dc_app_yq "$1" '.apps[strenv(APP)].app_dir // ""' )
+  [ -n "$DC_APP_DIR" ]
+}
+
+# state of a node via "dc node <n> state" ("" = unreachable)
+_dc_app_node_state() {
+  dc-node "$1" state 2>/dev/null
+}
+
+############################################################################################################
+# dc app <app> new
+############################################################################################################
+_dc_app_new_usage() {
+  cat <<EOF
+usage: dc app <app> new --node=<node> --image=<image[:tag]> [options]
+
+  --node=<node>                   home node (required)
+  --image=<image[:tag]>           image of the main service (required)
+  --service=<svc>                 main service name (default: <app>)
+  --dir=<path>                    app directory (default: ${MDE_DC_APP_DIR}/<app>; relative to ${MDE_DC_APP_DIR})
+  --desc=<text>                   desc in ${MDE_DC_YAML_FILE} (default: <app>)
+  --group=<group>                 group in ${MDE_DC_YAML_FILE}
+  --port=<[ip:]host:ctr[/udp]>    publish a port (repeatable, default: none)
+  --traefik=<fqdn>[:<ctr-port>]   route https://<fqdn> to the main service (default ctr-port 80, not with --port)
+  --vol=<cfg|var|data|cache|logs>[/<sub>]:<ctr-path>[:ro]   volume below \${DC_VOL_*} (repeatable)
+  --env=<KEY=VALUE>               environment variable (repeatable)
+  --login-user=<uid[:gid]|name>   login_user in ${MDE_DC_YAML_FILE}
+  --backup=none|pause             backup mode (default: none)
+  --run-level=<0-9>               run_level (default: 5)
+  --dry-run                       print the generated files, write nothing
+EOF
+}
+
+dc_app_new() {
+  local app="$1" ; shift
+  local node="" image="" svc="" dir="" desc="" group="" traefik="" login_user="" backup="none" run_level="5" dry=0
+  local -a ports=() vols=() envs=()
+  local a err=0
+  for a in "$@" ; do
+    case "$a" in
+      --node=*)       node="${a#*=}" ;;
+      --image=*)      image="${a#*=}" ;;
+      --service=*)    svc="${a#*=}" ;;
+      --dir=*)        dir="${a#*=}" ;;
+      --desc=*)       desc="${a#*=}" ;;
+      --group=*)      group="${a#*=}" ;;
+      --port=*)       ports+=( "${a#*=}" ) ;;
+      --traefik=*)    traefik="${a#*=}" ;;
+      --vol=*)        vols+=( "${a#*=}" ) ;;
+      --env=*)        envs+=( "${a#*=}" ) ;;
+      --login-user=*) login_user="${a#*=}" ;;
+      --backup=*)     backup="${a#*=}" ;;
+      --run-level=*)  run_level="${a#*=}" ;;
+      --dry-run)      dry=1 ;;
+      -h|--help)      _dc_app_new_usage ; return 0 ;;
+      *) echo "error: unknown argument <$a>" >&2 ; _dc_app_new_usage >&2 ; return 1 ;;
+    esac
+  done
+  [ -z "$svc" ]  && svc="$app"
+  [ -z "$desc" ] && desc="$app"
+
+  # validate everything before anything is written
+  _e() { echo "error: $*" >&2 ; err=1 ; }
+  [[ "$app" =~ $DC_APP_NAME_RE ]]  || _e "invalid app name <$app> (lowercase letters, digits, - and _)"
+  if _dc_app_known "$app" ; then _e "app <$app> already exists (${DC_APP_DIR})" ; fi
+  if [ -z "$node" ] ; then
+    _e "--node=<node> is required"
+  elif [ "$( N="$node" dc-yq '.nodes[strenv(N)].state // ""' ${MDE_DC_YAML} )" = "" ] ; then
+    _e "unknown node <$node>"
+  fi
+  if [ -z "$image" ] ; then
+    _e "--image=<image> is required"
+  elif ! [[ "$image" =~ ^[A-Za-z0-9][A-Za-z0-9./:@_-]*$ ]] ; then
+    _e "invalid image <$image>"
+  fi
+  [[ "$svc" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]        || _e "invalid service name <$svc>"
+  [[ "$desc" != *$'\n'* ]]                             || _e "--desc must be one line"
+  [[ "$group" =~ ^[A-Za-z0-9_,.-]*$ ]]                 || _e "invalid group <$group>"
+  [[ "$backup" == "none" || "$backup" == "pause" ]]    || _e "invalid --backup=<$backup> (none|pause)"
+  [[ "$run_level" =~ ^[0-9]$ ]]                        || _e "invalid --run-level=<$run_level> (0-9)"
+  if [ -n "$login_user" ] && ! [[ "$login_user" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]*(:[A-Za-z0-9_][A-Za-z0-9_.-]*)?$ ]] ; then
+    _e "invalid --login-user=<$login_user>"
+  fi
+  for a in "${ports[@]}" ; do
+    [[ "$a" =~ ^([0-9.]+:)?[0-9]{1,5}:[0-9]{1,5}(/(tcp|udp))?$ ]] || _e "invalid --port=<$a> ([ip:]host:ctr[/udp])"
+  done
+  local t_fqdn="" t_port="80"
+  if [ -n "$traefik" ] ; then
+    if [[ "$traefik" =~ ^([A-Za-z0-9.-]+)(:([0-9]{1,5}))?$ ]] ; then
+      t_fqdn="${BASH_REMATCH[1]}" ; [ -n "${BASH_REMATCH[3]}" ] && t_port="${BASH_REMATCH[3]}"
+    else
+      _e "invalid --traefik=<$traefik> (<fqdn>[:<ctr-port>])"
+    fi
+    [ ${#ports[@]} -gt 0 ] && _e "--traefik and --port exclude each other (traefik publishes the port)"
+  fi
+  for a in "${vols[@]}" ; do
+    [[ "$a" =~ ^(cfg|var|data|cache|logs)(/[A-Za-z0-9._/-]+)?:/[^:]*(:(ro|rw))?$ && "$a" != *..* ]] \
+      || _e "invalid --vol=<$a> (<cfg|var|data|cache|logs>[/<sub>]:<ctr-path>[:ro])"
+  done
+  for a in "${envs[@]}" ; do
+    [[ "$a" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || _e "invalid --env=<$a> (KEY=VALUE)"
+  done
+  # app directory: default / relative to ${MDE_DC_APP_DIR}, must stay below it
+  local base
+  base=$( realpath -m "${MDE_DC_APP_DIR}" )
+  [ -z "$dir" ] && dir="$app"
+  dir="${dir/#\~/$HOME}"
+  [[ "$dir" == /* ]] || dir="$base/$dir"
+  dir=$( realpath -m "$dir" )
+  if [[ "$dir" != "$base/"?* ]] ; then
+    _e "--dir=<$dir> must be below ${MDE_DC_APP_DIR}"
+  elif [ -e "$dir" ] ; then
+    _e "<$dir> exists"
+  fi
+  [ "$err" = "1" ] && return 1
+
+  # generate the files in a temp dir
+  local tmp
+  tmp=$( mktemp -d ) || return 1
+  cp /opt/dc/templates/create/app/dc-app.yml /opt/dc/templates/create/app/.env "$tmp/" || { rm -rf "$tmp" ; return 1 ; }
+  sed -i -e "s|<app_name>|${app}|g" -e "s|<main_service>|${svc}|g" -e "s|<node>|${node}|g" \
+         -e "s|<traefik_net>|traefik_default|g" "$tmp/dc-app.yml" "$tmp/.env"
+  # container name / traefik router name: the app name (unique in the cluster)
+  sed -i "s|^DC_ENV_NAME=.*|DC_ENV_NAME=${app}|" "$tmp/.env"
+  if [ -n "$t_fqdn" ] ; then
+    sed -i -e "s|^#DC_ENV_TRAEFIK_URL=.*|DC_ENV_TRAEFIK_URL=${t_fqdn}|" \
+           -e "s|^#DC_ENV_TRAEFIK_PORT=.*|DC_ENV_TRAEFIK_PORT=${t_port}|" \
+           -e "s|^#DC_ENV_TRAEFIK_NET=|DC_ENV_TRAEFIK_NET=|" "$tmp/.env"
+  fi
+  D="$desc" G="$group" L="$login_user" B="$backup" R="$run_level" dc-yq -i '
+      .app.desc = strenv(D) | .app.backup = strenv(B) | .app.run_level = env(R)
+      | (select(strenv(G) != "") | .app.group = strenv(G)) // .
+      | (select(strenv(L) != "") | .app.login_user = (strenv(L) | . style="double")) // .' "$tmp/dc-app.yml" || { rm -rf "$tmp" ; return 1 ; }
+
+  local cf="$tmp/docker-compose.yml"
+  echo "services: {}" > "$cf"
+  S="$svc" I="$image" dc-yq -i '
+      .services[strenv(S)].image = strenv(I)
+      | .services[strenv(S)].restart = "unless-stopped"
+      | .services[strenv(S)].container_name = "${DC_ENV_NAME}"
+      | .services[strenv(S)].hostname = "${DC_ENV_NAME}"
+      | .services[strenv(S)].environment = ["TZ=Europe/Berlin"]' "$cf"
+  for a in "${envs[@]}" ; do
+    S="$svc" V="$a" dc-yq -i '.services[strenv(S)].environment += [strenv(V)]' "$cf"
+  done
+  for a in "${ports[@]}" ; do
+    S="$svc" V="$a" dc-yq -i '.services[strenv(S)].ports += [strenv(V) | . style="double"]' "$cf"
+  done
+  for a in "${vols[@]}" ; do
+    # cfg/sub:/x:ro -> ${DC_VOL_cfg}/sub:/x:ro
+    local kind rest sep
+    kind="${a%%[/:]*}"
+    rest="${a#"$kind"?}"
+    sep="${a:${#kind}:1}"
+    a="\${DC_VOL_${kind}}${sep}${rest}"
+    S="$svc" V="$a" dc-yq -i '.services[strenv(S)].volumes += [strenv(V)]' "$cf"
+  done
+  if [ -n "$t_fqdn" ] ; then
+    S="$svc" dc-yq -i '
+      .services[strenv(S)].labels = [
+        "traefik.enable=true",
+        "traefik.http.routers.${DC_ENV_NAME}.entrypoints=http",
+        "traefik.http.routers.${DC_ENV_NAME}.rule=Host(`${DC_ENV_TRAEFIK_URL}`)",
+        "traefik.http.middlewares.${DC_ENV_NAME}-https-redirect.redirectscheme.scheme=https",
+        "traefik.http.routers.${DC_ENV_NAME}.middlewares=${DC_ENV_NAME}-https-redirect",
+        "traefik.http.routers.${DC_ENV_NAME}-secure.entrypoints=https",
+        "traefik.http.routers.${DC_ENV_NAME}-secure.rule=Host(`${DC_ENV_TRAEFIK_URL}`)",
+        "traefik.http.routers.${DC_ENV_NAME}-secure.tls=true",
+        "traefik.http.routers.${DC_ENV_NAME}-secure.tls.certresolver=http",
+        "traefik.http.services.${DC_ENV_NAME}.loadbalancer.server.port=${DC_ENV_TRAEFIK_PORT}",
+        "traefik.docker.network=${DC_ENV_TRAEFIK_NET}" ]
+      | .services[strenv(S)].networks = ["default", "traefik"]
+      | .networks.default = {}
+      | .networks.traefik.name = "${DC_ENV_TRAEFIK_NET}"
+      | .networks.traefik.external = true' "$cf"
+  fi
+
+  if [ "$dry" = "1" ] ; then
+    for a in docker-compose.yml .env dc-app.yml ; do
+      echo "######## $dir/$a"
+      cat "$tmp/$a"
+    done
+    rm -rf "$tmp"
+    echo "💡 dry run: nothing written"
+    return 0
+  fi
+  mkdir -p "$dir" && cp "$tmp/docker-compose.yml" "$tmp/.env" "$tmp/dc-app.yml" "$dir/"
+  local rc=$?
+  rm -rf "$tmp"
+  [ "$rc" != "0" ] && { echo "error: writing <$dir> failed" >&2 ; return 1 ; }
+  dc-config refresh >/dev/null
+  if ! _dc_app_known "$app" ; then
+    echo "error: app <$app> not found in ${MDE_DC_YAML} after refresh (see: dc config refresh)" >&2
+    return 1
+  fi
+  echo "✅ app <$app> created in <$dir> (node <$node>, image <$image>)"
+  echo "next: adapt the files if needed, then: dc app $app check --pre ; dc app $app up ; dc app $app check"
+  return 0
+}
+
+############################################################################################################
+# dc app <app> check
+############################################################################################################
+# _ac <ok|hint|error> <node> <check> <message>
+_ac() {
+  DC_AC_ITEMS+=( "$1${DC_APP_US}$2${DC_APP_US}$3${DC_APP_US}$4" )
+  [ "$1" = "error" ] && DC_AC_RC=1
+  return 0
+}
+
+_dc_app_check_output() {
+  local app="$1" pre="$2" json="$3" line s n c m e
+  if [ "$json" = "1" ] ; then
+    local result="ok" ; [ "$DC_AC_RC" != "0" ] && result="error"
+    . /opt/dc/funcs/status_funcs
+    printf '%s\n' "${DC_AC_ITEMS[@]}" | jq -R -s '
+      [ split("\n")[] | select(length>0) | split("\u001f")
+        | {status:.[0], node:(if .[1] == "" then null else .[1] end), check:.[2], message:.[3]} ]' \
+      | dc_json_envelope app_check true \
+      | jq --arg app "$app" --argjson pre "$( [ "$pre" = "1" ] && echo true || echo false )" --arg result "$result" \
+           '. + {app:$app, pre:$pre, result:$result}'
+    return
+  fi
+  local MASK="|%s|%-80s|\n"
+  printf "$MASK" "  " "app check <$app>$( [ "$pre" = "1" ] && echo " (--pre)" )"
+  printf "$MASK" "--" "--------------------------------------------------------------------------------"
+  for line in "${DC_AC_ITEMS[@]}" ; do
+    IFS=$DC_APP_US read -r s n c m <<< "$line"
+    case "$s" in ok) e="✅" ;; hint) e="💡" ;; *) e="❌" ;; esac
+    printf "$MASK" "$e" "[$app${n:+@$n}] $m"
+  done
+}
+
+dc_app_check() {
+  local app="$1" ; shift
+  local pre=0 json=0 a
+  for a in "$@" ; do
+    case "$a" in
+      --pre)  pre=1 ;;
+      --json) json=1 ;;
+      *) echo "error: unknown argument <$a> (usage: dc app <app> check [--pre] [--json])" >&2 ; return 1 ;;
+    esac
+  done
+  DC_AC_ITEMS=() ; DC_AC_RC=0
+
+  if ! _dc_app_known "$app" ; then
+    # not in the model: maybe its compose file is broken (then the refresh drops it)
+    local f d out found=""
+    for f in $( find "${MDE_DC_APP_DIR}" -name '.?*' -prune -o -name "${MDE_DC_YAML_FILE}" -print 2>/dev/null ) ; do
+      d=$( dirname "$f" )
+      if [ "$( basename "$d" )" = "$app" ] || grep -qx "COMPOSE_PROJECT_NAME=$app" "$d/.env" 2>/dev/null ; then
+        found="$d"
+        break
+      fi
+    done
+    if [ -n "$found" ] ; then
+      _ac error "" app "app <$app> in <$found> is not in ${MDE_DC_YAML} (see compose error)"
+      if out=$( cd "$found" && docker compose config -q 2>&1 ) ; then
+        _ac error "" compose "docker compose config ok, check: dc config refresh"
+      else
+        _ac error "" compose "docker compose config: $( echo "$out" | head -3 | tr '\n' ' ' )"
+      fi
+    else
+      _ac error "" app "unknown app <$app>"
+    fi
+    _dc_app_check_output "$app" "$pre" "$json"
+    return 1
+  fi
+  local app_dir="$DC_APP_DIR" out cfg
+  cfg=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc_yml' )
+  _ac ok "" app "app directory <$app_dir>"
+
+  # definition
+  if out=$( cd "$app_dir" && docker compose config -q 2>&1 ) ; then
+    _ac ok "" compose "docker compose config ok"
+  else
+    _ac error "" compose "docker compose config: $( echo "$out" | head -3 | tr '\n' ' ' )"
+  fi
+  local ms services
+  ms=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.main_service // ""' )
+  services=$( _dc_app_yq "$app" '.apps[strenv(APP)].compose.services | keys | .[]' 2>/dev/null )
+  if [ -z "$ms" ] ; then
+    _ac error "" main_service "main_service not set in $cfg"
+  elif echo "$services" | grep -qxF "$ms" ; then
+    _ac ok "" main_service "main_service <$ms>"
+  else
+    _ac error "" main_service "main_service <$ms> is not a service ($( echo $services ))"
+  fi
+  if [ "$( dc-yq '.apps' ${MDE_DC_YAML} | grep -c "^${app}:" )" != "1" ] ; then
+    _ac error "" name "app name <$app> not unique"
+  fi
+  local backup login_user
+  backup=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.backup // "none"' )
+  [[ "$backup" == "none" || "$backup" == "pause" ]] || _ac error "" backup "invalid <backup: $backup> in $cfg (none|pause)"
+  login_user=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.login_user // ""' )
+  if [ -n "$login_user" ] && ! [[ "$login_user" =~ ^[0-9]+(:[0-9]+)?$ ]] ; then
+    _ac hint "" login_user "login_user <$login_user> not numeric: no chown of new volume dirs"
+  fi
+  # leftovers of the hello-world template ("dc config create")
+  _dc_app_yq "$app" '.apps[strenv(APP)].compose.services[].image' | grep -qx "unimock/hello-world-docker" \
+    && _ac hint "" template "image is still the template image <unimock/hello-world-docker>"
+  _dc_app_yq "$app" '.apps[strenv(APP)].compose.services[].ports[]?.published // ""' | grep -qx "54321" \
+    && _ac hint "" template "port 54321 of the template is still published"
+  [ "$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.desc // ""' )" = "description of the dc app" ] \
+    && _ac hint "" template "desc of the template is unchanged in $cfg"
+
+  local app_ports proj ignore_vol vols names
+  app_ports=$( _dc_app_yq "$app" '.apps[strenv(APP)].compose.services[].ports[]? | (.published // "") + "/" + (.protocol // "tcp")' | grep -v '^/' | sort -u )
+  proj=$( _dc_app_yq "$app" '.apps[strenv(APP)].compose.orig_compose_name // ""' )
+  ignore_vol=$( _dc_app_yq "$app" '.apps[strenv(APP)].dc.ignore_volume_check // false' )
+  vols=$( _dc_app_volumes "$app" )
+  names=$( _dc_app_vol_names "$app" )
+
+  local ls_json=""
+  [ "$pre" != "1" ] && ls_json=$( /opt/dc/bin/dc-ls apps --json --app="$app" 2>/dev/null )
+
+  local -a h_nodes h_states
+  h_nodes=( $( _dc_app_yq "$app" '.apps[strenv(APP)].dc.home[].node' ) )
+  h_states=( $( _dc_app_yq "$app" '.apps[strenv(APP)].dc.home[].state' ) )
+  [ ${#h_nodes[@]} = 0 ] && _ac error "" home "no home node in $cfg"
+  local i n st nstate vol p others k op
+  for i in "${!h_nodes[@]}" ; do
+    n="${h_nodes[$i]}" ; st="${h_states[$i]}"
+    if [ "$( N="$n" dc-yq '.nodes[strenv(N)].state // ""' ${MDE_DC_YAML} )" = "" ] ; then
+      _ac error "$n" node "unknown node <$n>"
+      continue
+    fi
+    [ "$st" != "active" ] && _ac hint "$n" home "home state <$st>: runtime checks skipped"
+    nstate=$( _dc_app_node_state "$n" )
+    case "$nstate" in
+      dc|dcc|dock) _ac ok "$n" node "node reachable (state <$nstate>)" ;;
+      off)  _ac hint "$n" node "node offline (standby or intermittent link): node checks skipped" ; continue ;;
+      "")   if [ "$st" = "active" ] ; then _ac error "$n" node "node not reachable" ; else _ac hint "$n" node "node not reachable" ; fi
+            continue ;;
+      *)    _ac error "$n" node "no docker on node (state <$nstate>)" ; continue ;;
+    esac
+
+    # volumes
+    if [ "$ignore_vol" = "true" ] ; then
+      _ac hint "$n" volumes "volume checks skipped <ignore_volume_check: true> in $cfg"
+    else
+      for vol in $vols ; do
+        if _dc_app_vol_owner "$vol" $names >/dev/null ; then
+          if ssh "$n" ls -d "$( printf '%q' "$vol" )" >/dev/null 2>&1 ; then
+            _ac ok "$n" volumes "volume <$vol>"
+          elif [ "$pre" = "1" ] ; then
+            _ac hint "$n" volumes "volume <$vol> missing (created by dc up)"
+          else
+            _ac error "$n" volumes "missing volume directory <$vol>"
+          fi
+        else
+          _ac hint "$n" volumes "volume <$vol> outside of \${DC_VOL_*}"
+        fi
+      done
+    fi
+
+    # published ports: conflicts with other apps on this node (model)
+    if [ -n "$app_ports" ] ; then
+      others=$( APP="$app" N="$n" dc-yq -r '.apps | to_entries | .[] | select(.key != strenv(APP))
+                  | select((.value.dc.home // []) | any_c(.node == strenv(N))) | .key as $k
+                  | (.value.compose.services[].ports[]? | $k + " " + (.published // "") + "/" + (.protocol // "tcp"))' ${MDE_DC_YAML} )
+      for p in $app_ports ; do
+        k=$( echo "$others" | awk -v p="$p" '$2 == p { print $1 }' | head -1 )
+        if [ -n "$k" ] ; then
+          _ac error "$n" ports "port <$p> is also published by app <$k>"
+        fi
+      done
+    fi
+
+    [ "$st" != "active" ] && continue
+
+    if [ "$pre" = "1" ] ; then
+      # ports free on the node (only if the app is not running yet)
+      if [ -n "$app_ports" ] ; then
+        local nrc listen
+        nrc=$( dc-node "$n" -a "$app" nrc 2>/dev/null )
+        if [ "$nrc" != "0" ] ; then
+          _ac hint "$n" ports "app already running: port check on node skipped"
+        else
+          listen=$( ssh "$n" 'command -v ss >/dev/null || exit 3 ; ss -ltnH | awk "{print \$4}" | sed "s|.*:||;s|$|/tcp|" ; ss -lunH | awk "{print \$4}" | sed "s|.*:||;s|$|/udp|"' 2>/dev/null )
+          if [ "$?" != "0" ] ; then
+            _ac hint "$n" ports "port check on node not possible (ss missing or ssh failed)"
+            continue
+          fi
+          for p in $app_ports ; do
+            if echo "$listen" | grep -qxF "$p" ; then
+              _ac error "$n" ports "port <$p> already in use on node"
+            else
+              _ac ok "$n" ports "port <$p> free"
+            fi
+          done
+        fi
+      fi
+      continue
+    fi
+
+    # runtime: status like "dc ls apps"
+    local js
+    js=$( echo "$ls_json" | jq -r --arg n "$n" '[.items[0].home[]? | select(.node == $n)][0] // {} | "\(.status // "") \(.status_reason // "") \(.running // "")"' 2>/dev/null )
+    read -r s_status s_reason s_running <<< "$js"
+    case "$s_status" in
+      ok)       _ac ok "$n" runtime "running (${s_running} containers)" ;;
+      paused)   _ac hint "$n" runtime "paused" ;;
+      disabled) _ac hint "$n" runtime "disabled ($s_reason)" ;;
+      "")       _ac error "$n" runtime "no status from dc ls apps" ;;
+      *)        _ac error "$n" runtime "status <$s_status> ($s_reason), see: dc app $app logs -n 50" ;;
+    esac
+    # containers: state, health, restarts
+    local cl cname cstate chealth crest
+    cl=$( ssh "$n" "ids=\$(docker ps -aq -f label=com.docker.compose.project=$( printf '%q' "$proj" )) ; [ -z \"\$ids\" ] || docker inspect -f '{{.Name}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}|{{.RestartCount}}' \$ids" 2>/dev/null )
+    while IFS='|' read -r cname cstate chealth crest ; do
+      [ -z "$cname" ] && continue
+      cname="${cname#/}"
+      if [ "$cstate" != "running" ] ; then
+        _ac error "$n" container "container <$cname> $cstate"
+      elif [ "$chealth" = "unhealthy" ] ; then
+        _ac error "$n" container "container <$cname> unhealthy"
+      elif [ "$chealth" = "starting" ] ; then
+        _ac hint "$n" container "container <$cname> health: starting (check again later)"
+      else
+        _ac ok "$n" container "container <$cname> running${chealth:+ ($chealth)}"
+      fi
+      if [[ "$crest" =~ ^[0-9]+$ ]] && [ "$crest" -gt 0 ] ; then
+        _ac hint "$n" container "container <$cname> restarted $crest times"
+      fi
+    done <<< "$cl"
+  done
+
+  _dc_app_check_output "$app" "$pre" "$json"
+  return $DC_AC_RC
+}
+
+############################################################################################################
+# dc app <app> delete
+############################################################################################################
+dc_app_delete() {
+  local app="$1" ; shift
+  local opt_down=0 opt_vol=0 opt_keep=0 real=0 a args="$*"
+  for a in "$@" ; do
+    case "$a" in
+      --down)        opt_down=1 ;;
+      --volumes)     opt_vol=1 ;;
+      --keep-config) opt_keep=1 ;;
+      real|r)        real=1 ;;
+      *) echo "error: unknown argument <$a> (usage: dc app <app> delete [--down] [--volumes] [--keep-config] [real])" >&2 ; return 1 ;;
+    esac
+  done
+  if [ "$opt_keep" = "1" -a "$opt_vol" != "1" ] ; then
+    echo "error: --keep-config only with --volumes" >&2
+    return 1
+  fi
+  if ! _dc_app_known "$app" ; then
+    echo "error: unknown app <$app>" >&2
+    return 1
+  fi
+  local app_dir="$DC_APP_DIR" err=0 n i nstate proj nall nrun
+  _err()  { echo " ❌ $*" ; err=1 ; }
+  _plan() { if [ "$real" = "1" ] ; then echo " 🗑️  $*" ; else echo " 🗑️  would $*" ; fi ; }
+
+  echo "################################################################################"
+  echo "# delete app <$app>$( [ "$real" = "1" ] || echo " (dry run)" )"
+  echo "################################################################################"
+  proj=$( _dc_app_yq "$app" '.apps[strenv(APP)].compose.orig_compose_name // ""' )
+  local -a nodes down_nodes=() ok_nodes=()
+  nodes=( $( _dc_app_yq "$app" '.apps[strenv(APP)].dc.home[].node' | sort -u ) )
+
+  # nodes reachable, containers
+  for n in "${nodes[@]}" ; do
+    nstate=$( _dc_app_node_state "$n" )
+    case "$nstate" in
+      dc|dcc|dock) ;;
+      *) _err "[$app@$n] node not reachable (state <${nstate:-none}>): nothing is deleted" ; continue ;;
+    esac
+    ok_nodes+=( "$n" )
+    read -r nall nrun < <( ssh "$n" "echo \$(docker ps -aq -f label=com.docker.compose.project=$( printf '%q' "$proj" ) | wc -l) \$(docker ps -q -f label=com.docker.compose.project=$( printf '%q' "$proj" ) | wc -l)" 2>/dev/null )
+    if [ -z "$nall" ] ; then
+      _err "[$app@$n] docker ps failed"
+    elif [ "$nall" != "0" ] ; then
+      if [ "$opt_down" = "1" ] ; then
+        _plan "dc down on <$n> ($nall containers, $nrun running)"
+        down_nodes+=( "$n" )
+      else
+        _err "[$app@$n] $nall containers exist ($nrun running): use --down or: dc app $app down"
+      fi
+    fi
+  done
+
+  # sshfs mount below the app dir: "rm -rf" would delete the data on the node through it
+  if grep -qs " $app_dir/" /proc/mounts ; then
+    _err "[$app] mount below <$app_dir> (dc app $app data umount)"
+  fi
+
+  # volume data on the nodes
+  local -a paths=()
+  local p vol names others
+  if [ "$opt_vol" = "1" ] ; then
+    if ! [[ "$app" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ; then
+      _err "[$app] app name not usable for volume paths"
+    else
+      names=$( _dc_app_vol_names "$app" )
+      # <root>/<name> of all four roots (${DC_VOL_*} in .env), also if not used in the compose file
+      paths=( $( for p in $( _dc_app_vol_roots ) ; do for k in $names ; do echo "$p/$k" ; done ; done | sort -u ) )
+      others=$( APP="$app" dc-yq -r '.apps | to_entries | .[] | select(.key != strenv(APP))
+                  | .key + " " + (.value.compose.services[].volumes[]?.source // "")' ${MDE_DC_YAML} )
+      for p in "${paths[@]}" ; do
+        if ! _dc_app_safe_path "$p" ; then
+          _err "[$app] unsafe volume path <$p>"
+          continue
+        fi
+        k=$( echo "$others" | awk -v p="$p" '$2 == p || index($2, p "/") == 1 { print $1 }' | head -1 )
+        [ -n "$k" ] && _err "[$app] volume path <$p> is also used by app <$k>"
+      done
+      for vol in $( _dc_app_volumes "$app" ) ; do
+        _dc_app_vol_owner "$vol" $names >/dev/null || echo " 💡 [$app] not deleted (outside of \${DC_VOL_*}): <$vol>"
+      done
+      local qpaths="" sizes
+      for p in "${paths[@]}" ; do qpaths="$qpaths $( printf '%q' "$p" )" ; done
+      for n in "${ok_nodes[@]}" ; do
+        sizes=$( ssh "$n" "for p in $qpaths ; do [ -e \"\$p\" ] && du -sh \"\$p\" ; done ; true" 2>/dev/null )
+        if [ -z "$sizes" ] ; then
+          echo " 💡 [$app@$n] no volume data"
+        else
+          while read -r s p ; do _plan "delete <$n:$p> ($s)" ; done <<< "$sizes"
+        fi
+      done
+      echo " 💡 [$app] backups (dc backup, ${MDE_DC_VOL_Backup}, remote copies) are not deleted"
+    fi
+  fi
+  if [ "$opt_keep" != "1" ] ; then
+    _plan "delete app directory <$app_dir>"
+  fi
+
+  if [ "$err" = "1" ] ; then
+    echo "error: nothing deleted" >&2
+    return 1
+  fi
+  if [ "$real" != "1" ] ; then
+    echo "💡 dry run, nothing deleted. To delete: dc app $app delete $args real"
+    return 0
+  fi
+
+  # really delete
+  for n in "${down_nodes[@]}" ; do
+    dc -a "$app" -n "$n" down || { echo "error: dc down on <$n> failed, stopped" >&2 ; return 1 ; }
+  done
+  if [ "$opt_vol" = "1" -a ${#paths[@]} -gt 0 ] ; then
+    local rc=0
+    for n in "${ok_nodes[@]}" ; do
+      if ssh "$n" "rm -rf --one-file-system -- $qpaths" ; then
+        echo " ✅ [$app@$n] volume data deleted"
+      else
+        echo " ❌ [$app@$n] deleting volume data failed" ; rc=1
+      fi
+    done
+    if [ "$rc" != "0" ] ; then
+      echo "error: app directory <$app_dir> kept, run the command again" >&2
+      return 1
+    fi
+  fi
+  if [ "$opt_keep" != "1" ] ; then
+    rm -rf --one-file-system -- "$app_dir" || return 1
+    echo " ✅ [$app] app directory <$app_dir> deleted"
+    dc-config refresh >/dev/null
+  fi
+  return 0
+}
